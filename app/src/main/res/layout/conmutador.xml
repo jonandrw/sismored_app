@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- El conmutador de la PWA (`.switch` + `.sw`): rótulo a la izquierda y un
+     interruptor rectangular de 48×27 a la derecha. Rectangular, sin radios,
+     como todo lo demás — el Switch de Material es una píldora redonda y aquí
+     desentonaría con las nueve tarjetas.
+
+     Se rellena por código con cm_texto, y se conmuta moviendo cm_pomo. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="0dp"
+    android:layout_height="66dp"
+    android:layout_weight="1"
+    android:background="@drawable/caja"
+    android:baselineAligned="false"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/cm_texto"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="12dp"
+        android:layout_weight="1"
+        android:lineSpacingMultiplier="1.3"
+        android:textColor="@color/tx"
+        android:textSize="12.5sp" />
+
+    <FrameLayout
+        android:id="@+id/cm_pista"
+        android:layout_width="48dp"
+        android:layout_height="27dp"
+        android:background="@drawable/sw_pista">
+
+        <View
+            android:id="@+id/cm_pomo"
+            android:layout_width="19dp"
+            android:layout_height="19dp"
+            android:layout_gravity="start|center_vertical"
+            android:layout_marginStart="4dp"
+            android:background="@color/dim" />
+    </FrameLayout>
+</LinearLayout>

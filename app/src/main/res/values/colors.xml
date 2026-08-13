@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- La paleta de SismoRed, la misma que en `SismoRed/ui.css`. Los dos frentes
+     tienen que verse como la misma cosa: quien instale la app después de haber
+     usado la web no debería notar que ha cambiado de programa. -->
+<resources>
+    <color name="bg">#0B0D0F</color>
+    <color name="card">#14171A</color>
+    <color name="card2">#1A1D21</color>
+    <color name="line">#2A2F36</color>
+    <color name="ctl">#3A4048</color>
+    <color name="dim">#8A9099</color>
+    <color name="tx">#E5E7EB</color>
+    <color name="gr">#90CA50</color>
+    <color name="rd">#E53035</color>
+    <color name="rd_d">#A81F23</color>
+</resources>

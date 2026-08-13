@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Uno de los cuatro saltos de MALLA DE PROPAGACION, apagado. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/bg" />
+    <stroke android:width="2dp" android:color="@color/line" />
+</shape>

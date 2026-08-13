@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Una fila de la pantalla de bienvenida: qué permiso es, para qué sirve y si
+     está concedido. Se pulsa para concederlo.
+
+     Cada uno dice PARA QUÉ, no solo cómo se llama. «Micrófono» asusta;
+     «para oír avisos de otros móviles y reconocer un derrumbe» se entiende. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/caja"
+    android:baselineAligned="false"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="14dp">
+
+    <ImageView
+        android:id="@+id/pm_icono"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginEnd="14dp"
+        android:contentDescription="@null"
+        android:tint="@color/ctl" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/pm_nombre"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/montserrat_semibold"
+            android:textColor="@color/tx"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/pm_para"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:lineSpacingMultiplier="1.35"
+            android:textColor="@color/dim"
+            android:textSize="12.5sp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/pm_estado"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:fontFamily="@font/montserrat_bold"
+        android:letterSpacing="0.09"
+        android:textColor="@color/gr"
+        android:textSize="10.5sp" />
+</LinearLayout>

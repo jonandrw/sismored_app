@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Los botones de icono de la barra: 1 px de línea y nada más, como en la PWA. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/card2" />
+            <stroke android:width="1dp" android:color="@color/line" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/card" />
+            <stroke android:width="1dp" android:color="@color/line" />
+        </shape>
+    </item>
+</selector>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Montserrat auto-alojada, igual que en la PWA: enlazarla a Google Fonts
+     rompería el requisito de funcionar sin red. Salen de la fuente variable
+     (un solo eje, wght 100-900) instanciada a los tres pesos que se usan. -->
+<font-family xmlns:android="http://schemas.android.com/apk/res/android">
+    <font android:fontStyle="normal" android:fontWeight="400" android:font="@font/montserrat_regular" />
+    <font android:fontStyle="normal" android:fontWeight="600" android:font="@font/montserrat_semibold" />
+    <font android:fontStyle="normal" android:fontWeight="700" android:font="@font/montserrat_bold" />
+</font-family>

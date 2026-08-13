@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- El paso numérico de la PWA (`.stepper`): − valor +, en una caja de 1 px.
+     Lo usan el umbral de disparo (0,5 a 8 en pasos de 0,1) y la frecuencia del
+     doppler. Los dos ajustan cosas que se miden en un móvil real y que cambian
+     de un modelo a otro, así que tienen que poder tocarse.
+
+     Se rellena y se cablea por código con st_menos / st_valor / st_mas. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="50dp"
+    android:background="@drawable/caja"
+    android:baselineAligned="false"
+    android:orientation="horizontal">
+
+    <TextView
+        android:id="@+id/st_menos"
+        android:layout_width="46dp"
+        android:layout_height="match_parent"
+        android:background="?android:attr/selectableItemBackground"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center"
+        android:text="@string/menos"
+        android:textColor="@color/dim"
+        android:textSize="22sp" />
+
+    <TextView
+        android:id="@+id/st_valor"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:fontFamily="@font/montserrat_bold"
+        android:gravity="center"
+        android:textColor="@color/tx"
+        android:textSize="19sp" />
+
+    <TextView
+        android:id="@+id/st_mas"
+        android:layout_width="46dp"
+        android:layout_height="match_parent"
+        android:background="?android:attr/selectableItemBackground"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center"
+        android:text="@string/mas"
+        android:textColor="@color/dim"
+        android:textSize="22sp" />
+</LinearLayout>

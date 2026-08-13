@@ -1,0 +1,321 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <style name="Theme.SismoRed" parent="Theme.MaterialComponents.NoActionBar">
+        <item name="android:statusBarColor">@color/bg</item>
+        <item name="android:navigationBarColor">@color/bg</item>
+        <item name="android:windowBackground">@color/bg</item>
+        <item name="android:textColor">@color/tx</item>
+        <item name="colorPrimary">@color/rd</item>
+        <item name="colorAccent">@color/gr</item>
+        <!-- Montserrat en todo, sin tener que repetirla control por control. -->
+        <item name="android:fontFamily">@font/montserrat</item>
+        <item name="fontFamily">@font/montserrat</item>
+        <!-- Bordes rectos: ningún radio distinto de 0, igual que en la PWA.
+             Material redondea por defecto, así que hay que decírselo. -->
+        <item name="materialButtonStyle">@style/Boton</item>
+        <item name="shapeAppearanceSmallComponent">@style/Recto</item>
+        <item name="shapeAppearanceMediumComponent">@style/Recto</item>
+        <item name="shapeAppearanceLargeComponent">@style/Recto</item>
+    </style>
+
+    <style name="Recto" parent="ShapeAppearance.MaterialComponents.SmallComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">0dp</item>
+    </style>
+
+    <!-- Botón base: recto, sin sombra y sin MAYÚSCULAS automáticas (los textos
+         ya vienen escritos como deben leerse). -->
+    <style name="Boton" parent="Widget.MaterialComponents.Button">
+        <item name="shapeAppearance">@style/Recto</item>
+        <item name="android:textAllCaps">false</item>
+        <!-- 1 px sobre 13 px en la PWA. Medido, no elegido a ojo. -->
+        <item name="android:letterSpacing">0.077</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:fontFamily">@font/montserrat</item>
+        <item name="android:textStyle">bold</item>
+        <item name="elevation">0dp</item>
+        <item name="android:stateListAnimator">@null</item>
+        <item name="backgroundTint">@color/card2</item>
+        <item name="android:textColor">@color/tx</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="rippleColor">@color/ctl</item>
+    </style>
+
+    <!-- El botón ancho de la PWA (`.wide`): con borde de 1 px y un icono a la
+         izquierda. Los que llevan a otra vista van en gris (`.wide.nav`). -->
+    <style name="Boton.Ancho">
+        <item name="backgroundTint">@color/card2</item>
+        <item name="strokeColor">@color/line</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="android:textColor">@color/dim</item>
+        <item name="android:minHeight">56dp</item>
+    </style>
+
+    <!-- Un botón cuyo rótulo tiene que caber en UNA línea, pase lo que pase.
+         En una pantalla estrecha «MARCAR EVENTO» se partía en dos y la segunda
+         línea estiraba la caja. Con `maxLines=1` no puede partirse, y el
+         autoescalado baja la letra lo justo para que quepa en vez de recortarla
+         con puntos suspensivos: se lee entera en cualquier ancho. -->
+    <style name="Boton.UnaLinea">
+        <item name="android:maxLines">1</item>
+        <item name="autoSizeTextType">uniform</item>
+        <item name="autoSizeMinTextSize">8.5sp</item>
+        <item name="autoSizeMaxTextSize">13sp</item>
+        <item name="autoSizeStepGranularity">0.5sp</item>
+    </style>
+
+    <!-- Secundario: el que solo se usa de vez en cuando, en gris. -->
+    <style name="Boton.Tenue">
+        <item name="android:textColor">@color/dim</item>
+    </style>
+
+    <!-- El de la malla y el atajo, en verde: son los que dicen que algo está vivo. -->
+    <style name="Boton.Verde">
+        <item name="android:textColor">@color/gr</item>
+    </style>
+
+    <!-- Rótulo de sección: en micro y en mayúsculas, para separar sin gritar. -->
+    <style name="Rotulo">
+        <item name="android:layout_marginTop">24dp</item>
+        <item name="android:layout_marginBottom">8dp</item>
+        <item name="android:textColor">@color/dim</item>
+        <item name="android:textSize">10.5sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:letterSpacing">0.14</item>
+        <item name="android:fontFamily">@font/montserrat</item>
+    </style>
+
+    <!-- Etiqueta de dentro de tarjeta: dice qué es el número que viene debajo. -->
+    <!-- Peso 600, no 700: la PWA distingue los dos y con todo en negrita la
+         jerarquía tipográfica se aplana. -->
+    <style name="Etiqueta">
+        <item name="android:layout_marginBottom">4dp</item>
+        <item name="android:textColor">@color/dim</item>
+        <item name="android:textSize">10.5sp</item>
+        <item name="android:letterSpacing">0.095</item>
+        <item name="android:fontFamily">@font/montserrat_semibold</item>
+    </style>
+
+    <!-- La ficha a pantalla completa. Etiqueta pequena arriba, valor enorme
+         debajo, y una linea de 1 px separando bloques. -->
+    <style name="FfEtiqueta">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textColor">@color/dim</item>
+        <item name="android:textSize">11sp</item>
+        <item name="android:letterSpacing">0.12</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:fontFamily">@font/montserrat_semibold</item>
+    </style>
+
+    <style name="FfValor">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:breakStrategy">simple</item>
+        <item name="android:hyphenationFrequency">none</item>
+        <item name="android:textColor">@color/tx</item>
+        <item name="android:fontFamily">@font/montserrat_bold</item>
+        <item name="autoSizeTextType">uniform</item>
+        <item name="autoSizeStepGranularity">1sp</item>
+    </style>
+
+    <style name="FfLinea">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">1dp</item>
+        <item name="android:background">@color/line</item>
+    </style>
+
+    <!-- Un ajuste: el nombre y, debajo, para qué sirve y cuándo tocarlo.
+         Misma jerarquía que un paso —negrita arriba, gris abajo— porque el problema
+         era el mismo: «Frecuencia doppler» a secas no le dice nada a nadie, y meter
+         el rango entre paréntesis en la misma línea no es explicarlo. -->
+    <style name="AjusteTitulo">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:breakStrategy">simple</item>
+        <item name="android:hyphenationFrequency">none</item>
+        <item name="android:textColor">@color/tx</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:fontFamily">@font/montserrat_bold</item>
+    </style>
+
+    <style name="AjusteCuerpo">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">4dp</item>
+        <item name="android:breakStrategy">simple</item>
+        <item name="android:hyphenationFrequency">none</item>
+        <item name="android:lineSpacingMultiplier">1.45</item>
+        <item name="android:textColor">@color/dim</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:fontFamily">@font/montserrat</item>
+    </style>
+
+    <!-- El subtítulo de una sección: una frase en minúsculas debajo del rótulo en
+         versales. Es lo que da la jerarquía de verdad —peso, tamaño y color— en vez
+         de encadenar «RÓTULO · media frase» en una sola línea. -->
+    <style name="EtiquetaSub">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginBottom">10dp</item>
+        <item name="android:breakStrategy">simple</item>
+        <item name="android:hyphenationFrequency">none</item>
+        <item name="android:lineSpacingMultiplier">1.35</item>
+        <item name="android:textColor">@color/dim</item>
+        <item name="android:textSize">12.5sp</item>
+        <item name="android:fontFamily">@font/montserrat</item>
+    </style>
+
+    <!-- Campo de la ficha: línea abajo y nada más, como los inputs de la PWA. -->
+    <style name="Campo">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:background">@drawable/campo_fondo</item>
+        <item name="android:paddingStart">10dp</item>
+        <item name="android:paddingEnd">10dp</item>
+        <item name="android:paddingTop">10dp</item>
+        <item name="android:paddingBottom">10dp</item>
+        <item name="android:textColor">@color/tx</item>
+        <item name="android:textColorHint">@color/ctl</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:fontFamily">@font/montserrat</item>
+    </style>
+
+    <!-- Cifra grande de `stats3`, con su rótulo debajo. -->
+    <style name="Cifra">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:text">@string/guion</item>
+        <item name="android:textColor">@color/tx</item>
+        <item name="android:textSize">24sp</item>
+        <item name="android:fontFamily">@font/montserrat_bold</item>
+    </style>
+
+    <style name="CifraRotulo">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textColor">@color/dim</item>
+        <item name="android:textSize">10.5sp</item>
+        <item name="android:fontFamily">@font/montserrat</item>
+    </style>
+
+    <!-- Botón secundario de la PWA (`.ghost`): borde de 1 px y fondo transparente. -->
+    <style name="Boton.Ghost">
+        <item name="backgroundTint">@android:color/transparent</item>
+        <item name="strokeColor">@color/line</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="android:textColor">@color/dim</item>
+    </style>
+
+    <!-- Uno de los cuatro saltos de MALLA DE PROPAGACIÓN. Se encienden los que
+         ha recorrido la alerta, de izquierda a derecha. -->
+    <style name="Salto">
+        <item name="android:layout_width">34dp</item>
+        <item name="android:layout_height">34dp</item>
+        <item name="android:background">@drawable/salto</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textColor">@color/ctl</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:fontFamily">@font/montserrat_bold</item>
+    </style>
+
+    <!-- Rótulo de dentro de una `row2`: dice qué es el control que viene debajo.
+         Igual que Etiqueta pero sin versales, porque estos son frases. -->
+    <style name="EtiquetaCampo">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginBottom">8dp</item>
+        <item name="android:textColor">@color/dim</item>
+        <item name="android:textSize">12.5sp</item>
+        <item name="android:fontFamily">@font/montserrat_semibold</item>
+    </style>
+
+    <!-- La salida de una herramienta: una consola.
+         Cada informe va en su propia línea y en monoespaciado, y las líneas se
+         apilan de arriba abajo como en un terminal. Antes todo salía en un párrafo
+         corrido que se reflowaba en cada actualización, y con números dentro eso es
+         ilegible: cambia una cifra y salta todo el texto de sitio. -->
+    <style name="Consola">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">10dp</item>
+        <item name="android:background">@drawable/caja</item>
+        <item name="android:padding">12dp</item>
+        <item name="android:minHeight">54dp</item>
+        <item name="android:fontFamily">monospace</item>
+        <item name="android:typeface">monospace</item>
+        <item name="android:lineSpacingMultiplier">1.45</item>
+        <item name="android:textColor">@color/dim</item>
+        <item name="android:textSize">11.5sp</item>
+        <item name="android:text">@string/guion</item>
+    </style>
+
+    <!-- Texto de ayuda al pie de una tarjeta (`.hint`). -->
+    <style name="Ayuda">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">16dp</item>
+        <!-- Sin guiones de corte: ver la nota de `paso.xml`. -->
+        <item name="android:breakStrategy">simple</item>
+        <item name="android:hyphenationFrequency">none</item>
+        <item name="android:lineSpacingMultiplier">1.65</item>
+        <item name="android:textColor">@color/dim</item>
+        <item name="android:textSize">12.5sp</item>
+    </style>
+
+    <!-- Tarjeta: el contenedor que repiten las nueve. -->
+    <style name="Tarjeta">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginBottom">16dp</item>
+        <item name="android:background">@drawable/tarjeta</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:padding">16dp</item>
+    </style>
+
+    <style name="Pestana">
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:gravity">center</item>
+        <item name="android:paddingTop">12dp</item>
+        <item name="android:paddingBottom">12dp</item>
+        <!-- La pestaña activa se marca con el color, no con un fondo: en la PWA
+             la barra es de una pieza y solo cambia el rojo del icono. -->
+        <item name="android:background">?android:attr/selectableItemBackground</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+    </style>
+
+    <style name="PestanaIcono">
+        <item name="android:layout_width">22dp</item>
+        <item name="android:layout_height">22dp</item>
+        <item name="android:duplicateParentState">true</item>
+    </style>
+
+    <!-- Con cinco pestanas y una pantalla estrecha, «Busqueda» se partia en dos
+         lineas y se pegaba a la de al lado. Una linea y que la letra se ajuste. -->
+    <style name="PestanaTexto">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">3dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:maxLines">1</item>
+        <item name="autoSizeTextType">uniform</item>
+        <item name="autoSizeMinTextSize">7.5sp</item>
+        <item name="autoSizeMaxTextSize">10.5sp</item>
+        <item name="android:textSize">10.5sp</item>
+        <item name="android:letterSpacing">0.029</item>
+        <item name="android:fontFamily">@font/montserrat_semibold</item>
+        <item name="android:duplicateParentState">true</item>
+    </style>
+
+    <!-- PÁNICO. El único rojo, el único grande y el único que se pulsa sin mirar. -->
+    <style name="Boton.Panico">
+        <item name="backgroundTint">@color/rd</item>
+        <item name="android:textColor">#FFFFFF</item>
+        <item name="android:textSize">28sp</item>
+        <item name="android:letterSpacing">0.15</item>
+    </style>
+
+</resources>

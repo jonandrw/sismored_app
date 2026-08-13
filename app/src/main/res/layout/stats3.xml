@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Las tres cifras grandes con su rótulo debajo (`.stats3` de la PWA). En
+     MALLA DE PROPAGACIÓN son «Salto recibido / Balizas detectadas /
+     Retransmisiones»; en cualquier otra tarjeta valen igual.
+
+     Los datos ya existen en ServicioSos.mallaSalto / mallaRx / mallaTx. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:baselineAligned="false"
+    android:orientation="horizontal"
+    android:paddingTop="12dp"
+    android:paddingBottom="12dp">
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+        <TextView android:id="@+id/s3_v1" style="@style/Cifra" />
+        <TextView android:id="@+id/s3_r1" style="@style/CifraRotulo" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+        <TextView android:id="@+id/s3_v2" style="@style/Cifra" />
+        <TextView android:id="@+id/s3_r2" style="@style/CifraRotulo" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+        <TextView android:id="@+id/s3_v3" style="@style/Cifra" />
+        <TextView android:id="@+id/s3_r3" style="@style/CifraRotulo" />
+    </LinearLayout>
+</LinearLayout>

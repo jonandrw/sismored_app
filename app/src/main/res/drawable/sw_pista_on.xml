@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pista del conmutador encendido: el verde de la marca, muy oscurecido, para
+     que el pomo verde de encima siga siendo lo que se ve. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#2E4A18" />
+</shape>

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- La fila clave/valor de la PWA (`.kv`): rótulo en gris a la izquierda, dato
+     en negrita a la derecha, y una línea de 1 px debajo. Es el ladrillo más
+     repetido de toda la interfaz — INFORMACIÓN DE RED son seis de estas.
+
+     Se usa con <include> y se rellena desde el código:
+       val f = findViewById<View>(R.id.mi_fila)
+       f.findViewById<TextView>(R.id.kv_clave).setText(R.string.x)
+       f.findViewById<TextView>(R.id.kv_valor).text = "16 000 Hz" -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:baselineAligned="false"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp">
+
+    <!-- Los dos reparten la fila por peso, y ninguno crece por encima de su mitad.
+         Con el valor en `wrap_content` un texto largo —«Escuchando 16-18 kHz»— se
+         comía el ancho entero y se montaba encima del rótulo hasta taparlo. Con
+         peso, cada uno tiene su sitio y ninguno pisa al otro.
+
+         Sin autoescalado a proposito: con `wrap_content` en el alto, Android calcula
+         tamano cero y el texto desaparece. Se vio en «Estado de la malla», que se
+         quedo en blanco. Si un valor no cabe, cae a una segunda linea. -->
+    <TextView
+        android:id="@+id/kv_clave"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:breakStrategy="simple"
+        android:hyphenationFrequency="none"
+        android:maxLines="2"
+        android:textColor="@color/dim"
+        android:textSize="13sp" />
+
+    <TextView
+        android:id="@+id/kv_valor"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="12dp"
+        android:gravity="end"
+        android:maxLines="2"
+        android:text="@string/guion"
+        android:textColor="@color/tx"
+        android:textSize="13sp"
+        android:textStyle="bold" />
+</LinearLayout>

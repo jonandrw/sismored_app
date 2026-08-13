@@ -1,0 +1,1602 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Misma distribución que la PWA (`SismoRed/index.html` + `ui.css`): barra
+     superior con el logotipo y dos iconos, contenido en el medio, y cuatro
+     pestañas abajo. Paleta idéntica, Montserrat auto-alojada y bordes rectos en
+     todo: quien instale la app tras haber usado la web no debería notar que ha
+     cambiado de programa.
+
+     Las tarjetas no son cajas con texto suelto. Todas empiezan por la misma
+     cabecera (`tarjeta_cabecera`) y por dentro repiten cuatro ladrillos:
+     `fila_kv`, `stats3`, `boton_ghost` y `conmutador`. Es lo que hace que las
+     nueve parezcan la misma familia.
+
+     Las vistas de segundo nivel — Respuesta, Diagnóstico y Registro — no tienen
+     pestaña: se llega por los iconos de arriba y por el botón ancho de Inicio, y
+     cambian la barra del logotipo por una subbarra con ← y el título.
+
+     El orden dentro de Inicio es el orden de urgencia: PÁNICO primero, porque
+     es el único que se pulsa sin mirar. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <!-- ===== barra superior ===== -->
+        <LinearLayout
+            android:id="@+id/barra"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="16dp">
+
+            <!-- El logotipo se queda con el ancho que sobre, no con el que
+                 quiere: con `wrap_content` empujaba los dos iconos fuera de la
+                 pantalla en cuanto la barra se estrechaba. `fitStart` lo mantiene
+                 pegado a la izquierda y en su proporcion. -->
+            <ImageView
+                android:id="@+id/logo"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:adjustViewBounds="true"
+                android:contentDescription="@string/app_name"
+                android:scaleType="fitStart"
+                android:src="@drawable/logotipo" />
+
+            <ImageButton
+                android:id="@+id/go_log"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:background="@drawable/icono_fondo"
+                android:contentDescription="@string/rot_registro"
+                android:padding="9dp"
+                android:src="@drawable/ic_registro"
+                android:tint="@color/dim" />
+
+            <ImageButton
+                android:id="@+id/go_diag"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/icono_fondo"
+                android:contentDescription="@string/diagnostico"
+                android:padding="9dp"
+                android:src="@drawable/ic_diag"
+                android:tint="@color/dim" />
+        </LinearLayout>
+
+        <!-- ===== subbarra de las vistas de segundo nivel ===== -->
+        <LinearLayout
+            android:id="@+id/subbarra"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="16dp"
+            android:visibility="gone">
+
+            <ImageButton
+                android:id="@+id/go_back"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:background="@drawable/icono_fondo"
+                android:contentDescription="@string/volver"
+                android:padding="11dp"
+                android:src="@drawable/ic_atras"
+                android:tint="@color/dim" />
+
+            <TextView
+                android:id="@+id/subtitulo"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="@font/montserrat_bold"
+                android:gravity="center"
+                android:textColor="@color/tx"
+                android:textSize="15sp" />
+
+            <!-- Espacio del mismo ancho que el botón, para que el título quede
+                 centrado de verdad y no desplazado 42 px a la derecha. -->
+            <View
+                android:layout_width="42dp"
+                android:layout_height="1dp" />
+        </LinearLayout>
+
+        <ScrollView
+            android:id="@+id/scroll"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingBottom="24dp">
+
+                <!-- ==================== INICIO ==================== -->
+                <LinearLayout
+                    android:id="@+id/v_inicio"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:id="@+id/panico"
+                        android:layout_width="match_parent"
+                        android:layout_height="178dp"
+                        android:background="@color/rd"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center"
+                        android:orientation="vertical">
+
+                        <ImageView
+                            android:layout_width="30dp"
+                            android:layout_height="30dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_alerta"
+                            android:tint="#FFFFFF" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:letterSpacing="0.147"
+                            android:text="@string/panico"
+                            android:textColor="#FFFFFF"
+                            android:textSize="34sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:letterSpacing="0.08"
+                            android:text="@string/panico_sub"
+                            android:textColor="#FFD9DA"
+                            android:textSize="10.5sp" />
+                    </LinearLayout>
+
+                    <Button
+                        android:id="@+id/parar"
+                        style="@style/Boton.UnaLinea"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:layout_marginBottom="16dp"
+                        android:text="@string/detener" />
+
+                    <!-- ···· ESTADO ACTUAL ···· -->
+                    <LinearLayout
+                        android:id="@+id/tarjeta_estado"
+                        style="@style/Tarjeta"
+                        android:baselineAligned="false"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                style="@style/Etiqueta"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/rot_estado" />
+
+                            <TextView
+                                android:id="@+id/estado"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:letterSpacing="-0.019"
+                                android:text="@string/vigilando"
+                                android:textColor="@color/gr"
+                                android:textSize="26sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/estado_sub"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:text="@string/sub_reposo"
+                                android:textColor="@color/dim"
+                                android:textSize="12.5sp" />
+
+                            <TextView
+                                android:id="@+id/teclas_estado"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="6dp"
+                                android:textColor="@color/dim"
+                                android:textSize="12.5sp" />
+                        </LinearLayout>
+
+                        <FrameLayout
+                            android:layout_width="96dp"
+                            android:layout_height="96dp"
+                            android:layout_marginStart="16dp"
+                            android:background="@drawable/caja">
+
+                            <red.sismo.VistaAnillo
+                                android:id="@+id/anillo"
+                                android:layout_width="80dp"
+                                android:layout_height="80dp"
+                                android:layout_gravity="center" />
+                        </FrameLayout>
+                    </LinearLayout>
+
+                    <TextView
+                        style="@style/Rotulo"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/rot_preparacion" />
+
+                    <!-- ···· MALLA DE PROPAGACIÓN ···· -->
+                    <LinearLayout style="@style/Tarjeta">
+
+                        <include
+                            android:id="@+id/ch_propagacion"
+                            layout="@layout/tarjeta_cabecera" />
+
+                        <!-- «4 saltos máx.» y los cuatro cuadros que se encienden
+                             conforme la alerta va llegando. -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:baselineAligned="false"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingBottom="20dp">
+
+                            <LinearLayout
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginEnd="20dp"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="@font/montserrat_bold"
+                                    android:text="@string/v_saltos_max"
+                                    android:textColor="@color/tx"
+                                    android:textSize="34sp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="8dp"
+                                    android:letterSpacing="0.038"
+                                    android:text="@string/saltos_max"
+                                    android:textColor="@color/dim"
+                                    android:textSize="10.5sp" />
+                            </LinearLayout>
+
+                            <FrameLayout
+                                android:layout_width="0dp"
+                                android:layout_height="34dp"
+                                android:layout_weight="1">
+
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="2dp"
+                                    android:layout_gravity="center_vertical"
+                                    android:layout_marginStart="16dp"
+                                    android:layout_marginEnd="16dp"
+                                    android:background="@color/line" />
+
+                                <LinearLayout
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:orientation="horizontal">
+
+                                    <TextView android:id="@+id/hop1" style="@style/Salto" android:text="@string/n1" />
+                                    <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
+                                    <TextView android:id="@+id/hop2" style="@style/Salto" android:text="@string/n2" />
+                                    <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
+                                    <TextView android:id="@+id/hop3" style="@style/Salto" android:text="@string/n3" />
+                                    <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
+                                    <TextView android:id="@+id/hop4" style="@style/Salto" android:text="@string/n4" />
+                                </LinearLayout>
+                            </FrameLayout>
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="@color/line" />
+
+                        <include
+                            android:id="@+id/s3_malla"
+                            layout="@layout/stats3" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginBottom="16dp"
+                            android:background="@color/line" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:baselineAligned="false"
+                            android:orientation="horizontal">
+
+                            <include android:id="@+id/g_malla" layout="@layout/boton_ghost" />
+                            <View android:layout_width="12dp" android:layout_height="1dp" />
+                            <include android:id="@+id/g_senal" layout="@layout/boton_ghost" />
+                        </LinearLayout>
+
+                        <include android:id="@+id/kv_malla_estado" layout="@layout/fila_kv" />
+                    </LinearLayout>
+
+                    <!-- ···· DETECTOR SÍSMICO ···· -->
+                    <LinearLayout style="@style/Tarjeta">
+
+                        <include
+                            android:id="@+id/ch_sismico"
+                            layout="@layout/tarjeta_cabecera" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:baselineAligned="false"
+                            android:orientation="horizontal">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    style="@style/EtiquetaCampo"
+                                    android:text="@string/l_sismografo" />
+
+                                <red.sismo.VistaTraza
+                                    android:id="@+id/traza"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="88dp"
+                                    android:background="@drawable/caja" />
+                            </LinearLayout>
+
+                            <View android:layout_width="16dp" android:layout_height="1dp" />
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    style="@style/EtiquetaCampo"
+                                    android:text="@string/l_umbral" />
+
+                                <include android:id="@+id/paso_umbral" layout="@layout/stepper" />
+
+                                <include android:id="@+id/kv_sacudida" layout="@layout/fila_kv" />
+                            </LinearLayout>
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="16dp"
+                            android:baselineAligned="false"
+                            android:orientation="horizontal">
+
+                            <include android:id="@+id/cm_auto" layout="@layout/conmutador" />
+                            <View android:layout_width="12dp" android:layout_height="1dp" />
+                            <include android:id="@+id/cm_sirena" layout="@layout/conmutador" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <Button
+                        android:id="@+id/ir_respuesta"
+                        style="@style/Boton.Ancho"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="16dp"
+                        android:text="@string/b_respuesta"
+                        app:icon="@drawable/ic_casco"
+                        app:iconGravity="textStart"
+                        app:iconTint="@color/dim" />
+
+                    <Button
+                        android:id="@+id/ir_busqueda"
+                        style="@style/Boton.Ancho"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="16dp"
+                        android:text="@string/b_busqueda"
+                        app:icon="@drawable/ic_baliza"
+                        app:iconGravity="textStart"
+                        app:iconTint="@color/dim" />
+
+                    <!-- ···· CÓMO USARLA ···· -->
+                    <LinearLayout style="@style/Tarjeta">
+
+                        <include
+                            android:id="@+id/ch_como"
+                            layout="@layout/tarjeta_cabecera" />
+
+                        <include android:id="@+id/paso1" layout="@layout/paso" />
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
+                        <include android:id="@+id/paso2" layout="@layout/paso" />
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
+                        <include android:id="@+id/paso3" layout="@layout/paso" />
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
+                        <include android:id="@+id/paso4" layout="@layout/paso" />
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
+                        <include android:id="@+id/paso5" layout="@layout/paso" />
+                    </LinearLayout>
+
+                    <TextView
+                        style="@style/Rotulo"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/rot_ajustes" />
+
+                    <Button
+                        android:id="@+id/teclas"
+                        style="@style/Boton.Verde"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/teclas" />
+
+                    <Button
+                        android:id="@+id/bateria"
+                        style="@style/Boton.Tenue"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="@string/bateria" />
+                </LinearLayout>
+
+                <!-- ==================== RED ==================== -->
+                <LinearLayout
+                    android:id="@+id/v_red"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <!-- ···· ESTADO DE LA MALLA ···· -->
+                    <LinearLayout style="@style/Tarjeta">
+
+                        <include
+                            android:id="@+id/ch_malla_estado"
+                            layout="@layout/tarjeta_cabecera" />
+
+                        <TextView
+                            android:id="@+id/malla_sub"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/malla_sub_off"
+                            android:textColor="@color/dim"
+                            android:textSize="12.5sp" />
+
+                        <red.sismo.VistaRadar
+                            android:id="@+id/radar"
+                            android:layout_width="match_parent"
+                            android:layout_height="300dp"
+                            android:layout_marginTop="8dp"
+                            android:layout_marginBottom="8dp" />
+
+                        <include android:id="@+id/paso_ra1" layout="@layout/paso" />
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
+                        <include android:id="@+id/paso_ra2" layout="@layout/paso" />
+                    </LinearLayout>
+
+                    <!-- ···· INFORMACIÓN DE RED ···· -->
+                    <LinearLayout style="@style/Tarjeta">
+
+                        <include
+                            android:id="@+id/ch_info_red"
+                            layout="@layout/tarjeta_cabecera" />
+
+                        <include android:id="@+id/kv_r_salto" layout="@layout/fila_kv" />
+                        <include android:id="@+id/kv_r_balizas" layout="@layout/fila_kv" />
+                        <include android:id="@+id/kv_r_retx" layout="@layout/fila_kv" />
+                        <include android:id="@+id/kv_r_max" layout="@layout/fila_kv" />
+                        <include android:id="@+id/kv_r_portadora" layout="@layout/fila_kv" />
+                        <include android:id="@+id/kv_r_tonos" layout="@layout/fila_kv" />
+                    </LinearLayout>
+
+                    <!-- ···· SI APARECE INTERNET ···· -->
+                    <LinearLayout style="@style/Tarjeta">
+
+                        <include
+                            android:id="@+id/ch_internet"
+                            layout="@layout/tarjeta_cabecera" />
+
+                        <include android:id="@+id/kv_n_estado" layout="@layout/fila_kv" />
+                        <include android:id="@+id/kv_n_tipo" layout="@layout/fila_kv" />
+                        <include android:id="@+id/kv_n_cola" layout="@layout/fila_kv" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="16dp"
+                            android:baselineAligned="false"
+                            android:orientation="horizontal">
+
+                            <include android:id="@+id/g_enviar" layout="@layout/boton_ghost" />
+                            <View android:layout_width="12dp" android:layout_height="1dp" />
+                            <include android:id="@+id/g_purgar" layout="@layout/boton_ghost" />
+                        </LinearLayout>
+
+                        <!-- La consola del envio: dice que ha pasado en cada
+                             intento. Antes esta tarjeta no daba ninguna senal de
+                             vida y parecia que no servia para nada. -->
+                        <red.sismo.VistaConsola
+                            android:id="@+id/red_salida"
+                            style="@style/Consola" />
+
+                        <include android:id="@+id/paso_i1" layout="@layout/paso" />
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
+                        <include android:id="@+id/paso_i2" layout="@layout/paso" />
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
+                        <include android:id="@+id/paso_i3" layout="@layout/paso" />
+                    </LinearLayout>
+
+                    <!-- Los tres parrafos que habia aqui, en pasos: son tres
+                         hechos distintos sobre como viaja la alerta, y seguidos
+                         se leian como uno solo. -->
+                    <LinearLayout style="@style/Tarjeta">
+
+                        <include
+                            android:id="@+id/ch_como_malla"
+                            layout="@layout/tarjeta_cabecera" />
+
+                        <include android:id="@+id/paso_m1" layout="@layout/paso" />
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
+                        <include android:id="@+id/paso_m2" layout="@layout/paso" />
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
+                        <include android:id="@+id/paso_m3" layout="@layout/paso" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- ==================== ENTORNO ====================
+                     Las dos tarjetas van en el orden en que se usan, no en el
+                     orden en que se programaron: primero lo que se pulsa, luego
+                     lo que sale en pantalla, y al final la explicación.
+
+                     La explicación no es un párrafo al pie: son pasos numerados
+                     con su icono, el mismo ladrillo (`paso`) que CÓMO USARLA en
+                     Inicio. Aquí también hay prisa, y una lista se lee de reojo
+                     mientras un bloque de texto no. -->
+                <LinearLayout
+                    android:id="@+id/v_entorno"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <!-- ···· DETECCIÓN EN TIEMPO REAL ···· -->
+                    <LinearLayout style="@style/Tarjeta">
+
+                        <include
+                            android:id="@+id/ch_deteccion"
+                            layout="@layout/tarjeta_cabecera" />
+
+                        <!-- Los botones van arriba: sin ESCUCHAR ENTORNO los
+                             cinco detectores se quedan a cero para siempre, así
+                             que es lo primero que hay que encontrar. -->
+                        <!-- La escucha es un interruptor, no un boton: se queda
+                             encendida o apagada, y con el ghost verde no se sabia
+                             cual de las dos cosas estaba pasando. MARCAR EVENTO si
+                             es un boton, porque es un disparo y no un estado. -->
+                        <include android:id="@+id/cm_escuchar" layout="@layout/conmutador_ancho" />
+
+                        <include
+                            android:id="@+id/kv_e_estado"
+                            android:layout_marginTop="4dp"
+                            layout="@layout/fila_kv" />
+
+                        <Button
+                            android:id="@+id/b_marcar"
+                            style="@style/Boton.UnaLinea"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:layout_marginBottom="16dp"
+                            android:text="@string/b_marcar" />
+
+                        <!-- La rejilla de cinco: es lo que de verdad se mira. -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="16dp"
+                            android:baselineAligned="false"
+                            android:orientation="horizontal">
+
+                            <include android:id="@+id/det_derrumbe" layout="@layout/detector" />
+                            <View android:layout_width="8dp" android:layout_height="1dp" />
+                            <include android:id="@+id/det_grito" layout="@layout/detector" />
+                            <View android:layout_width="8dp" android:layout_height="1dp" />
+                            <include android:id="@+id/det_voz" layout="@layout/detector" />
+                            <View android:layout_width="8dp" android:layout_height="1dp" />
+                            <include android:id="@+id/det_animal" layout="@layout/detector" />
+                            <View android:layout_width="8dp" android:layout_height="1dp" />
+                            <include android:id="@+id/det_golpes" layout="@layout/detector" />
+                        </LinearLayout>
+
+                        <red.sismo.VistaOsciloscopio
+                            android:id="@+id/scope"
+                            android:layout_width="match_parent"
+                            android:layout_height="76dp"
+                            android:background="@drawable/caja" />
+
+                        <!-- Las nueve filas eran una lista plana en la que no se
+                             distinguía el dato de ahora mismo del histórico. Van
+                             en dos grupos, cada uno con su rótulo. -->
+                        <TextView
+                            style="@style/Etiqueta"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="20dp"
+                            android:text="@string/rot_oye_ahora" />
+
+                        <include android:id="@+id/kv_e_nivel" layout="@layout/fila_kv" />
+                        <include android:id="@+id/kv_e_tono" layout="@layout/fila_kv" />
+                        <include android:id="@+id/kv_e_ataques" layout="@layout/fila_kv" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="@color/line" />
+
+                        <TextView
+                            style="@style/Etiqueta"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="20dp"
+                            android:text="@string/rot_ult_oido" />
+
+                        <include android:id="@+id/kv_e_derrumbe" layout="@layout/fila_kv" />
+                        <include android:id="@+id/kv_e_grito" layout="@layout/fila_kv" />
+                        <include android:id="@+id/kv_e_voz" layout="@layout/fila_kv" />
+                        <include android:id="@+id/kv_e_animal" layout="@layout/fila_kv" />
+                        <include android:id="@+id/kv_e_golpes" layout="@layout/fila_kv" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="@color/line" />
+
+                        <TextView
+                            style="@style/Etiqueta"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="20dp"
+                            android:layout_marginBottom="0dp"
+                            android:text="@string/rot_como_entorno" />
+
+                        <include android:id="@+id/paso_e1" layout="@layout/paso" />
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
+                        <include android:id="@+id/paso_e2" layout="@layout/paso" />
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
+                        <include android:id="@+id/paso_e3" layout="@layout/paso" />
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
+                        <include android:id="@+id/paso_e4" layout="@layout/paso" />
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
+                        <include android:id="@+id/paso_e5" layout="@layout/paso" />
+
+                        <TextView
+                            style="@style/Ayuda"
+                            android:text="@string/ayuda_deteccion" />
+                    </LinearLayout>
+
+                    <!-- ****  SONDA  ****
+                         Cuatro herramientas, y cada una con lo mismo: su
+                         rotulo, su interruptor, su animacion en vivo y su
+                         propia salida de texto.
+
+                         Antes eran tres botones que disparaban una medida de
+                         unos segundos y las tres escribian en la MISMA caja de
+                         texto, asi que la ultima en hablar borraba a las otras
+                         y no habia forma de dejar una corriendo y mirar otra.
+                         Y una medida que dura cinco segundos no se puede mirar
+                         mientras mueves el movil, que es justo lo que hace
+                         quien esta atrapado. -->
+                    <LinearLayout style="@style/Tarjeta">
+
+                        <include
+                            android:id="@+id/ch_sonda"
+                            layout="@layout/tarjeta_cabecera" />
+
+                        <TextView
+                            style="@style/Etiqueta"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="0dp"
+                            android:layout_marginBottom="2dp"
+                            android:text="@string/rot_eco" />
+
+                        <TextView
+                            style="@style/EtiquetaSub"
+                            android:text="@string/sub_eco" />
+
+                        <include android:id="@+id/cm_eco" layout="@layout/conmutador_ancho" />
+
+                        <red.sismo.VistaSonar
+                            android:id="@+id/sonar_sonda"
+                            android:layout_width="match_parent"
+                            android:layout_height="150dp"
+                            android:layout_marginTop="10dp"
+                            android:background="@drawable/caja" />
+
+                        <red.sismo.VistaConsola
+                            android:id="@+id/eco_salida"
+                            style="@style/Consola" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginTop="20dp"
+                            android:background="@color/line" />
+
+                        <TextView
+                            style="@style/Etiqueta"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="20dp"
+                            android:layout_marginBottom="2dp"
+                            android:text="@string/rot_movimiento" />
+
+                        <TextView
+                            style="@style/EtiquetaSub"
+                            android:text="@string/sub_movimiento" />
+
+                        <include android:id="@+id/cm_movimiento" layout="@layout/conmutador_ancho" />
+
+                        <red.sismo.VistaPulso
+                            android:id="@+id/pulso_mov"
+                            android:layout_width="match_parent"
+                            android:layout_height="90dp"
+                            android:layout_marginTop="10dp"
+                            android:background="@drawable/caja" />
+
+                        <red.sismo.VistaConsola
+                            android:id="@+id/mov_salida"
+                            style="@style/Consola" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginTop="20dp"
+                            android:background="@color/line" />
+
+                        <TextView
+                            style="@style/Etiqueta"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="20dp"
+                            android:layout_marginBottom="2dp"
+                            android:text="@string/rot_respira" />
+
+                        <TextView
+                            style="@style/EtiquetaSub"
+                            android:text="@string/sub_respira" />
+
+                        <include android:id="@+id/cm_respira" layout="@layout/conmutador_ancho" />
+
+                        <red.sismo.VistaPulso
+                            android:id="@+id/pulso_resp"
+                            android:layout_width="match_parent"
+                            android:layout_height="90dp"
+                            android:layout_marginTop="10dp"
+                            android:background="@drawable/caja" />
+
+                        <red.sismo.VistaConsola
+                            android:id="@+id/resp_salida"
+                            style="@style/Consola" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginTop="20dp"
+                            android:background="@color/line" />
+
+                        <TextView
+                            style="@style/Etiqueta"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="20dp"
+                            android:layout_marginBottom="2dp"
+                            android:text="@string/rot_barrido" />
+
+                        <TextView
+                            style="@style/EtiquetaSub"
+                            android:text="@string/sub_barrido" />
+
+                        <include android:id="@+id/cm_barrido" layout="@layout/conmutador_ancho" />
+
+                        <red.sismo.VistaBarrido
+                            android:id="@+id/graf_barrido"
+                            android:layout_width="match_parent"
+                            android:layout_height="90dp"
+                            android:layout_marginTop="10dp"
+                            android:background="@drawable/caja" />
+
+                        <red.sismo.VistaConsola
+                            android:id="@+id/barrido_salida"
+                            style="@style/Consola" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginTop="20dp"
+                            android:background="@color/line" />
+
+                        <TextView
+                            style="@style/Etiqueta"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="20dp"
+                            android:layout_marginBottom="2dp"
+                            android:text="@string/rot_ajuste_senal" />
+
+                        <TextView
+                            style="@style/EtiquetaSub"
+                            android:text="@string/sub_ajuste_senal" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="0dp"
+                            android:baselineAligned="false"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    style="@style/AjusteTitulo"
+                                    android:text="@string/l_doppler" />
+
+                                <TextView
+                                    style="@style/AjusteCuerpo"
+                                    android:text="@string/l_doppler_d" />
+                            </LinearLayout>
+
+                            <include
+                                android:id="@+id/paso_doppler"
+                                android:layout_width="132dp"
+                                android:layout_height="50dp"
+                                android:layout_marginStart="12dp"
+                                layout="@layout/stepper" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="18dp"
+                            android:baselineAligned="false"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    style="@style/AjusteTitulo"
+                                    android:text="@string/l_volsenal" />
+
+                                <TextView
+                                    style="@style/AjusteCuerpo"
+                                    android:text="@string/l_volsenal_d" />
+                            </LinearLayout>
+
+                            <include
+                                android:id="@+id/paso_volsenal"
+                                android:layout_width="132dp"
+                                android:layout_height="50dp"
+                                android:layout_marginStart="12dp"
+                                layout="@layout/stepper" />
+                        </LinearLayout>
+
+                        <TextView
+                            style="@style/Ayuda"
+                            android:text="@string/ayuda_entorno" />
+                    </LinearLayout>
+                </LinearLayout>
+                <!-- ==================== FICHA MÉDICA ====================
+                     Se guarda solo en este móvil y no sale de aquí: no hay red,
+                     no hay cuenta y no hay servidor al que mandarla. Existe para
+                     que quien te encuentre inconsciente sepa qué no puede darte. -->
+                <LinearLayout
+                    android:id="@+id/v_ficha"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <LinearLayout style="@style/Tarjeta">
+
+                        <include
+                            android:id="@+id/ch_personal"
+                            layout="@layout/tarjeta_cabecera" />
+
+                        <TextView
+                            style="@style/Etiqueta"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/f_nombre" />
+
+                        <EditText
+                            android:id="@+id/f_nombre"
+                            style="@style/Campo"
+                            android:autofillHints="name"
+                            android:hint="@string/ph_nombre"
+                            android:inputType="textPersonName"
+                            android:maxLength="60" />
+
+                        <!-- Sangre y edad van en la misma fila: son dos datos
+                             cortos y ocupar dos filas enteras separa lo que se
+                             lee de un vistazo. -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="14dp"
+                            android:baselineAligned="false"
+                            android:orientation="horizontal">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    style="@style/Etiqueta"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/f_sangre" />
+
+                                <EditText
+                                    android:id="@+id/f_sangre"
+                                    style="@style/Campo"
+                                    android:autofillHints=""
+                                    android:hint="@string/ph_sangre"
+                                    android:inputType="textCapCharacters"
+                                    android:maxLength="8" />
+                            </LinearLayout>
+
+                            <View android:layout_width="12dp" android:layout_height="1dp" />
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    style="@style/Etiqueta"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/f_edad" />
+
+                                <EditText
+                                    android:id="@+id/f_edad"
+                                    style="@style/Campo"
+                                    android:autofillHints=""
+                                    android:hint="@string/ph_edad"
+                                    android:inputType="number"
+                                    android:maxLength="3" />
+                            </LinearLayout>
+                        </LinearLayout>
+
+                        <TextView
+                            style="@style/Etiqueta"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="14dp"
+                            android:text="@string/f_med" />
+
+                        <EditText
+                            android:id="@+id/f_med"
+                            style="@style/Campo"
+                            android:autofillHints=""
+                            android:hint="@string/ph_med"
+                            android:inputType="textMultiLine|textCapSentences"
+                            android:maxLength="300"
+                            android:minLines="2" />
+
+                        <TextView
+                            style="@style/Etiqueta"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="14dp"
+                            android:text="@string/f_contacto" />
+
+                        <EditText
+                            android:id="@+id/f_contacto"
+                            style="@style/Campo"
+                            android:autofillHints=""
+                            android:hint="@string/ph_contacto"
+                            android:inputType="textPersonName"
+                            android:maxLength="80" />
+                    </LinearLayout>
+
+                    <Button
+                        android:id="@+id/f_mostrar"
+                        style="@style/Boton.Verde"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/f_mostrar" />
+
+                    <Button
+                        android:id="@+id/f_borrar"
+                        style="@style/Boton.Tenue"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="@string/f_borrar" />
+
+                    <LinearLayout style="@style/Tarjeta">
+
+                        <include
+                            android:id="@+id/ch_como_ficha"
+                            layout="@layout/tarjeta_cabecera" />
+
+                        <include android:id="@+id/paso_f1" layout="@layout/paso" />
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
+                        <include android:id="@+id/paso_f2" layout="@layout/paso" />
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
+                        <include android:id="@+id/paso_f3" layout="@layout/paso" />
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
+                        <include android:id="@+id/paso_f4" layout="@layout/paso" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- ==================== RESPUESTA (segundo nivel) ==================== -->
+                <LinearLayout
+                    android:id="@+id/v_respuesta"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        style="@style/Rotulo"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="0dp"
+                        android:text="@string/rot_respuesta" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:baselineAligned="false"
+                        android:orientation="horizontal">
+
+                        <include android:id="@+id/cs_linterna" layout="@layout/casilla_respuesta" />
+                        <View android:layout_width="12dp" android:layout_height="1dp" />
+                        <include android:id="@+id/cs_vibracion" layout="@layout/casilla_respuesta" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:baselineAligned="false"
+                        android:orientation="horizontal">
+
+                        <include android:id="@+id/cs_pantalla" layout="@layout/casilla_respuesta" />
+                        <View android:layout_width="12dp" android:layout_height="1dp" />
+                        <include android:id="@+id/cs_baliza" layout="@layout/casilla_respuesta" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:baselineAligned="false"
+                        android:orientation="horizontal">
+
+                        <include android:id="@+id/cs_mantener" layout="@layout/casilla_respuesta" />
+                        <View android:layout_width="12dp" android:layout_height="1dp" />
+                        <include android:id="@+id/cs_rescate" layout="@layout/casilla_respuesta" />
+                    </LinearLayout>
+
+                    <LinearLayout style="@style/Tarjeta">
+
+                        <include
+                            android:id="@+id/ch_como_resp"
+                            layout="@layout/tarjeta_cabecera" />
+
+                        <include android:id="@+id/paso_r1" layout="@layout/paso" />
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
+                        <include android:id="@+id/paso_r2" layout="@layout/paso" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- ==================== BÚSQUEDA (segundo nivel) ==================== -->
+                <LinearLayout
+                    android:id="@+id/v_busqueda"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <LinearLayout style="@style/Tarjeta">
+
+                        <include
+                            android:id="@+id/ch_busqueda"
+                            layout="@layout/tarjeta_cabecera" />
+
+                        <red.sismo.VistaSonar
+                            android:id="@+id/sonar_busqueda"
+                            android:layout_width="match_parent"
+                            android:layout_height="260dp"
+                            android:layout_marginBottom="8dp" />
+
+                        <include android:id="@+id/kv_bus_estado" layout="@layout/fila_kv" />
+                        <include android:id="@+id/kv_bus_hallados" layout="@layout/fila_kv" />
+
+                        <!-- Buscar es un ESTADO: se queda encendido mientras
+                             caminas por encima, y gasta bateria. Con un ghost verde
+                             no se sabia si estaba rastreando o no; con interruptor y
+                             la palabra escrita, si. EMPEZAR DE CERO es un disparo,
+                             asi que se queda como boton. -->
+                        <include
+                            android:id="@+id/cm_buscar"
+                            android:layout_marginTop="16dp"
+                            layout="@layout/conmutador_ancho" />
+
+                        <include
+                            android:id="@+id/cm_aviso"
+                            android:layout_marginTop="10dp"
+                            layout="@layout/conmutador_ancho" />
+
+                        <!-- Aparece cuando la senal lleva un rato clavada arriba.
+                             En ese momento el rastreo ya ha hecho su trabajo —te ha
+                             traido hasta aqui— y seguir mirando la barra no aporta
+                             nada: lo que queda es trabajo hacia abajo, con sonido.
+                             Asi que se ofrece el cambio en vez de dejar al
+                             rescatista con un movil vibrando en la mano. -->
+                        <LinearLayout
+                            android:id="@+id/caja_encima"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:visibility="gone">
+
+                            <include android:id="@+id/paso_encima" layout="@layout/paso" />
+
+                            <Button
+                                android:id="@+id/b_abajo"
+                                style="@style/Boton.Verde"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="@string/b_abajo" />
+                        </LinearLayout>
+
+                        <Button
+                            android:id="@+id/b_olvidar"
+                            style="@style/Boton.UnaLinea"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:text="@string/b_olvidar" />
+
+                        <Button
+                            android:id="@+id/b_llamar"
+                            style="@style/Boton.Ancho"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="@string/b_llamar"
+                            app:icon="@drawable/ic_grito"
+                            app:iconGravity="textStart"
+                            app:iconTint="@color/rd" />
+
+                        <!-- Debajo del botón de llamar iba todo seguido y sin
+                             separar: primero el interfono, luego una lista sin
+                             rótulo que cuando está vacía es una frase gris
+                             suelta, y al final cinco párrafos de ayuda que
+                             empezaban repitiendo lo mismo que esa frase. Ahora
+                             van tres bloques con su rótulo, y en el orden en que
+                             se usan: quién se oye, hablar con quien se ha
+                             encontrado, y cómo se hace todo esto. -->
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginTop="20dp"
+                            android:background="@color/line" />
+
+                        <TextView
+                            style="@style/Etiqueta"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="20dp"
+                            android:text="@string/rot_bus_oidos" />
+
+                        <!-- Una fila por móvil oído. Las mete el código: no hay
+                             ninguna de adorno esperando a que llegue algo. -->
+                        <LinearLayout
+                            android:id="@+id/lista_hallazgos"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical" />
+
+                        <!-- Las fichas completas que llegan por wifi. Aparece solo
+                             si ha llegado alguna: sin red local no hay nada que
+                             ensenar y un bloque vacio solo estorba. -->
+                        <LinearLayout
+                            android:id="@+id/caja_wifi"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:visibility="gone">
+
+                            <View
+                                android:layout_width="match_parent"
+                                android:layout_height="1dp"
+                                android:layout_marginTop="20dp"
+                                android:background="@color/line" />
+
+                            <TextView
+                                style="@style/Etiqueta"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="20dp"
+                                android:layout_marginBottom="2dp"
+                                android:text="@string/rot_ficha_wifi" />
+
+                            <TextView
+                                style="@style/EtiquetaSub"
+                                android:text="@string/sub_ficha_wifi" />
+
+                            <red.sismo.VistaConsola
+                                android:id="@+id/wifi_salida"
+                                style="@style/Consola" />
+                        </LinearLayout>
+
+                        <!-- ···· INTERFONO ····
+                             Va después de la lista porque se usa DESPUÉS de haber
+                             encontrado a alguien, y solo aparece con un móvil
+                             cerca de verdad: sin señal fuerte, hablarle al
+                             escombro es gastar batería y confundir a quien busca.
+                             Lo enseña `pintarBusqueda`. -->
+                        <LinearLayout
+                            android:id="@+id/caja_interfono"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:visibility="gone">
+
+                            <View
+                                android:layout_width="match_parent"
+                                android:layout_height="1dp"
+                                android:layout_marginTop="20dp"
+                                android:background="@color/line" />
+
+                            <TextView
+                                style="@style/Etiqueta"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="20dp"
+                                android:layout_marginBottom="0dp"
+                                android:text="@string/rot_bus_hablar" />
+
+                            <!-- Tres pasos y no un párrafo: el ciclo tiene un
+                                 momento en que hay que hablar y otro en que hay
+                                 que callarse, y eso no se puede leer del tirón
+                                 mientras suena. -->
+                            <include android:id="@+id/paso_if1" layout="@layout/paso" />
+                            <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
+                            <include android:id="@+id/paso_if2" layout="@layout/paso" />
+                            <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
+                            <include android:id="@+id/paso_if3" layout="@layout/paso" />
+
+                            <Button
+                                android:id="@+id/b_interfono"
+                                style="@style/Boton.Verde"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="14dp"
+                                android:text="@string/b_interfono" />
+
+                            <TextView
+                                style="@style/Ayuda"
+                                android:layout_marginTop="10dp"
+                                android:text="@string/ayuda_interfono" />
+
+                            <!-- Consola: una linea por informe, con su hora, y
+                                 lo nuevo entrando por abajo. -->
+                            <red.sismo.VistaConsola
+                                android:id="@+id/interfono_salida"
+                                style="@style/Consola" />
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginTop="20dp"
+                            android:background="@color/line" />
+
+                        <TextView
+                            style="@style/Etiqueta"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="20dp"
+                            android:layout_marginBottom="0dp"
+                            android:text="@string/rot_como_busqueda" />
+
+                        <include android:id="@+id/paso_b1" layout="@layout/paso" />
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
+                        <include android:id="@+id/paso_b2" layout="@layout/paso" />
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
+                        <include android:id="@+id/paso_b3" layout="@layout/paso" />
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
+                        <include android:id="@+id/paso_b4" layout="@layout/paso" />
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
+                        <include android:id="@+id/paso_b5" layout="@layout/paso" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- ==================== DIAGNÓSTICO (segundo nivel) ==================== -->
+                <LinearLayout
+                    android:id="@+id/v_diag"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <LinearLayout style="@style/Tarjeta">
+
+                        <include
+                            android:id="@+id/ch_sistema"
+                            layout="@layout/tarjeta_cabecera" />
+
+                        <!-- Las filas las mete el código: son estado real del
+                             móvil, no una lista escrita a mano. -->
+                        <LinearLayout
+                            android:id="@+id/diag_sistema"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical" />
+                    </LinearLayout>
+
+                    <LinearLayout style="@style/Tarjeta">
+
+                        <include
+                            android:id="@+id/ch_capacidades"
+                            layout="@layout/tarjeta_cabecera" />
+
+                        <LinearLayout
+                            android:id="@+id/diag_capacidades"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical" />
+                    </LinearLayout>
+
+                    <Button
+                        android:id="@+id/ir_permisos"
+                        style="@style/Boton.Ancho"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/b_permisos"
+                        app:icon="@drawable/ic_candado"
+                        app:iconGravity="textStart"
+                        app:iconTint="@color/dim" />
+
+                    <Button
+                        android:id="@+id/autotest"
+                        style="@style/Boton.Tenue"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="@string/autotest" />
+                </LinearLayout>
+
+                <!-- ==================== REGISTRO (segundo nivel) ==================== -->
+                <LinearLayout
+                    android:id="@+id/v_registro"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <LinearLayout style="@style/Tarjeta">
+
+                        <include
+                            android:id="@+id/ch_registro"
+                            layout="@layout/tarjeta_cabecera" />
+
+                        <red.sismo.VistaConsola
+                            android:id="@+id/registro"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="monospace"
+                            android:lineSpacingMultiplier="1.75"
+                            android:minLines="8"
+                            android:textColor="@color/dim"
+                            android:textSize="11sp" />
+                    </LinearLayout>
+
+                    <TextView
+                        style="@style/Ayuda"
+                        android:layout_marginTop="0dp"
+                        android:text="@string/ayuda" />
+                </LinearLayout>
+            </LinearLayout>
+        </ScrollView>
+
+        <!-- ===== pestañas ===== -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/line" />
+
+        <LinearLayout
+            android:id="@+id/pestanas"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/bg"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:id="@+id/t_inicio"
+                style="@style/Pestana"
+                android:layout_width="0dp"
+                android:layout_weight="1">
+                <ImageView style="@style/PestanaIcono" android:src="@drawable/ic_inicio" />
+                <TextView style="@style/PestanaTexto" android:text="@string/t_inicio" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/t_red"
+                style="@style/Pestana"
+                android:layout_width="0dp"
+                android:layout_weight="1">
+                <ImageView style="@style/PestanaIcono" android:src="@drawable/ic_nodo" />
+                <TextView style="@style/PestanaTexto" android:text="@string/t_red" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/t_entorno"
+                style="@style/Pestana"
+                android:layout_width="0dp"
+                android:layout_weight="1">
+                <ImageView style="@style/PestanaIcono" android:src="@drawable/ic_entorno" />
+                <TextView style="@style/PestanaTexto" android:text="@string/t_entorno" />
+            </LinearLayout>
+
+            <!-- Búsqueda es una pestaña, no una vista escondida detrás de un botón
+                 de Inicio: es la mitad de la app —el lado de quien busca— y quien
+                 llega a un derrumbe no tiene que ir a buscarla en un menú. -->
+            <LinearLayout
+                android:id="@+id/t_busqueda"
+                style="@style/Pestana"
+                android:layout_width="0dp"
+                android:layout_weight="1">
+                <ImageView style="@style/PestanaIcono" android:src="@drawable/ic_baliza" />
+                <TextView style="@style/PestanaTexto" android:text="@string/t_busqueda" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/t_ficha"
+                style="@style/Pestana"
+                android:layout_width="0dp"
+                android:layout_weight="1">
+                <ImageView style="@style/PestanaIcono" android:src="@drawable/ic_ficha" />
+                <TextView style="@style/PestanaTexto" android:text="@string/t_ficha" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- ==================== ANTES DE EMPEZAR ====================
+         La primera pantalla, encima de todo. Existe porque los permisos no se
+         piden igual en cada versión de Android y encadenar diálogos deja fuera
+         a unos u otros sin que nadie se entere: en Android 11 solo saltaba el
+         del micrófono. Aquí se ven los cinco a la vez, con su estado, y se
+         conceden en el orden que quiera cada uno. -->
+    <ScrollView
+        android:id="@+id/v_onboard"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/bg"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="24dp">
+
+            <ImageView
+                android:layout_width="wrap_content"
+                android:layout_height="52dp"
+                android:layout_marginTop="16dp"
+                android:adjustViewBounds="true"
+                android:contentDescription="@string/app_name"
+                android:scaleType="fitStart"
+                android:src="@drawable/logotipo" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:fontFamily="@font/montserrat_bold"
+                android:text="@string/ob_titulo"
+                android:textColor="@color/tx"
+                android:textSize="24sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:layout_marginBottom="20dp"
+                android:lineSpacingMultiplier="1.55"
+                android:text="@string/ob_sub"
+                android:textColor="@color/dim"
+                android:textSize="13sp" />
+
+            <LinearLayout
+                android:id="@+id/ob_lista"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+
+            <TextView
+                style="@style/Ayuda"
+                android:text="@string/ob_pie" />
+
+            <Button
+                android:id="@+id/ob_listo"
+                style="@style/Boton.Verde"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="@string/ob_listo" />
+
+            <Button
+                android:id="@+id/ob_saltar"
+                style="@style/Boton.Tenue"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="24dp"
+                android:text="@string/ob_saltar" />
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- El destello blanco a pantalla completa. Va encima de todo y solo se ve
+         mientras la alarma parpadea: es lo que hace que te vean desde lejos si
+         el móvil está boca arriba. -->
+    <View
+        android:id="@+id/destello"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#FFFFFF"
+        android:visibility="gone" />
+</FrameLayout>

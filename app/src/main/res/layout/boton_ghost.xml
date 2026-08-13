@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- El botón secundario de la PWA (`.ghost`): icono arriba, texto debajo, borde
+     de 1 px y 92 px de alto. Van siempre de dos en dos, en `row2`.
+
+     Es un LinearLayout y no un MaterialButton porque los que llevan estado
+     (ESCUCHAR MALLA, ENVIAR SI HAY RED) tienen que poder ponerse en verde
+     entero — borde, icono y texto — y eso con un botón de Material sale peor
+     que con dos vistas puestas a mano.
+
+     Se rellena por código:
+       val b = findViewById<View>(R.id.g_malla)
+       b.findViewById<ImageView>(R.id.g_icono).setImageResource(R.drawable.ic_entorno)
+       b.findViewById<TextView>(R.id.g_texto).setText(R.string.b_escuchar_malla) -->
+<!-- La altura NO puede ser fija. Con 108 dp clavados, en una pantalla estrecha un
+     rótulo que cabía en una línea pasa a dos, la segunda línea se sale de la caja
+     y todo queda apretado contra los bordes. Va con `wrap_content` y un mínimo, y
+     el rótulo se autoescala para no partirse antes de tiempo. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="0dp"
+    android:layout_height="match_parent"
+    android:minHeight="100dp"
+    android:paddingTop="14dp"
+    android:paddingBottom="14dp"
+    android:layout_weight="1"
+    android:background="@drawable/campo_fondo"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:paddingStart="10dp"
+    android:paddingEnd="10dp">
+
+    <ImageView
+        android:id="@+id/g_icono"
+        android:layout_width="22dp"
+        android:layout_height="22dp"
+        android:layout_marginBottom="9dp"
+        android:contentDescription="@null"
+        android:tint="@color/ctl" />
+
+    <TextView
+        android:id="@+id/g_texto"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/montserrat_bold"
+        android:gravity="center"
+        android:letterSpacing="0.082"
+        android:lineSpacingMultiplier="1.35"
+        android:textColor="@color/dim"
+        android:textSize="11sp"
+        app:autoSizeMaxTextSize="11sp"
+        app:autoSizeMinTextSize="9sp"
+        app:autoSizeTextType="uniform" />
+
+    <!-- Qué clase de botón es: si se deja encendido para siempre o si es una
+         herramienta que se usa y se apaga. Tres de estos ghost encienden
+         micrófono o radio y los tres se veían idénticos, así que no había forma
+         de saber cuál era la vigilancia y cuál gastaba batería a propósito.
+         Oculto por defecto: los que no dicen nada no lo llevan. -->
+    <TextView
+        android:id="@+id/g_sub"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:gravity="center"
+        android:letterSpacing="0.04"
+        android:lineSpacingMultiplier="1.25"
+        android:textColor="@color/ctl"
+        android:textSize="8.5sp"
+        android:visibility="gone" />
+</LinearLayout>

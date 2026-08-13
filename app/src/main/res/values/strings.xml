@@ -1,0 +1,356 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SismoRed</string>
+    <string name="vigilando">VIGILANDO</string>
+    <string name="panico">PÁNICO</string>
+    <string name="detener">DETENER</string>
+    <string name="bateria">PERMITIR QUE SIGA ACTIVA SIN BATERÍA</string>
+    <string name="teclas">ACTIVAR EL ATAJO DE VOLUMEN</string>
+    <string name="desc_teclas">Permite pedir ayuda pulsando el botón de volumen tres veces, aunque la pantalla esté bloqueada y no puedas mirar el móvil. SismoRed no lee el contenido de la pantalla ni de otras aplicaciones: solo escucha las teclas de volumen.</string>
+    <string name="malla_apagada">MALLA APAGADA · falta el micrófono</string>
+    <string name="panico_sub">ACTIVAR ALERTA EN TODA LA RED</string>
+    <string name="diagnostico">Diagnóstico</string>
+    <string name="rot_estado">ESTADO ACTUAL</string>
+    <string name="rot_malla">MALLA ACÚSTICA</string>
+    <string name="t_inicio">Inicio</string>
+    <string name="t_red">Red</string>
+    <string name="t_entorno">Entorno</string>
+    <string name="t_registro">Registro</string>
+    <string name="ayuda_entorno">Las cuatro se quedan en marcha hasta que las apagas, y ninguna arranca sola: mientras esperas, no gastan batería.
+
+El tono es uno y el altavoz es uno, así que MOVIMIENTO y RESPIRACIÓN no pueden estar encendidas a la vez: al encender una se apaga la otra. Y mientras suene cualquiera de las dos, la malla no oye a otros móviles.</string>
+    <string name="t_ficha">Ficha</string>
+    <string name="t_busqueda">Buscar</string>
+    <string name="guion">—</string>
+    <string name="rot_deteccion">DETECCIÓN EN VIVO</string>
+    <string name="nivel_tono">NIVEL · TONO FUNDAMENTAL</string>
+    <string name="sin_eventos">Nada detectado todavía.</string>
+    <string name="f_nombre">NOMBRE</string>
+    <string name="f_sangre">TIPO DE SANGRE</string>
+    <string name="f_edad">EDAD</string>
+    <string name="f_med">ALERGIAS / MEDICACIÓN / CONDICIÓN</string>
+    <string name="f_contacto">CONTACTO DE EMERGENCIA</string>
+    <string name="f_mostrar">MOSTRAR FICHA A PANTALLA COMPLETA</string>
+    <string name="f_borrar">BORRAR MIS DATOS DE ESTE MÓVIL</string>
+    <string name="f_guardada">Ficha guardada en este móvil</string>
+    <string name="f_borrada">Datos borrados</string>
+    <string name="rot_sonda">SONDA</string>
+
+    <!-- Las cuatro herramientas de la sonda, cada una con su interruptor. El
+         rótulo dice QUÉ hace, no cómo se llama la técnica. -->
+    <string name="rot_eco">ECOLOCALIZACIÓN</string>
+    <string name="rot_movimiento">MOVIMIENTO</string>
+    <string name="rot_respira">RESPIRACIÓN</string>
+    <string name="rot_barrido">BARRIDO</string>
+    <string name="rot_ajuste_senal">AJUSTES DE LA SEÑAL</string>
+    <string name="l_volsenal">Volumen de la señal</string>
+
+    <string name="cm_aviso">Avisarme al acercarme</string>
+    <string name="cm_buscar">Buscar supervivientes</string>
+    <string name="cm_escuchar">Escuchar el entorno</string>
+    <string name="cm_eco">Chasquidos continuos</string>
+    <string name="cm_movimiento">Tono de movimiento</string>
+    <string name="cm_respira">Buscar respiración</string>
+    <string name="cm_barrido">Barrido de penetración</string>
+    <string name="cm_on">EN MARCHA</string>
+    <string name="cm_on_encima">EN PAUSA · YA ESTÁS ENCIMA</string>
+    <string name="cm_on_bateria">EN MARCHA · GASTA BATERÍA</string>
+    <string name="cm_off">APAGADO</string>
+    <string name="rot_ajustes">ACTIVAR UNA VEZ</string>
+    <string name="rot_registro">REGISTRO</string>
+    <string name="autotest">COMPROBAR QUE TODO FUNCIONA</string>
+    <string name="desc_radio">Si quedas atrapado, tu móvil emite una señal de radio de muy poca potencia para que quien te busque desde arriba sepa hacia dónde cavar. SismoRed no se conecta a nada ni rastrea a nadie: solo emite mientras la alarma esté activa, y escucha cuando eres tú quien busca.</string>
+    <string name="desc_radio_ubicacion">Tu versión de Android pide el permiso de UBICACIÓN para esto. Lo exige el sistema, no la app: entiende que oír radios cercanas permitiría deducir dónde estás. SismoRed no mira tu posición, no la guarda y no la envía a ninguna parte.</string>
+    <string name="desc_micro">La app escucha para dos cosas: recibir avisos de otros móviles cercanos y reconocer si hay un derrumbe, un grito o golpes a tu alrededor.
+
+El sonido se analiza y se descarta al momento. No se graba, no se guarda y no sale del móvil.</string>
+    <!-- ===== títulos de tarjeta ===== -->
+    <string name="rot_preparacion">PREPARACIÓN DE LA RED</string>
+    <string name="n1">1</string>
+    <string name="n2">2</string>
+    <string name="n3">3</string>
+    <string name="n4">4</string>
+    <string name="rot_propagacion">MALLA DE PROPAGACIÓN</string>
+    <string name="rot_sismico">DETECTOR SÍSMICO</string>
+    <string name="rot_como">CÓMO USARLA</string>
+    <string name="rot_estado_malla">ESTADO DE LA MALLA</string>
+    <string name="rot_info_red">INFORMACIÓN DE RED</string>
+    <string name="rot_internet">SI APARECE INTERNET</string>
+    <string name="rot_personal">INFORMACIÓN PERSONAL</string>
+    <string name="rot_respuesta">HERRAMIENTAS DE RESPUESTA</string>
+    <string name="rot_sistema">ESTADO DEL SISTEMA</string>
+    <string name="rot_capacidades">CAPACIDADES DEL DISPOSITIVO</string>
+
+    <!-- Los tres grupos de dentro de DETECCIÓN EN TIEMPO REAL: el dato de ahora
+         mismo, el histórico y las instrucciones. Antes iban seguidos sin rótulo
+         y las nueve filas parecían todas lo mismo. -->
+    <string name="rot_oye_ahora">LO QUE OYE AHORA</string>
+    <string name="rot_ult_oido">LO ÚLTIMO QUE RECONOCIÓ</string>
+    <string name="rot_como_entorno">CÓMO SE USA</string>
+
+    <!-- ===== filas clave/valor ===== -->
+    <string name="k_salto">Salto recibido</string>
+    <string name="k_balizas">Balizas detectadas</string>
+    <string name="k_retx">Retransmisiones</string>
+    <string name="k_saltos_max">Saltos máximos</string>
+    <string name="k_portadora">Portadora</string>
+    <string name="k_tonos">Tonos de salto</string>
+    <string name="k_estado_malla">Estado de la malla</string>
+    <string name="k_estado">Estado</string>
+    <string name="k_conexion">Conexión</string>
+    <string name="k_cola">Partes en espera</string>
+    <string name="k_nivel">Nivel</string>
+    <string name="k_tono">Tono detectado</string>
+    <string name="k_ataques">Ataques en los últimos 5 s</string>
+    <string name="k_sacudida">Sacudida</string>
+    <string name="k_ult_derrumbe">Último derrumbe</string>
+    <string name="k_ult_grito">Último grito</string>
+    <string name="k_ult_voz">Última voz</string>
+    <string name="k_ult_animal">Último animal</string>
+    <string name="k_ult_golpes">Últimos golpes</string>
+    <string name="saltos_max">Saltos máx.</string>
+    <string name="v_saltos_max">4</string>
+    <string name="v_portadora">16 000 Hz</string>
+    <string name="v_tonos">16,8–18 kHz</string>
+
+    <!-- ===== botones ===== -->
+    <string name="b_escuchar_malla">ESCUCHAR MALLA</string>
+    <!-- La segunda línea de los tres ghost que encienden micrófono o radio. Sin
+         esto los tres eran el mismo botón con otro rótulo. -->
+    <string name="sub_siempre">DÉJALO ENCENDIDO SIEMPRE</string>
+    <string name="sub_rescate_bateria">GASTA BATERÍA</string>
+    <string name="b_comprobar">COMPROBAR QUE TODO FUNCIONA</string>
+    <string name="b_enviar">ENVIAR SI HAY RED</string>
+    <string name="b_probar_envio">PROBAR AHORA</string>
+    <string name="b_purgar">BORRAR ESPERA</string>
+    <string name="b_marcar">MARCAR EVENTO</string>
+    <string name="b_respuesta">HERRAMIENTAS DE RESPUESTA</string>
+    <string name="b_permisos">REVISAR PERMISOS</string>
+    <string name="b_busqueda">BUSCAR SUPERVIVIENTES</string>
+    <string name="b_buscar">EMPEZAR A BUSCAR</string>
+    <string name="b_llamar">LLAMAR HACIA ABAJO</string>
+    <string name="b_interfono">HABLAR CON QUIEN ESTÁ DEBAJO</string>
+    <!-- El interfono, en tres pasos. Iba en un párrafo de cuatro frases, y el
+         ciclo tiene un momento para hablar y otro para callarse: eso no se lee
+         del tirón mientras el móvil está sonando. -->
+    <string name="paso_if1_t">Pulsa y habla cuatro segundos</string>
+    <string name="paso_if1">Di algo corto y concreto, por ejemplo: soy bombero, ¿me oyes?, golpea dos veces.</string>
+    <string name="paso_if2_t">Después cállate</string>
+    <string name="paso_if2">El móvil repite tu voz hacia abajo a todo volumen y deja el canal abierto cuatro segundos, esperando respuesta.</string>
+    <string name="paso_if3_t">Si algo contesta, te lo devuelve</string>
+    <string name="paso_if3">Lo reproduce amplificado y te dice cuánto se ha oído por encima del silencio de fondo.</string>
+    <string name="ayuda_interfono">No es una llamada: la voz viaja por el escombro, no por radio. Pega el móvil a los cascotes y repite dos o tres veces antes de darlo por vacío.</string>
+    <string name="b_olvidar">EMPEZAR DE CERO</string>
+    <string name="rot_busqueda">BUSCAR SUPERVIVIENTES</string>
+    <string name="v_busqueda">Búsqueda</string>
+    <string name="k_hallados">Móviles oídos</string>
+    <!-- Sin «camina despacio»: eso lo dice ya el primer paso de CÓMO SE USA, y
+         puestos uno debajo del otro parecían dos avisos distintos. -->
+    <string name="nadie">Nada todavía. Ningún móvil pidiendo ayuda a tu alcance.</string>
+
+    <!-- Los tres bloques de dentro de BUSCAR SUPERVIVIENTES. -->
+    <string name="rot_bus_oidos">QUÉ SE HA OÍDO</string>
+    <string name="rot_bus_hablar">HABLAR CON QUIEN HAS ENCONTRADO</string>
+    <string name="rot_como_busqueda">CÓMO SE USA</string>
+
+    <!-- Los cinco párrafos que había al pie de la tarjeta, en pasos y en el orden
+         en que se hacen las cosas. El de LLAMAR HACIA ABAJO estaba al final,
+         cinco elementos por debajo de su propio botón. -->
+    <string name="paso_b1_t">Enciende la búsqueda y camina despacio</string>
+    <string name="paso_b1">Cada móvil que esté pidiendo ayuda va apareciendo arriba, con la fuerza de su señal.</string>
+    <string name="paso_b2_t">Fíjate en la tendencia, no en la barra</string>
+    <string name="paso_b2">Da tres pasos y mira si la señal sube. Si sube vas bien; si baja, gira. La barra no es distancia: dos metros de escombro atenúan más que veinte de aire, y un número en metros te mandaría a cavar donde no es.</string>
+    <string name="paso_b3_t">El aviso de que estás cerca es silencioso</string>
+    <string name="paso_b3">Cuando la señal sea fuerte, el móvil vibra y destella cada vez más seguido. No suena a propósito: si sonara, no oirías los escombros.</string>
+    <string name="paso_b4_t">Llamar hacia abajo hace ruido a propósito</string>
+    <string name="paso_b4">Suena la sirena para quien esté debajo, porque saber que hay alguien arriba cambia lo que aguanta una persona. Además pide a los móviles enterrados que emitan su baliza mucho más seguido durante tres minutos.</string>
+    <string name="paso_b5_t">En la tarjeta llegan el nombre y el grupo sanguíneo</string>
+    <string name="paso_b5">Solo mientras la alarma o el modo rescate estén activos. La edad, las alergias y el contacto no viajan: se leen en la pantalla de su móvil cuando lo encuentres.</string>
+
+    <!-- ===== detector sísmico ===== -->
+    <string name="l_sismografo">Sismógrafo</string>
+    <string name="l_umbral">Umbral de disparo</string>
+    <string name="sw_auto">Detector automático</string>
+    <string name="sw_sirena">Sirena</string>
+    <string name="menos">−</string>
+    <string name="mas">+</string>
+
+    <!-- ===== sonda ===== -->
+    <string name="l_doppler">Frecuencia del tono</string>
+    <string name="l_salida">Salida</string>
+    <string name="unidad_khz">kHz</string>
+
+    <!-- ===== los cinco detectores ===== -->
+    <string name="d_derrumbe">DERRUMBE</string>
+    <string name="d_gritos">GRITOS</string>
+    <string name="d_voz">VOZ</string>
+    <string name="d_animales">ANIMALES</string>
+    <string name="d_golpes">GOLPES</string>
+    <string name="cero_pct">0%</string>
+
+    <!-- ===== herramientas de respuesta ===== -->
+    <string name="t_linterna">Linterna</string>
+    <string name="t_vibracion">Vibración</string>
+    <string name="t_pantalla">Pantalla</string>
+    <string name="t_baliza">Baliza</string>
+    <string name="t_mantener">Mantener activa</string>
+    <string name="t_rescate">Modo rescate</string>
+    <string name="on">ON</string>
+    <string name="off">OFF</string>
+
+    <!-- ===== etiquetas de estado ===== -->
+    <string name="pill_apagada">APAGADA</string>
+    <string name="pill_activa">ACTIVA</string>
+    <string name="pill_oyendo">OYENDO</string>
+    <string name="pill_pausa">EN PAUSA</string>
+    <string name="sub_reposo">Sistema en reposo</string>
+    <string name="sub_vigilando">Vigilando sacudidas y sonido</string>
+    <string name="sub_alarma">Emitiendo baliza y alertando</string>
+    <string name="sub_rescate">Pulso cada 12 s para durar horas</string>
+    <string name="malla_sub_off">Tu nodo no está escuchando</string>
+    <string name="malla_sub_on">Recibiendo y repitiendo alertas de otros móviles</string>
+
+    <!-- ===== vistas de segundo nivel ===== -->
+    <string name="v_respuesta">Respuesta</string>
+    <string name="v_diagnostico">Diagnóstico</string>
+    <string name="v_registro">Registro</string>
+    <string name="volver">Volver</string>
+
+    <!-- ===== textos de ayuda ===== -->
+    <string name="ayuda_deteccion">Esto y la malla usan el mismo micrófono, pero se encienden por separado: puedes dejar la malla toda la noche y los detectores solo cuando hagan falta.</string>
+    <string name="confirmar_envio">Al activarlo, cuando el móvil tenga internet enviará la hora, el motivo de la alarma y los saltos de la malla.\n\nNo envía tu ficha médica, ni tu ubicación, ni audio.\n\n¿Activar?</string>
+    <string name="como_usarla">1. Rellena tu ficha médica y sube el volumen del móvil al máximo. Hazlo ahora, con calma: después no vas a tener tiempo.
+
+2. Deja encendidos el detector automático y ESCUCHAR MALLA. Con eso la app ya salta sola, sin que toques nada.
+
+3. Activa el atajo de volumen, aquí abajo. Sirve para pedir ayuda pulsando tres veces el botón de subir volumen, sin sacar el móvil ni mirar la pantalla.
+
+4. Si pasa algo, pulsa PÁNICO. Sonará la sirena, parpadeará la linterna y avisará a los móviles que tengas cerca.
+
+5. Si quedas atrapado, entra en HERRAMIENTAS DE RESPUESTA y enciende Modo rescate: gasta mucha menos batería y sigue pidiendo ayuda durante horas.</string>
+
+    <!-- ===== marcadores de la ficha ===== -->
+    <string name="ob_titulo">Antes de empezar</string>
+    <string name="ob_sub">SismoRed necesita estos permisos para poder pedir ayuda por ti. Concédelos ahora, con calma: si los dejas para cuando haga falta, puede que ya no puedas.</string>
+    <string name="ob_pie">Nada de esto sale de tu móvil. La app funciona entera sin internet: no hay cuenta, no hay servidor y no se envía nada a ninguna parte.</string>
+    <string name="ob_listo_ficha">SIGUIENTE: TU FICHA MÉDICA</string>
+    <string name="ob_listo">EMPEZAR A USAR SISMORED</string>
+    <string name="ob_saltar">Ahora no, entrar sin esto</string>
+    <string name="ob_conceder">CONCEDER</string>
+    <string name="ob_hecho">LISTO</string>
+    <string name="ob_notif">Avisos</string>
+    <string name="ob_notif_para">Para que veas que la vigilancia sigue activa aunque cierres la app.</string>
+    <string name="ob_micro">Micrófono</string>
+    <string name="ob_micro_para">Para oír avisos de otros móviles cercanos y reconocer un derrumbe, un grito o unos golpes. No graba nada.</string>
+    <string name="ob_radio">Señal de radio</string>
+    <string name="ob_radio_para">Para que quien te busque desde arriba sepa hacia dónde cavar.</string>
+    <string name="ob_bateria">Batería sin límites</string>
+    <string name="ob_bateria_para">Para que el sistema no apague la vigilancia al cabo de unas horas.</string>
+    <string name="ob_teclas">Atajo de volumen</string>
+    <string name="ob_teclas_para">Para pedir ayuda pulsando tres veces el botón de volumen, sin mirar la pantalla.</string>
+    <string name="paso1_t">Rellena tu ficha y sube el volumen</string>
+    <string name="paso1">Hazlo ahora, con calma. Cuando haga falta no vas a tener tiempo, y el volumen al máximo es lo que hace que la sirena se oiga desde fuera.</string>
+    <string name="paso2_t">Deja la vigilancia encendida</string>
+    <string name="paso2">Con el detector automático y la escucha de la malla activos, la app salta sola: no hay que tocar nada ni tenerla abierta.</string>
+    <string name="paso3_t">Activa el atajo de volumen</string>
+    <string name="paso3">Te permite pedir ayuda pulsando tres veces el botón de subir volumen, sin sacar el móvil del bolsillo ni mirar la pantalla.</string>
+    <string name="paso4_t">Si pasa algo, pulsa PÁNICO</string>
+    <string name="paso4">Suena la sirena, parpadea la linterna y se avisa a todos los móviles que tengas cerca.</string>
+    <string name="paso5_t">Si quedas atrapado, enciende el modo rescate</string>
+    <string name="paso5">Lo tienes en Herramientas de respuesta. Gasta mucha menos batería que la alarma y sigue pidiendo ayuda durante horas.</string>
+
+    <!-- Los cinco pasos de DETECCIÓN EN TIEMPO REAL. Son el mismo texto que
+         había en el bloque de ayuda, partido en el orden en que ocurren las
+         cosas: lo que haces tú, lo que hace la app sola, y lo que significa
+         el número que ves subir. -->
+    <string name="paso_e1_t">Enciende la escucha y deja el móvil quieto</string>
+    <string name="paso_e1">Apóyalo en el suelo o en un escombro. En la mano no sirve: el roce de la ropa tapa todo lo demás.</string>
+    <string name="paso_e2_t">Un derrumbe dispara la alarma él solo</string>
+    <string name="paso_e2">No hace falta que estés mirando la pantalla, ni que la app esté abierta.</string>
+    <string name="paso_e3_t">Un grito o unos golpes reciben respuesta</string>
+    <string name="paso_e3">El móvil contesta con dos pitidos, para que quien los dé sepa que alguien le ha oído.</string>
+    <string name="paso_e4_t">El porcentaje es evidencia, no un adorno</string>
+    <string name="paso_e4">Sube mientras el detector oye algo que encaja con lo que busca, y baja cuando deja de oírlo.</string>
+    <string name="paso_e5_t">Marcar evento solo anota la hora</string>
+    <string name="paso_e5">Sirve para dejar constancia de algo que quieras contar después. No enciende ni apaga nada.</string>
+
+    <!-- Las tres herramientas de QUÉ HAY ALREDEDOR, cada una encima de su
+         botón. En orden de uso: primero mirar qué hay, luego si algo se mueve,
+         y el barrido al final, que es el que se deja puesto. -->
+    <string name="ph_nombre">Nombre y apellido</string>
+    <string name="ph_sangre">O+</string>
+    <string name="ph_edad">32</string>
+    <string name="ph_med">Asma. Alérgico a penicilina.</string>
+    <string name="ph_contacto">María 600 123 456</string>
+
+    <string name="ayuda">Aquí queda anotado todo lo que va pasando: cada alerta que llega de otro móvil, cada sonido que reconoce y cada comprobación que haces.
+
+Se guarda solo en este móvil y no sale de aquí. Si algo no te cuadra, este es el primer sitio donde mirar.</string>
+
+    <!-- ===== los muros de ayuda, convertidos en pasos =====
+         Eran parrafos de tres y cuatro frases al pie de la tarjeta. Cada parrafo
+         decia una cosa distinta y seguidos se leian como uno solo. -->
+    <string name="rot_como_malla">CÓMO VIAJA LA ALERTA</string>
+    <string name="paso_m1_t">La alerta salta de un móvil a otro por el aire</string>
+    <string name="paso_m1">Viaja en un sonido tan agudo que casi nadie lo oye. No hace falta internet, ni datos, ni emparejar nada.</string>
+    <string name="paso_m2_t">Cada móvil que la recibe la repite</string>
+    <string name="paso_m2">Así la alerta llega hasta cuatro móviles más allá de donde empezó.</string>
+    <string name="paso_m3_t">Silenciar tu alarma no calla la red</string>
+    <string name="paso_m3">Este móvil deja de sonar, pero la alerta sigue avanzando hacia los demás.</string>
+
+    <string name="rot_como_ficha">CÓMO FUNCIONA ESTA FICHA</string>
+    <string name="paso_f1_t">Rellénala ahora, no cuando haga falta</string>
+    <string name="paso_f1">Se guarda sola según escribes. No hay botón de guardar.</string>
+    <string name="paso_f2_t">Se queda solo en este móvil</string>
+    <string name="paso_f2">No hay cuenta, no hay servidor y no se envía a ninguna parte.</string>
+    <string name="paso_f3_t">Con una excepción que conviene que sepas</string>
+    <string name="paso_f3">Con la alarma o el rescate activos, el móvil emite por radio tu nombre de pila y tu grupo. Y si hay una Wi-Fi, por ella va la ficha entera. Todo se corta al detener la alarma.</string>
+    <string name="paso_f4_t">Mostrar ficha es para quien te atienda</string>
+    <string name="paso_f4">La pone a pantalla completa y con el brillo al máximo, para que se pueda leer sin desbloquear el móvil.</string>
+
+    <string name="rot_como_resp">CÓMO SE USA</string>
+    <string name="paso_r1_t">Deja encendido lo que quieras que se active</string>
+    <string name="paso_r1">Se aplica en cuanto salte la alarma, y puedes cambiarlo en cualquier momento, incluso con la sirena sonando.</string>
+    <string name="paso_r2_t">Si quedas atrapado, enciende el modo rescate</string>
+    <string name="paso_r2">Apaga la sirena y emite tres pitidos, un destello y una señal cada doce segundos. Suena mucho menos, y por eso la batería aguanta muchas más horas pidiendo ayuda.</string>
+
+    <!-- El subtitulo de cada seccion: una frase en minusculas que dice para que
+         sirve. Antes iba pegado al rotulo con un punto medio, y un rotulo en
+         versales con media frase detras no es una jerarquia, es una linea larga. -->
+    <string name="sub_eco">Qué tengo alrededor, y a qué distancia</string>
+    <string name="sub_movimiento">¿Se mueve algo cerca?</string>
+    <string name="sub_respira">¿Hay alguien vivo ahí debajo?</string>
+    <string name="sub_barrido">Un sonido que atraviesa los escombros</string>
+
+    <!-- La caja de ajustes de la senal: cada mando con su nombre y para que sirve.
+         Antes eran dos etiquetas sueltas, y «Frecuencia doppler» a secas no le dice
+         nada a quien esta encima de un escombro. -->
+    <string name="sub_ajuste_senal">Estos dos mandos los comparten el movimiento, la respiración y el barrido.</string>
+    <string name="l_doppler_d">18,5 kHz de fábrica, donde casi no se oye. Bájala si tu móvil no llega tan alto o si quieres comprobar que suena: por debajo de 16 kHz se oye claramente, pero entonces tapa los golpes que intentas escuchar, y entre 16 y 18 pisa a la malla. Cuanto más baja, menos fina es la medida.</string>
+    <string name="l_volsenal_d">De 1 a 10. Súbelo para atravesar un escombro grueso; a cambio, la malla oye peor mientras suene. El cambio se aplica al volver a encender la herramienta.</string>
+
+    <!-- La caja de internet, en pasos. Era un muro de dos párrafos largos. -->
+    <string name="paso_i1_t">La app funciona entera sin internet</string>
+    <string name="paso_i1">No necesita red para nada de lo que hace: la alerta viaja por sonido y por radio, de móvil a móvil.</string>
+    <string name="paso_i2_t">Si aparece cobertura, manda un parte</string>
+    <string name="paso_i2">Solo la hora, el motivo de la alarma y los saltos de la malla. Tu ficha, tu ubicación y el audio no salen del móvil.</string>
+    <string name="paso_i3_t">Probar ahora encola un parte de prueba</string>
+    <string name="paso_i3">La cola solo se llena cuando salta una alarma de verdad, así que en reposo está vacía. Esto te deja comprobar el camino sin esperar a que haga falta.</string>
+
+    <string name="ff_titulo">FICHA MÉDICA · SISMORED</string>
+    <string name="ff_cerrar">Toca la pantalla para cerrar</string>
+
+    <!-- El texto que iba debajo del radar. Era un parrafo de tres frases que
+         mezclaba la instruccion con la leyenda de los anillos. -->
+    <string name="paso_ra1_t">Déjalo encendido y no toques nada</string>
+    <string name="paso_ra1">Cuando alguien cerca active su alerta, aparecerá aquí en el radar. Tu móvil la repite solo, para que siga avanzando hacia los demás.</string>
+    <string name="paso_ra2_t">El anillo dice a cuántos móviles está</string>
+    <string name="paso_ra2">El anillo 1 es justo a tu lado. El 4, a cuatro móviles de distancia.</string>
+
+    <string name="rot_ficha_wifi">FICHA COMPLETA POR WI-FI</string>
+    <string name="sub_ficha_wifi">De quien esté en la misma red que tú. Aquí sí caben las alergias y el contacto.</string>
+
+    <string name="b_abajo">APAGAR RASTREO Y BUSCAR HACIA ABAJO</string>
+    <string name="paso_encima_t">Ya estás encima</string>
+    <string name="paso_encima">La señal lleva un rato al máximo, así que el rastreo ya ha hecho su trabajo: te ha traído hasta aquí. Seguir mirando la barra no te va a decir nada nuevo. Apágalo y pasa al sonido: llama hacia abajo, habla con quien esté debajo y sondea el hueco.</string>
+</resources>

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Una casilla de la rejilla de detectores (`.det` de la PWA): icono, nombre,
+     porcentaje y barra.
+
+     El porcentaje no es un adorno: es la evidencia que lleva acumulada ese
+     detector — `e.n / (e.need*2)` — y es lo único que permite ver que algo está
+     a punto de disparar. Sin esto, los cinco detectores solo se manifiestan
+     cuando ya han saltado, y calibrarlos en campo es imposible.
+
+     Se mete cinco veces con <include> y se rellena por código:
+       val d = findViewById<View>(R.id.det_derrumbe)
+       d.findViewById<TextView>(R.id.det_pct).text = "37%" -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:layout_weight="1"
+    android:background="@drawable/det_fondo"
+    android:gravity="center_horizontal"
+    android:orientation="vertical"
+    android:paddingStart="2dp"
+    android:paddingTop="12dp"
+    android:paddingEnd="2dp"
+    android:paddingBottom="8dp">
+
+    <ImageView
+        android:id="@+id/det_icono"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:layout_marginBottom="8dp"
+        android:contentDescription="@null"
+        android:tint="@color/ctl" />
+
+    <!-- Una linea siempre. La caja es un quinto del ancho de la pantalla y
+         "DERRUMBE" se partia en dos, dejando una "E" sola debajo y estirando la
+         casilla mas que las otras cuatro. El autoescalado baja la letra lo justo. -->
+    <TextView
+        android:id="@+id/det_rotulo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:fontFamily="@font/montserrat_semibold"
+        android:gravity="center"
+        android:letterSpacing="0.02"
+        android:maxLines="1"
+        android:textColor="@color/dim"
+        android:textSize="8sp"
+        app:autoSizeMaxTextSize="8sp"
+        app:autoSizeMinTextSize="5.5sp"
+        app:autoSizeStepGranularity="0.5sp"
+        app:autoSizeTextType="uniform" />
+
+    <TextView
+        android:id="@+id/det_pct"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="4dp"
+        android:fontFamily="@font/montserrat_bold"
+        android:text="@string/cero_pct"
+        android:textColor="@color/tx"
+        android:textSize="15sp" />
+
+    <!-- Vista propia y no un ProgressBar: Material los redondea y aquí no hay ni
+         un radio distinto de 0. Tampoco pesos de layout — mover un peso remide
+         el árbol entero y es lo que hacía que el scroll diera tirones. -->
+    <red.sismo.VistaBarra
+        android:id="@+id/det_barra"
+        android:layout_width="match_parent"
+        android:layout_height="3dp" />
+</LinearLayout>

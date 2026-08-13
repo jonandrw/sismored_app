@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Una casilla de HERRAMIENTAS DE RESPUESTA (`.tile` de la PWA): icono grande,
+     nombre y ON/OFF abajo. Encendida se pone el borde verde y se tiñen el icono
+     y el estado; apagada se queda todo en gris.
+
+     Ninguna es decorativa: cada una manda de verdad sobre lo que hace el
+     servicio al saltar la alarma, y se puede cambiar con la sirena sonando. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="0dp"
+    android:layout_height="126dp"
+    android:layout_weight="1"
+    android:background="@drawable/casilla"
+    android:clickable="true"
+    android:focusable="true"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <ImageView
+        android:id="@+id/cs_icono"
+        android:layout_width="26dp"
+        android:layout_height="26dp"
+        android:layout_marginBottom="16dp"
+        android:contentDescription="@null"
+        android:tint="@color/ctl" />
+
+    <TextView
+        android:id="@+id/cs_nombre"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/montserrat_semibold"
+        android:lineSpacingMultiplier="1.3"
+        android:textColor="@color/tx"
+        android:textSize="14sp" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <TextView
+        android:id="@+id/cs_estado"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/montserrat_bold"
+        android:letterSpacing="0.133"
+        android:text="@string/off"
+        android:textColor="@color/ctl"
+        android:textSize="10.5sp" />
+</LinearLayout>

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- La cabecera de tarjeta de la PWA (`.chead`): icono, título en versales y,
+     a la derecha, o una etiqueta de estado (`.pill`) o el chevron de plegar.
+
+     Ninguna tarjeta de la PWA es una caja con texto suelto: todas empiezan por
+     esto, y es lo que hace que las nueve parezcan la misma familia.
+
+     Al incluirla hay que dar el icono y el título desde el código:
+       c.findViewById<ImageView>(R.id.ch_icono).setImageResource(R.drawable.ic_red)
+       c.findViewById<TextView>(R.id.ch_titulo).setText(R.string.rot_malla) -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:baselineAligned="false"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingBottom="12dp">
+
+    <ImageView
+        android:id="@+id/ch_icono"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:layout_marginEnd="10dp"
+        android:contentDescription="@null"
+        android:tint="@color/gr" />
+
+    <!-- Una sola linea, y con el tamano ajustado al hueco que deje la etiqueta de
+         estado. Antes el titulo se reflowaba a dos lineas cuando la etiqueta
+         crecia, y desde fuera eso se ve como un titulo que cambia de tamano solo. -->
+    <TextView
+        android:id="@+id/ch_titulo"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:fontFamily="@font/montserrat_bold"
+        android:letterSpacing="0.06"
+        android:maxLines="1"
+        android:textColor="@color/tx"
+        android:textSize="13sp"
+        app:autoSizeMaxTextSize="13sp"
+        app:autoSizeMinTextSize="9.5sp"
+        app:autoSizeStepGranularity="0.5sp"
+        app:autoSizeTextType="uniform" />
+
+    <!-- Etiqueta de estado. Oculta por defecto: no todas las tarjetas la llevan. -->
+    <TextView
+        android:id="@+id/ch_pill"
+        android:layout_width="wrap_content"
+        android:maxLines="1"
+        android:layout_height="wrap_content"
+        android:background="@drawable/campo_fondo"
+        android:fontFamily="@font/montserrat_semibold"
+        android:letterSpacing="0.095"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingTop="5dp"
+        android:paddingBottom="5dp"
+        android:textColor="@color/dim"
+        android:textSize="10.5sp"
+        android:visibility="gone" />
+</LinearLayout>

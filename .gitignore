@@ -1,0 +1,28 @@
+# Lo que genera el compilador
+build/
+app/build/
+.gradle/
+*.apk
+*.aab
+local.properties
+
+# Android Studio
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Python del banco de sonidos
+__pycache__/
+*.pyc
+
+# Los WAV son DERIVADOS de los MP3, no fuente.
+# Son 76 MB que se regeneran con una orden (ver CONTRIBUIR.md), así que no tienen
+# que viajar en el repositorio: los MP3 originales sí están, y con eso cualquiera
+# reconstruye el banco entero.
+fx sounds/wav/
+
+# Sistema
+.DS_Store
+Thumbs.db
