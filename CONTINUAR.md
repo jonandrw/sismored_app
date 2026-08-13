@@ -311,6 +311,55 @@ partes, y UDP en la red local no pide nada más.
 
 ---
 
+## Cuatro ideas que sí aplican (y lo que se descarta)
+
+Extraído de una revisión externa sobre radio y detección de audio. Casi todo lo que
+traía no aplica a un proyecto de software para móviles convencionales; esto sí:
+
+**1. Confirmar el estruendo con el acelerómetro.** Es lo más valioso y lo más barato.
+Hoy el detector de audio lanza PÁNICO solo, y falla justo en lo que dice el banco: un
+generador diésel da un falso derrumbe. Un derrumbe de verdad **sacude el móvil**; un
+motor a diez metros no. Y `ServicioSos.temblando` ya existe (lo puso la malla
+instantánea). Exigir corroboración del acelerómetro para la alarma disparada por audio
+mata la mayoría de los falsos positivos sin bajar la sensibilidad del micrófono. Es un
+`if`, y resuelve el problema número uno de la hoja de ruta.
+
+**2. Medir falsas alarmas por hora, no aciertos.** `banco.py` cuenta aciertos y fallos
+por carpeta. Para un sistema de emergencia la cifra que decide es **falsos SOS por
+hora** sobre horas de audio ambiente normal. Un detector con 99 % de acierto que grita
+una vez por hora es inservible; uno que dice «no estoy seguro» es mucho mejor que uno
+que grita cada vez que alguien cierra una puerta. Va con esto un estado **NO
+CONCLUYENTE**: no obligar al clasificador a elegir cuando no sabe.
+
+**3. Guardar los falsos positivos como material de entrenamiento.** Cada vez que la app
+se equivoque en una prueba real, esa grabación va a `fx sounds/Falsos/` y entra en el
+banco. Es la forma más rápida de mejorar, porque enseña justo el error que comete. Y el
+banco de FX puede usarse como «átomos»: mezclar cada golpe con ruido, reverberación y
+atenuación para generar miles de escenarios en vez de tener 63 archivos.
+
+**4. La baliza BLE no tiene saltos, y la acústica sí.** La malla acústica reenvía la
+alerta hasta cuatro móviles de distancia; la baliza de radio no reenvía nada. La idea de
+convertir un salto de diez metros en cinco de dos —cada móvil intermedio repitiendo lo
+que oye— ya está implementada para el sonido y **no** para la radio. Un móvil que ve una
+baliza podría reemitirla con salto+1, igual que hace `MallaAcustica`. Eso extiende el
+alcance sin tocar la potencia de nada.
+
+Y una cosa gratis, si el hardware la soporta: **BLE Coded PHY (S=8)**, de Bluetooth 5.
+Cambia velocidad por sensibilidad, que es exactamente el intercambio que conviene aquí
+—el anuncio son 17 bytes—. Va por `startAdvertisingSet()` con `PHY_LE_CODED` y el
+escáner con `setLegacy(false)`, comprobando antes `isLeCodedPhySupported()` y cayendo al
+anuncio de siempre si no está. Hay que medirlo, no darlo por bueno.
+
+**Lo que se descarta, y por qué:** amplificadores y antenas externas (no se le conecta
+una antena RF a un móvil), adaptadores USB (no es un PC), LoRa y nodos dedicados (es
+otro producto, no software), GPS (no llega bajo hormigón), Wi-Fi Aware (casi ningún
+móvil), el barómetro para estimar profundidad (demasiado ruidoso y pocos móviles lo
+llevan), y el sensor de proximidad como detector de movimiento (es un infrarrojo de
+cerca/lejos, no mide nada). YAMNet queda en «quizá»: son megas de modelo y una
+dependencia nueva, y no resuelve por sí solo el caso que falla.
+
+---
+
 ## Lo siguiente: la ficha completa por GATT
 
 Hoy el anuncio BLE lleva versión, estado, saltos, grupo sanguíneo y el nombre de
