@@ -314,7 +314,28 @@ class ServicioSos : Service() {
                Un falso positivo aquí es la sirena a todo volumen en el bolsillo,
                así que el umbral del estruendo NO está calibrado en campo: hasta
                que se mida en un móvil real, este es el único freno que hay. */
-            onEstruendo = { if (sismo.armado) panico("estruendo detectado por micrófono") },
+            /* El estruendo del microfono YA NO dispara solo.
+               El banco con audio real dice que acierta 3 de 8 derrumbes y que un
+               generador diesel le da tres falsos. Un derrumbe de verdad SACUDE el
+               movil; un motor a diez metros no. Asi que se exige que el
+               acelerometro lo corrobore, y con eso se cae la mayoria de los falsos
+               sin bajar la sensibilidad del microfono, que es lo que se hacia antes
+               y costaba perder derrumbes de verdad.
+
+               `temblando` vale un minuto desde la ultima sacudida (ver arriba), asi
+               que el orden no importa: da igual si primero se oye y luego tiembla o
+               al reves.
+
+               Cuando oye pero no tiembla NO se calla: lo anota. Esa linea es el
+               material para saber cuantas veces habria disparado de mas, que es la
+               cifra que de verdad decide si este detector sirve — falsos por hora,
+               no porcentaje de aciertos. */
+            onEstruendo = {
+                if (sismo.armado) {
+                    if (temblando) panico("estruendo por micrófono + sacudida")
+                    else anotar("Estruendo oído sin sacudida: no disparo la alarma")
+                }
+            },
             onRegistro = { m -> anotar(m) }
         )
 
