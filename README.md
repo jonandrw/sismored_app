@@ -1,4 +1,19 @@
-# SismoRed Android — Fases 1 y 2
+# SismoRed Android
+
+Una app de terremotos que funciona **sin internet**: hace sonar una sirena con la
+pantalla bloqueada y el móvil en silencio, propaga la alerta de móvil a móvil por
+sonido, emite una baliza de radio para que te encuentren bajo los escombros, y guarda
+una ficha médica que quien te atienda pueda leer sin desbloquear el teléfono.
+
+> **Punto de partida.** Este commit es el arranque del control de versiones. El estado
+> real de cada pieza —lo verificado, lo que no, las trampas ya pisadas y el orden de lo
+> que falta— está en [`CONTINUAR.md`](CONTINUAR.md). Si vas a colaborar, empieza por
+> [`CONTRIBUIR.md`](CONTRIBUIR.md).
+>
+> Instalado y funcionando en Huawei STK-LX3 (Android 10), Samsung A10s (Android 11) y
+> Redmi 24094RAD4G (Android 15).
+
+---
 
 La fase 1 era la que decidía si el proyecto es viable: un servicio en primer plano que hace sonar la
 sirena **con la pantalla bloqueada y el móvil en silencio**, y que se dispara **sin tocar la pantalla**.
