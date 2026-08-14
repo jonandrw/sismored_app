@@ -8,10 +8,14 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:background="@drawable/tarjeta_paso"
     android:baselineAligned="false"
+    android:layout_marginBottom="10dp"
     android:orientation="horizontal"
-    android:paddingTop="14dp"
-    android:paddingBottom="14dp">
+    android:paddingStart="12dp"
+    android:paddingEnd="12dp"
+    android:paddingTop="16dp"
+    android:paddingBottom="16dp">
 
     <ImageView
         android:id="@+id/ps_icono"
@@ -36,7 +40,13 @@
          intentaba con MAYÚSCULAS y puntos medios, que no es jerarquía: es una línea
          larga.
 
-         `hyphenationFrequency="none"` y `breakStrategy="simple"` tampoco son
+         El relleno vertical es 20 dp y no 14: MEDIDO en pantalla, con 14 quedaban
+     19,3 dp entre un paso y el siguiente, o sea menos de diez a cada lado de la
+     línea divisoria — y una línea a diez dp del texto se lee pegada. Con 20 hay
+     unos trece por lado, que es lo que hace que la línea separe en vez de
+     estorbar.
+
+     `hyphenationFrequency="none"` y `breakStrategy="simple"` tampoco son
          adorno: por defecto Android parte palabras con guion al final de línea, y
          en una columna estrecha eso deja trozos de palabra sueltos. -->
     <LinearLayout
@@ -45,6 +55,17 @@
         android:layout_weight="1"
         android:orientation="vertical">
 
+        <!-- 14 sp contra los 12 del cuerpo. Antes eran 13 y 12,5: media décima de
+             diferencia no es jerarquía, es la misma línea escrita dos veces. La
+             negrita sola tampoco basta con Montserrat, que tiene poco contraste
+             entre pesos a tamaño pequeño.
+
+             Y el título cabe en UNA línea, siempre. No por estética: un título
+             partido en dos deja la segunda mitad a la altura del cuerpo y con su
+             mismo aire, así que se lee como cuerpo y el paso pierde el titular.
+             La regla la cumplen los textos, no el layout — aquí no hay
+             `maxLines`, porque recortar con puntos suspensivos es peor que
+             partir. Si algún título vuelve a partirse, se acorta el texto. -->
         <TextView
             android:id="@+id/ps_titulo"
             android:layout_width="match_parent"
@@ -52,19 +73,27 @@
             android:breakStrategy="simple"
             android:fontFamily="@font/montserrat_bold"
             android:hyphenationFrequency="none"
-            android:lineSpacingMultiplier="1.3"
+            android:lineSpacingMultiplier="1.25"
             android:textColor="@color/tx"
-            android:textSize="13sp" />
+            android:textSize="14sp" />
 
+        <!-- Cuerpo justificado a ambos lados y sin partir palabras, la misma
+             receta de `DocCuerpo` en Acerca de: `high_quality` para que el
+             reparto de espacios sea decente, `none` para que no aparezcan
+             guiones a mitad de palabra —Android no conoce nuestras reglas de
+             separación silábica— y `inter_word` para que el trabajo lo haga el
+             espaciado. Dos líneas: lo que no quepa en dos, no es un pie de
+             instrucción, es un párrafo, y va en Acerca de. -->
         <TextView
             android:id="@+id/ps_texto"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="5dp"
-            android:breakStrategy="simple"
+            android:layout_marginTop="6dp"
+            android:breakStrategy="high_quality"
             android:hyphenationFrequency="none"
+            android:justificationMode="inter_word"
             android:lineSpacingMultiplier="1.5"
             android:textColor="@color/dim"
-            android:textSize="12.5sp" />
+            android:textSize="12sp" />
     </LinearLayout>
 </LinearLayout>

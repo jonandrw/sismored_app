@@ -439,13 +439,9 @@
                             layout="@layout/tarjeta_cabecera" />
 
                         <include android:id="@+id/paso1" layout="@layout/paso" />
-                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
                         <include android:id="@+id/paso2" layout="@layout/paso" />
-                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
                         <include android:id="@+id/paso3" layout="@layout/paso" />
-                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
                         <include android:id="@+id/paso4" layout="@layout/paso" />
-                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
                         <include android:id="@+id/paso5" layout="@layout/paso" />
                     </LinearLayout>
 
@@ -502,7 +498,6 @@
                             android:layout_marginBottom="8dp" />
 
                         <include android:id="@+id/paso_ra1" layout="@layout/paso" />
-                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
                         <include android:id="@+id/paso_ra2" layout="@layout/paso" />
                     </LinearLayout>
 
@@ -552,9 +547,7 @@
                             style="@style/Consola" />
 
                         <include android:id="@+id/paso_i1" layout="@layout/paso" />
-                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
                         <include android:id="@+id/paso_i2" layout="@layout/paso" />
-                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
                         <include android:id="@+id/paso_i3" layout="@layout/paso" />
                     </LinearLayout>
 
@@ -568,9 +561,7 @@
                             layout="@layout/tarjeta_cabecera" />
 
                         <include android:id="@+id/paso_m1" layout="@layout/paso" />
-                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
                         <include android:id="@+id/paso_m2" layout="@layout/paso" />
-                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
                         <include android:id="@+id/paso_m3" layout="@layout/paso" />
                     </LinearLayout>
                 </LinearLayout>
@@ -692,13 +683,9 @@
                             android:text="@string/rot_como_entorno" />
 
                         <include android:id="@+id/paso_e1" layout="@layout/paso" />
-                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
                         <include android:id="@+id/paso_e2" layout="@layout/paso" />
-                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
                         <include android:id="@+id/paso_e3" layout="@layout/paso" />
-                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
                         <include android:id="@+id/paso_e4" layout="@layout/paso" />
-                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
                         <include android:id="@+id/paso_e5" layout="@layout/paso" />
 
                         <TextView
@@ -744,6 +731,17 @@
                             android:layout_height="150dp"
                             android:layout_marginTop="10dp"
                             android:background="@drawable/caja" />
+
+                        <!-- Aprender la firma del propio movil. Sin esto el eco devuelve
+                             siempre las mismas superficies: son rebotes de la carcasa,
+                             no de la sala. -->
+                        <Button
+                            android:id="@+id/b_aprender_movil"
+                            style="@style/Boton.Tenue"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="@string/b_aprender_movil" />
 
                         <red.sismo.VistaConsola
                             android:id="@+id/eco_salida"
@@ -1067,11 +1065,8 @@
                             layout="@layout/tarjeta_cabecera" />
 
                         <include android:id="@+id/paso_f1" layout="@layout/paso" />
-                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
                         <include android:id="@+id/paso_f2" layout="@layout/paso" />
-                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
                         <include android:id="@+id/paso_f3" layout="@layout/paso" />
-                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
                         <include android:id="@+id/paso_f4" layout="@layout/paso" />
                     </LinearLayout>
                 </LinearLayout>
@@ -1089,51 +1084,75 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="0dp"
+                        android:layout_marginBottom="12dp"
                         android:text="@string/rot_respuesta" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
+                        android:layout_height="@dimen/casilla_alto"
                         android:baselineAligned="false"
                         android:orientation="horizontal">
 
                         <include android:id="@+id/cs_linterna" layout="@layout/casilla_respuesta" />
-                        <View android:layout_width="12dp" android:layout_height="1dp" />
+
+                        <View
+                            android:layout_width="12dp"
+                            android:layout_height="1dp" />
+
                         <include android:id="@+id/cs_vibracion" layout="@layout/casilla_respuesta" />
                     </LinearLayout>
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
+                        android:layout_height="@dimen/casilla_alto"
                         android:layout_marginTop="12dp"
                         android:baselineAligned="false"
                         android:orientation="horizontal">
 
                         <include android:id="@+id/cs_pantalla" layout="@layout/casilla_respuesta" />
-                        <View android:layout_width="12dp" android:layout_height="1dp" />
+
+                        <View
+                            android:layout_width="12dp"
+                            android:layout_height="1dp" />
+
                         <include android:id="@+id/cs_baliza" layout="@layout/casilla_respuesta" />
                     </LinearLayout>
 
+                    <!-- Mantener activa y Modo rescate cierran la cuadrícula. Las
+                         dos cuestan batería y por eso se encienden en rojo, pero
+                         miden lo mismo que las otras cuatro: la jerarquía la da el
+                         color, no el tamaño ni un apartado propio. -->
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
+                        android:layout_height="@dimen/casilla_alto"
                         android:layout_marginTop="12dp"
                         android:baselineAligned="false"
                         android:orientation="horizontal">
 
                         <include android:id="@+id/cs_mantener" layout="@layout/casilla_respuesta" />
-                        <View android:layout_width="12dp" android:layout_height="1dp" />
+
+                        <View
+                            android:layout_width="12dp"
+                            android:layout_height="1dp" />
+
                         <include android:id="@+id/cs_rescate" layout="@layout/casilla_respuesta" />
                     </LinearLayout>
 
-                    <LinearLayout style="@style/Tarjeta">
+
+                    <!-- 28 dp: el grupo de seis respira 12 dp por dentro, así que
+                         con 0 aquí la tarjeta de ayuda quedaba pegada a la
+                         cuadrícula y parecía otra fila más. El salto entre bloques
+                         tiene que ser mayor que el salto dentro del bloque, o no
+                         se lee como un bloque. -->
+                    <LinearLayout
+                        style="@style/Tarjeta"
+                        android:layout_marginTop="28dp">
 
                         <include
                             android:id="@+id/ch_como_resp"
                             layout="@layout/tarjeta_cabecera" />
 
                         <include android:id="@+id/paso_r1" layout="@layout/paso" />
-                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
                         <include android:id="@+id/paso_r2" layout="@layout/paso" />
                     </LinearLayout>
                 </LinearLayout>
@@ -1214,9 +1233,25 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="12dp"
                             android:text="@string/b_llamar"
-                            app:icon="@drawable/ic_grito"
+                            app:icon="@drawable/ic_megafono"
                             app:iconGravity="textStart"
-                            app:iconTint="@color/rd" />
+                            app:iconTint="@color/gr" />
+
+                        <!-- Lo contrario del anterior, y va justo debajo porque
+                             se usan en la misma situacion: cuando el equipo pide
+                             silencio para escuchar con sus microfonos de
+                             contacto, esto calla a todos los moviles que lo
+                             oigan. La baliza de radio sigue: no suena. -->
+                        <Button
+                            android:id="@+id/b_silencio_zona"
+                            style="@style/Boton.Ancho"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="@string/b_silencio_zona"
+                            app:icon="@drawable/ic_chiton"
+                            app:iconGravity="textStart"
+                            app:iconTint="@color/gr" />
 
                         <!-- Debajo del botón de llamar iba todo seguido y sin
                              separar: primero el interfono, luego una lista sin
@@ -1312,9 +1347,7 @@
                                  que callarse, y eso no se puede leer del tirón
                                  mientras suena. -->
                             <include android:id="@+id/paso_if1" layout="@layout/paso" />
-                            <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
                             <include android:id="@+id/paso_if2" layout="@layout/paso" />
-                            <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
                             <include android:id="@+id/paso_if3" layout="@layout/paso" />
 
                             <Button
@@ -1352,13 +1385,9 @@
                             android:text="@string/rot_como_busqueda" />
 
                         <include android:id="@+id/paso_b1" layout="@layout/paso" />
-                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
                         <include android:id="@+id/paso_b2" layout="@layout/paso" />
-                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
                         <include android:id="@+id/paso_b3" layout="@layout/paso" />
-                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
                         <include android:id="@+id/paso_b4" layout="@layout/paso" />
-                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/line" />
                         <include android:id="@+id/paso_b5" layout="@layout/paso" />
                     </LinearLayout>
                 </LinearLayout>
@@ -1371,51 +1400,184 @@
                     android:orientation="vertical"
                     android:visibility="gone">
 
-                    <LinearLayout style="@style/Tarjeta">
+                    <!-- SIN TARJETAS. Esta pantalla mezclaba dos lenguajes: dos
+                         cajas con cabecera de icono para el estado, y debajo unas
+                         filas con azulejo para las acciones. Dos formas de
+                         agrupar lo mismo, y ninguna mandaba.
 
-                        <include
-                            android:id="@+id/ch_sistema"
-                            layout="@layout/tarjeta_cabecera" />
+                         Ahora es una sola lista con un solo ritmo: rótulo de
+                         sección, contenido, rótulo, contenido, y termina en las
+                         opciones. Lo único que sigue teniendo caja es lo que se
+                         pulsa, que es justo lo que tiene que distinguirse de lo
+                         que solo se lee. -->
+                    <TextView
+                        style="@style/DocSeccion"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/rot_sistema" />
 
-                        <!-- Las filas las mete el código: son estado real del
-                             móvil, no una lista escrita a mano. -->
-                        <LinearLayout
-                            android:id="@+id/diag_sistema"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical" />
-                    </LinearLayout>
+                    <!-- Las filas las mete el código: son estado real del móvil,
+                         no una lista escrita a mano. -->
+                    <LinearLayout
+                        android:id="@+id/diag_sistema"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
 
-                    <LinearLayout style="@style/Tarjeta">
+                    <TextView
+                        style="@style/DocSeccion"
+                        android:text="@string/rot_capacidades" />
 
-                        <include
-                            android:id="@+id/ch_capacidades"
-                            layout="@layout/tarjeta_cabecera" />
+                    <LinearLayout
+                        android:id="@+id/diag_capacidades"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
 
-                        <LinearLayout
-                            android:id="@+id/diag_capacidades"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical" />
-                    </LinearLayout>
+                    <TextView
+                        style="@style/DocSeccion"
+                        android:text="@string/rot_opciones" />
+
+                    <include android:id="@+id/op_permisos" layout="@layout/opcion_fila" />
+
+                    <include android:id="@+id/op_acerca" layout="@layout/opcion_fila" />
+
+                    <include android:id="@+id/op_ficha_lan" layout="@layout/opcion_fila" />
+
+                    <include android:id="@+id/op_simulacro" layout="@layout/opcion_fila" />
+
+                    <include android:id="@+id/op_autotest" layout="@layout/opcion_fila" />
+
+                    <!-- Y al final, separada de todo lo demás: la que apaga la
+                         vigilancia entera. -->
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginTop="26dp"
+                        android:background="@color/line" />
+
+                    <TextView
+                        style="@style/Rotulo"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/rot_no_la_quiero" />
+
+                    <include android:id="@+id/op_apagar" layout="@layout/opcion_fila" />
+                </LinearLayout>
+
+
+                <!-- ==================== ACERCA DE (segundo nivel) ====================
+                     Un documento, no una pantalla de tarjetas. Aquí se lee de
+                     corrido —política de privacidad, permisos, límites— y las
+                     cajas cada dos párrafos lo convertían en un muro a bloques
+                     que nadie termina. Una sola columna, jerarquía por tipografía
+                     y aire entre líneas. Monocromo a propósito: el color aquí no
+                     informa de nada, solo distrae. -->
+                <LinearLayout
+                    android:id="@+id/v_acerca"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingStart="4dp"
+                    android:paddingEnd="4dp"
+                    android:paddingBottom="20dp">
+
+                    <TextView
+                        style="@style/DocSeccion"
+                        android:text="@string/ac_rot_que" />
+
+                    <TextView
+                        style="@style/DocTitular"
+                        android:text="@string/ac_sub_que" />
+
+                    <TextView
+                        style="@style/DocCuerpo"
+                        android:text="@string/ac_que" />
+
+                    <View style="@style/DocLinea" />
+
+                    <TextView
+                        style="@style/DocSeccion"
+                        android:text="@string/ac_rot_no" />
+
+                    <TextView
+                        style="@style/DocTitular"
+                        android:text="@string/ac_sub_no" />
+
+                    <TextView
+                        style="@style/DocCuerpo"
+                        android:text="@string/ac_no" />
+
+                    <View style="@style/DocLinea" />
+
+                    <TextView
+                        style="@style/DocSeccion"
+                        android:text="@string/ac_rot_datos" />
+
+                    <TextView
+                        style="@style/DocTitular"
+                        android:text="@string/ac_sub_datos" />
+
+                    <TextView
+                        style="@style/DocCuerpo"
+                        android:text="@string/ac_datos" />
+
+                    <View style="@style/DocLinea" />
+
+                    <TextView
+                        style="@style/DocSeccion"
+                        android:text="@string/ac_rot_permisos" />
+
+                    <TextView
+                        style="@style/DocTitular"
+                        android:text="@string/ac_sub_permisos" />
+
+                    <TextView
+                        style="@style/DocCuerpo"
+                        android:text="@string/ac_permisos" />
+
+                    <View style="@style/DocLinea" />
+
+                    <TextView
+                        style="@style/DocSeccion"
+                        android:text="@string/ac_rot_faq" />
+
+                    <TextView
+                        style="@style/DocTitular"
+                        android:text="@string/ac_sub_faq" />
+
+                    <TextView
+                        style="@style/DocCuerpo"
+                        android:text="@string/ac_faq" />
+
+                    <View style="@style/DocLinea" />
+
+                    <TextView
+                        style="@style/DocSeccion"
+                        android:text="@string/ac_rot_contacto" />
+
+                    <TextView
+                        style="@style/DocTitular"
+                        android:text="@string/ac_sub_contacto" />
+
+                    <TextView
+                        style="@style/DocCuerpo"
+                        android:text="@string/ac_fallos" />
 
                     <Button
-                        android:id="@+id/ir_permisos"
+                        android:id="@+id/b_acerca_repo"
                         style="@style/Boton.Ancho"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="@string/b_permisos"
-                        app:icon="@drawable/ic_candado"
-                        app:iconGravity="textStart"
-                        app:iconTint="@color/dim" />
+                        android:layout_marginTop="22dp"
+                        android:text="@string/b_acerca_repo" />
 
-                    <Button
-                        android:id="@+id/autotest"
-                        style="@style/Boton.Tenue"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:text="@string/autotest" />
+                    <TextView
+                        android:id="@+id/ac_version"
+                        style="@style/DocCuerpo"
+                        android:layout_marginTop="18dp"
+                        android:gravity="center"
+                        android:textColor="@color/ctl"
+                        android:textSize="12sp" />
                 </LinearLayout>
 
                 <!-- ==================== REGISTRO (segundo nivel) ==================== -->

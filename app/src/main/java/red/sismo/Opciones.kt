@@ -49,9 +49,80 @@ class Opciones(ctx: Context) {
     /** m/s². 3,0 medido en campo con el móvil en el bolsillo — ver CONTINUAR.md.
      *  Ajustable de 0,5 a 8 porque un móvil en una mesa y otro en un bolsillo no
      *  aguantan lo mismo, pero el valor de fábrica no se toca sin volver a medir. */
+    /**
+     * El umbral con el móvil ENCIMA de alguien. Es el conservador: andar y correr
+     * pasan de 3 m/s² sin esfuerzo, así que aquí no se puede afinar más sin
+     * llenar el bolsillo de falsas alarmas. Medido en campo.
+     */
     var umbral: Double
         get() = p.getFloat("op_umbral", 6.0f).toDouble().coerceIn(0.5, 8.0)
         set(v) = p.edit().putFloat("op_umbral", v.coerceIn(0.5, 8.0).toFloat()).apply()
+
+    /**
+     * El usuario ha apagado SismoRed del todo, a mano.
+     *
+     * No es un interruptor más: es el que dice «no quiero esto corriendo». Se
+     * respeta al arrancar la app y al arrancar el móvil, porque una app de
+     * emergencia que se vuelve a encender sola después de que la apaguen deja de
+     * ser una herramienta y pasa a ser algo de lo que hay que defenderse.
+     */
+    /**
+     * Cuándo se supo por última vez que el servicio estaba vivo.
+     *
+     * Es lo que permite descubrir que **el sistema lo mató**. En un móvil
+     * normal el servicio sobrevive a cerrar la app —está declarado con
+     * `stopWithTask="false"`—, pero HyperOS lo mata al deslizarla fuera de
+     * recientes con su limpiador de tareas (`OneKeyClean` en el registro del
+     * sistema), y lo hace 200 ms después de que la app haya hecho todo bien.
+     *
+     * Contra eso no hay código. Lo que sí se puede es enterarse y decirlo, en
+     * vez de que alguien crea que está vigilado cuando no lo está.
+     */
+    var latido: Long
+        get() = p.getLong("op_latido", 0L)
+        set(v) = p.edit().putLong("op_latido", v).apply()
+
+    /** Cuándo se avisó por última vez de que el sistema mató la app. Sin esto, el
+     *  aviso salía en cada arranque y se convertía en ruido — y un aviso que se
+     *  repite siempre es un aviso que se deja de leer. */
+    var ultimoAvisoMuerte: Long
+        get() = p.getLong("op_aviso_muerte", 0L)
+        set(v) = p.edit().putLong("op_aviso_muerte", v).apply()
+
+    /** El usuario quiere que esto esté vigilando. Si esto es true y el servicio
+     *  no está, alguien lo ha matado por detrás. */
+    var deberiaVigilar: Boolean
+        get() = p.getBoolean("op_deberia", false)
+        set(v) = p.edit().putBoolean("op_deberia", v).apply()
+
+    var apagada: Boolean
+        get() = p.getBoolean("op_apagada", false)
+        set(v) = p.edit().putBoolean("op_apagada", v).apply()
+
+    /**
+     * El umbral con el móvil EN REPOSO, quieto sobre algo.
+     *
+     * **0,8 m/s², y el número sale de la escala de Mercalli, no del dedo.** La
+     * tabla de aceleración de pico del USGS:
+     *
+     *     MMI IV   0,14-0,38 m/s²   se nota dentro de casa
+     *     MMI V    0,38-0,90 m/s²   lo nota todo el mundo, SE DESPIERTA LA GENTE
+     *     MMI VI   0,90-1,77 m/s²   los muebles se mueven, daño leve
+     *
+     * Con 1,2 solo saltaba ya metido en MMI VI. Con 0,8 salta dentro de MMI V,
+     * que es el nivel en el que alguien dormido tiene que enterarse. Y sigue
+     * siendo veinte veces la calma medida en una mesa real (0,04 m/s²).
+     *
+     * Lo que hace seguro bajarlo no es la amplitud, es la DURACIÓN: hay que
+     * aguantar 36 muestras seguidas por encima, unos 0,6 s. Un portazo es un pico
+     * y se acabó; un terremoto sacude segundos.
+     *
+     * Y este umbral solo se aplica si el móvil estaba quieto **justo antes** del
+     * suceso: ver `Sismografo.quietoAntesDelEvento`.
+     */
+    var umbralReposo: Double
+        get() = p.getFloat("op_umbral_reposo", 0.8f).toDouble().coerceIn(0.2, 8.0)
+        set(v) = p.edit().putFloat("op_umbral_reposo", v.coerceIn(0.2, 8.0).toFloat()).apply()
 
     /** kHz del tono del doppler. Por encima de 18 kHz para no pisar la malla más
      *  de lo imprescindible; ver el aviso de `Sonda.doppler()`. */
@@ -80,7 +151,9 @@ class Opciones(ctx: Context) {
         get() = leer("op_envio", false); set(v) = poner("op_envio", v)
 
     companion object {
-        const val UMBRAL_MIN = 0.5
+        /* 0,2 y no 0,5: en reposo, sobre una mesa que se mueve 0,04, un umbral
+           de 0,5 ya son doce veces la calma. El margen útil está más abajo. */
+        const val UMBRAL_MIN = 0.2
         const val UMBRAL_MAX = 8.0
         const val UMBRAL_PASO = 0.1
         const val DOPPLER_MIN = 10.0

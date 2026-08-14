@@ -12,7 +12,22 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Para que «¿ESTÁS BIEN?» salga a pantalla completa con el móvil
+         bloqueado. Desde Android 14 este permiso ya no se concede solo salvo a
+         apps de llamada o de alarma, así que puede estar denegado: la app lo
+         comprueba con `canUseFullScreenIntent()`, lo dice en Diagnóstico y, si no
+         lo tiene, la pregunta sigue llegando como aviso normal. Nunca se queda
+         sin preguntar. -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- Los pasos. Es un contador que ya está corriendo en el coprocesador de
+         sensores de todos los móviles, con la pantalla apagada y sin gastar
+         nada; lo único que hace falta es permiso para leerlo. Sirve para saber
+         si alguien SIGUE ANDANDO después del terremoto, que es la prueba más
+         barata de que está bien. No sale del móvil. -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
     <!-- Subir el canal de alarma al máximo y enganchar el realce de volumen a la
          sesión de la sirena. Sin esto la sirena suena al volumen que hubiera
          dejado puesto el usuario, que puede ser cero. -->
@@ -25,6 +40,16 @@
          encender a mano y que manda tres campos: hora, motivo y saltos. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- La ficha completa por Wi-Fi va por difusión UDP, y para RECIBIR una
+         difusión hace falta este permiso: sin él no se puede coger el
+         `MulticastLock`, y sin ese candado el chip de Wi-Fi descarta los
+         paquetes de difusión antes de que Android los vea. No da error, no da
+         aviso y no llega nada — y depende del fabricante, así que en un móvil
+         parecía funcionar y en otro no. Los dos son de sistema, no se le piden
+         al usuario, y no dan acceso a ninguna red. -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
 
     <!-- La linterna se controla con CameraManager.setTorchMode, que NO exige el
          permiso CAMERA. Se declara opcional para no dejar fuera a los móviles
@@ -42,9 +67,20 @@
     <!-- Hasta Android 11 el sistema exigía estos tres para lo mismo. -->
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
-    <uses-permission
-        android:name="android.permission.ACCESS_FINE_LOCATION"
-        android:maxSdkVersion="30" />
+
+    <!-- Ubicación. Y aquí hay que ser exacto, porque esto cambia una promesa:
+         SismoRed **nunca enciende el GPS**. No hay una sola llamada a
+         `requestLocationUpdates` en todo el proyecto; lo único que se lee es
+         `getLastKnownLocation`, o sea un arreglo que ya hizo otra app. No hay
+         seguimiento ni histórico: solo dónde estaba el móvil la última vez que
+         alguien miró, que es lo que convierte un barrio en un portal cuando
+         alguien te busca. Se guarda en el móvil y sale con la misma regla que la
+         ficha: solo con la alarma o el rescate activos.
+         Ya no lleva maxSdkVersion: antes solo existía para el escaneo BLE de
+         Android 11 y ahora tiene un uso propio. `neverForLocation` en el escaneo
+         sigue siendo literal — de lo que se escanea no se deduce nada. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
 
     <application
@@ -66,6 +102,38 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- «¿ESTÁS BIEN?». Sale sobre la pantalla de bloqueo y enciende el
+             móvil, igual que una llamada entrante: si hubiera que desbloquear
+             para contestar, mucha gente no llegaría a tiempo y su baliza se
+             encendería sin hacer falta. No aparece en recientes —no es una
+             pantalla a la que se vuelva— y no se puede exportar: la lanza el
+             servicio y nadie más. -->
+        <activity
+            android:name=".PreguntaActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:noHistory="true"
+            android:screenOrientation="portrait"
+            android:showWhenLocked="true"
+            android:taskAffinity=""
+            android:turnScreenOn="true" />
+
+        <!-- La ficha médica a pantalla completa, abierta sola cuando el rescate
+             ya está encima. Mismas banderas que la pregunta: sobre el bloqueo y
+             encendiendo el móvil, porque quien llega hasta ti se encuentra un
+             teléfono bloqueado y no puede hacer nada con él. -->
+        <activity
+            android:name=".FichaActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:noHistory="true"
+            android:screenOrientation="portrait"
+            android:showWhenLocked="true"
+            android:taskAffinity=""
+            android:turnScreenOn="true" />
 
         <!-- stopWithTask=false es lo que hace que la vigilancia sobreviva a que
              alguien deslice la app fuera de recientes por error. Sin esto,

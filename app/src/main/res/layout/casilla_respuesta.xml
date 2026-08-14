@@ -1,25 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Una casilla de HERRAMIENTAS DE RESPUESTA (`.tile` de la PWA): icono grande,
-     nombre y ON/OFF abajo. Encendida se pone el borde verde y se tiñen el icono
-     y el estado; apagada se queda todo en gris.
+<!-- Una casilla de HERRAMIENTAS DE RESPUESTA.
 
-     Ninguna es decorativa: cada una manda de verdad sobre lo que hace el
-     servicio al saltar la alarma, y se puede cambiar con la sirena sonando. -->
+     Antes eran seis bloques idénticos con un icono, un nombre y un ON/OFF
+     minúsculo: para saber cuáles estaban encendidas había que leerlas una a una,
+     y «Modo rescate» —que cambia la autonomía durante días— pesaba lo mismo que
+     «Vibración».
+
+     Ahora el estado se ve sin leer: encendida se RELLENA y se tiñen el icono y
+     el rótulo. Y cada una dice en una línea qué hace, porque «Pantalla» no
+     significa nada por sí solo. -->
+<!-- OJO con el alto: `match_parent` solo vale porque la FILA que la contiene
+     tiene un alto fijo (`@dimen/casilla_alto`). Dentro de una fila en
+     `wrap_content`, `match_parent` mide CERO y la casilla desaparece sin dar
+     ningún error — es lo que hizo que solo se viera «Modo rescate». -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="0dp"
-    android:layout_height="126dp"
+    android:layout_height="match_parent"
     android:layout_weight="1"
     android:background="@drawable/casilla"
     android:clickable="true"
     android:focusable="true"
     android:orientation="vertical"
-    android:padding="20dp">
+    android:padding="18dp">
 
     <ImageView
         android:id="@+id/cs_icono"
         android:layout_width="26dp"
         android:layout_height="26dp"
-        android:layout_marginBottom="16dp"
+        android:layout_marginBottom="14dp"
         android:contentDescription="@null"
         android:tint="@color/ctl" />
 
@@ -28,14 +36,27 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:fontFamily="@font/montserrat_semibold"
-        android:lineSpacingMultiplier="1.3"
+        android:lineSpacingMultiplier="1.25"
         android:textColor="@color/tx"
-        android:textSize="14sp" />
+        android:textSize="14.5sp" />
+
+    <!-- Qué hace, en una línea. Sin esto el nombre es una etiqueta muda. -->
+    <TextView
+        android:id="@+id/cs_que"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:breakStrategy="simple"
+        android:hyphenationFrequency="none"
+        android:lineSpacingMultiplier="1.3"
+        android:textColor="@color/dim"
+        android:textSize="11sp" />
 
     <View
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_weight="1"
+        android:minHeight="12dp" />
 
     <TextView
         android:id="@+id/cs_estado"

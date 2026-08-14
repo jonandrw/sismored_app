@@ -13,4 +13,10 @@
     <color name="gr">#90CA50</color>
     <color name="rd">#E53035</color>
     <color name="rd_d">#A81F23</color>
+
+    <!-- Gris de LECTURA. `dim` (#8A9099) vale para una etiqueta de tres palabras
+         y es insuficiente para un texto largo: obliga a forzar la vista. Este es
+         el mismo blanco de `tx` bajado lo justo para que no deslumbre en una
+         pantalla negra pero se lea de corrido. -->
+    <color name="lectura">#C6CBD1</color>
 </resources>

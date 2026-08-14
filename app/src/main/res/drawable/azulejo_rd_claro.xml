@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sobre el rojo de la fila que apaga: un rojo más claro para que el azulejo
+     se distinga del fondo sin salirse de la pareja de colores. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#E8595D" />
+</shape>

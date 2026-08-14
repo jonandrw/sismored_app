@@ -15,7 +15,8 @@
     android:baselineAligned="false"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:paddingBottom="12dp">
+    android:paddingTop="14dp"
+    android:paddingBottom="14dp">
 
     <ImageView
         android:id="@+id/ch_icono"
@@ -36,10 +37,10 @@
         android:fontFamily="@font/montserrat_bold"
         android:letterSpacing="0.06"
         android:maxLines="1"
-        android:textColor="@color/tx"
-        android:textSize="13sp"
-        app:autoSizeMaxTextSize="13sp"
-        app:autoSizeMinTextSize="9.5sp"
+        android:textColor="#FFFFFF"
+        android:textSize="15sp"
+        app:autoSizeMaxTextSize="15sp"
+        app:autoSizeMinTextSize="11sp"
         app:autoSizeStepGranularity="0.5sp"
         app:autoSizeTextType="uniform" />
 

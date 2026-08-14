@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Megáfono: el botón de LLAMAR HACIA ABAJO.
+
+     Antes llevaba `ic_grito`, que es el icono del detector de gritos — o sea el
+     de OÍR un grito, no el de darlo. Aquí el móvil es el que grita hacia abajo,
+     y un megáfono lo dice sin leer nada.
+
+     Trazo abierto y no silueta rellena: es la familia del resto de iconos de la
+     app, todos de línea. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- La bocina: boca ancha a la derecha, cuerpo estrecho a la izquierda -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.7"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M4,9.5 L9.5,9.5 L19,4.5 L19,19.5 L9.5,14.5 L4,14.5 Z" />
+
+    <!-- El asa por la que se sujeta, colgando del cuerpo -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.7"
+        android:strokeLineCap="round"
+        android:pathData="M7,14.5 L7,19 L10,19" />
+
+    <!-- Dos ondas saliendo de la boca: es lo que separa «megáfono» de «altavoz
+         apagado» de un vistazo -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:pathData="M21.3,9 A4.2,4.2 0 0 1 21.3,15" />
+</vector>

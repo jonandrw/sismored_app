@@ -3,7 +3,18 @@
      MALLA DE PROPAGACIÓN son «Salto recibido / Balizas detectadas /
      Retransmisiones»; en cualquier otra tarjeta valen igual.
 
-     Los datos ya existen en ServicioSos.mallaSalto / mallaRx / mallaTx. -->
+     Los datos ya existen en ServicioSos.mallaSalto / mallaRx / mallaTx.
+
+     Las tres columnas llevan HUECO entre ellas, y los rótulos son cortos a
+     propósito. MEDIDO en el A10s: con las columnas pegadas, «Balizas detectadas»
+     ocupaba 190 px de los 198 de su columna y el rótulo siguiente arrancaba justo
+     ahí, así que en pantalla se leía «Balizas detectadasRetransmisiones». No era
+     un solape de dibujo: era que no había ni un pixel entre una columna y la de
+     al lado. Con 10 dp de hueco no pueden tocarse aunque el texto crezca, y los
+     rótulos cortos dejan margen para el móvil que reparta el ancho de otra
+     forma. -->
+<!-- El último margen sobra por la derecha y no molesta: cae dentro del relleno
+     de la tarjeta. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -16,6 +27,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
+        android:layout_marginEnd="10dp"
         android:orientation="vertical">
         <TextView android:id="@+id/s3_v1" style="@style/Cifra" />
         <TextView android:id="@+id/s3_r1" style="@style/CifraRotulo" />
@@ -25,6 +37,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
+        android:layout_marginEnd="10dp"
         android:orientation="vertical">
         <TextView android:id="@+id/s3_v2" style="@style/Cifra" />
         <TextView android:id="@+id/s3_r2" style="@style/CifraRotulo" />
@@ -34,6 +47,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
+        android:layout_marginEnd="10dp"
         android:orientation="vertical">
         <TextView android:id="@+id/s3_v3" style="@style/Cifra" />
         <TextView android:id="@+id/s3_r3" style="@style/CifraRotulo" />

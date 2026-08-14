@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Alto de las casillas de Respuesta. Va en la FILA, no en la casilla: con
+         la fila en `wrap_content` cada casilla medía según su texto y la
+         cuadrícula salía desigual. Con el alto en la fila, las de dentro usan
+         `match_parent` y salen todas exactamente iguales. -->
+    <dimen name="casilla_alto">158dp</dimen>
+</resources>

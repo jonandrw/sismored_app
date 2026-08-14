@@ -8,6 +8,7 @@ import android.graphics.Path
 import android.util.AttributeSet
 import android.view.View
 import kotlin.math.exp
+import kotlin.math.hypot
 import kotlin.math.min
 import kotlin.math.sin
 
@@ -642,5 +643,84 @@ class VistaConsola @JvmOverloads constructor(ctx: Context, attrs: AttributeSet? 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         reloj.removeCallbacks(tic)
+    }
+}
+
+/**
+ * La onda de la cuenta atrás: un anillo que nace en el número y se expande hasta
+ * salirse de la pantalla, una vez por segundo.
+ *
+ * Está por debajo de todo y no tapa nada. No es un adorno gratuito: la pantalla
+ * de «¿estás bien?» la mira alguien que acaba de sentir un terremoto y que puede
+ * estar mirándola sin leerla, y un movimiento que sale del número y barre la
+ * pantalla dice «esto está corriendo» sin pedirle que lea nada. Es la misma
+ * información que el sonido de cada segundo, por el otro sentido.
+ *
+ * Se apaga sola: cuando el último anillo se sale, deja de repintar. Sin eso
+ * estaría dibujando a 60 Hz para siempre en una pantalla que puede quedarse
+ * encendida horas.
+ */
+class VistaOndaCuenta @JvmOverloads constructor(ctx: Context, attrs: AttributeSet? = null) :
+    View(ctx, attrs) {
+
+    /** Cuánto tarda un anillo en cruzar la pantalla. Más que un segundo a
+     *  propósito: así siempre hay dos vivos y la onda se ve continua. */
+    private val duracion = 1500L
+    private val nacidos = ArrayList<Long>(4)
+    private var cx = -1f
+    private var cy = -1f
+    private val p = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
+
+    /** El centro, tomado de la vista del número: la onda tiene que salir de ahí,
+     *  no del centro geométrico de la pantalla. */
+    fun centrarEn(v: View) {
+        val mio = IntArray(2); val suyo = IntArray(2)
+        getLocationOnScreen(mio); v.getLocationOnScreen(suyo)
+        cx = (suyo[0] - mio[0] + v.width / 2).toFloat()
+        cy = (suyo[1] - mio[1] + v.height / 2).toFloat()
+    }
+
+    fun latir() {
+        nacidos.add(System.currentTimeMillis())
+        while (nacidos.size > 3) nacidos.removeAt(0)
+        invalidate()
+    }
+
+    override fun onDraw(c: Canvas) {
+        val an = width.toFloat(); val al = height.toFloat()
+        if (an <= 0 || al <= 0 || nacidos.isEmpty()) return
+        val x = if (cx >= 0) cx else an / 2
+        val y = if (cy >= 0) cy else al / 2
+        // hasta la esquina más lejana: la onda tiene que salirse de la pantalla,
+        // no pararse en el borde más cercano
+        val rMax = maxOf(
+            hypot(x, y), hypot(an - x, y), hypot(x, al - y), hypot(an - x, al - y)
+        )
+        val ahora = System.currentTimeMillis()
+        val vivos = ArrayList<Long>(nacidos.size)
+        for (t0 in nacidos) {
+            val t = (ahora - t0) / duracion.toFloat()
+            if (t >= 1f) continue
+            vivos.add(t0)
+            /* Desacelera al alejarse (raíz) y se apaga al cubo: casi todo el
+               brillo está en el primer tercio, junto al número, y el resto es un
+               rastro que se va. Con alfa lineal parecía un aro de neón. */
+            val r = rMax * kotlin.math.sqrt(t)
+            val a = ((1f - t) * (1f - t) * (1f - t) * 215f).toInt().coerceIn(0, 255)
+            p.color = context.getColor(R.color.rd)
+            p.alpha = a
+            p.strokeWidth = px(this, 6f) * (1f - t) + px(this, 0.7f)
+            c.drawCircle(x, y, r, p)
+            /* El destello: los primeros 200 ms el anillo va acompañado de un
+               segundo trazo más ancho justo detrás. Es lo que hace que parezca
+               que sale DEL número en vez de aparecer alrededor. */
+            if (t < 0.14f) {
+                p.alpha = (a * (1f - t / 0.14f) * 0.5f).toInt().coerceIn(0, 255)
+                p.strokeWidth = px(this, 22f) * (1f - t / 0.14f)
+                c.drawCircle(x, y, r * 0.72f, p)
+            }
+        }
+        nacidos.clear(); nacidos.addAll(vivos)
+        if (nacidos.isNotEmpty() && isShown) postInvalidateOnAnimation()
     }
 }

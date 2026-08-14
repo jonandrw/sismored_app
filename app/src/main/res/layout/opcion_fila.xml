@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Una fila del centro de opciones: azulejo con el icono, título, qué hace, y
+     el chevron.
+
+     Sustituye a seis botones idénticos en gris claro sobre gris oscuro, dos de
+     ellos con el mismo candado y varios partidos en dos líneas. Lo que arregla:
+
+       · El azulejo separa el icono del fondo y da relieve; sin él la fila se ve
+         plana por mucho color que se le eche.
+       · El título va en caja baja: en versalitas y del mismo tamaño que todo lo
+         demás, los seis rótulos se leían igual y ninguno destacaba.
+       · Debajo, en gris, qué hace de verdad. «Acerca de» o «Probar la ficha» no
+         significan nada la primera vez.
+       · Y el chevron dice que lleva a otro sitio, que es información que antes
+         no estaba en ninguna parte.
+
+     El chevron es la flecha de volver girada: no hace falta un icono nuevo. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="10dp"
+    android:background="@drawable/fila_op"
+    android:baselineAligned="false"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="14dp">
+
+    <FrameLayout
+        android:id="@+id/of_azulejo"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
+        android:background="@drawable/azulejo">
+
+        <ImageView
+            android:id="@+id/of_icono"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="center"
+            android:contentDescription="@null"
+            android:tint="@color/tx" />
+    </FrameLayout>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/of_titulo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/montserrat"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textColor="@color/tx"
+            android:textSize="13.5sp" />
+
+        <TextView
+            android:id="@+id/of_desc"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:breakStrategy="simple"
+            android:hyphenationFrequency="none"
+            android:lineSpacingMultiplier="1.3"
+            android:textColor="@color/dim"
+            android:textSize="11.5sp" />
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/of_flecha"
+        android:layout_width="26dp"
+        android:layout_height="26dp"
+        android:layout_marginStart="8dp"
+        android:contentDescription="@null"
+        android:rotation="180"
+        android:src="@drawable/ic_atras"
+        android:tint="@color/ctl" />
+</LinearLayout>

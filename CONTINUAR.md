@@ -24,13 +24,25 @@ No es una lista de deseos: es el orden en que hay que hacerlo, y cada punto desb
 al siguiente. Está escrito porque la tentación siempre es añadir funciones nuevas, y lo
 que falta no son funciones.
 
-**Primero, lo que ya puede dañar.** El detector de estruendo lanza PÁNICO solo, y el
-banco con audio real dice: derrumbe 3 de 8, escombros 0 de 4, nueve animales leídos como
-«grito», la voz que no se enciende nunca, tres falsos derrumbes con maquinaria. Una
+> **Al día de hoy esto ya no lo decide un detector, lo decide la cascada**
+> (`CASCADA.md` y `Cascada.kt`): el estruendo y la caída libre son pruebas, no
+> alarmas, y quien elige entre callar, preguntar, encender la baliza o gritar es
+> una sola función con doce escenarios comprobados en dos móviles. Lo de abajo
+> sigue siendo cierto sobre el detector; lo que ha cambiado es que ya no manda él.
+
+**Primero, lo que ya puede dañar.** El detector de estruendo ya no lanza PÁNICO solo
+—pide que el acelerómetro corrobore—, pero por el lado del micrófono el banco con
+audio real dice **32,7 estruendos por hora** sobre el material que tendría que callar.
+Reconoce los ocho derrumbes de ocho, y ese es justo el problema: oye de todo. Una
 alarma falsa en una red de emergencia no cuesta cero: quema la confianza de quien la
 recibe, y la próxima vez ya no corre. **Decisión pendiente del autor**: dejarlo
 desarmado de fábrica hasta que el banco dé números defendibles, o aceptar los falsos
 positivos a cambio de no perder derrumbes. No es una decisión técnica.
+
+Y hay un fallo peor que los falsos, porque va en la dirección que mata: **ocho de once
+animales se leen como «grito»**, y un llanto ahogado de persona se lee como «animal».
+El código dice, con estas palabras, que ante la duda hay que decir grito porque
+equivocarse hacia «es un perro» cuesta una vida. Hoy se equivoca hacia los dos lados.
 
 **Segundo, las tres medidas físicas.** Ninguna necesita programar nada, y las tres
 convierten una suposición razonada en un dato:
@@ -50,8 +62,11 @@ sintético pasa y la corroboración funciona, pero nadie ha visto un salto real.
 
 **Cuarto, los detectores con el audio real de `fx sounds/`.** La pista sin explorar
 sigue siendo la misma: la modulación de la envolvente a baja frecuencia — un motor tiene
-una periodicidad marcada a su régimen de giro que un derrumbe no tiene. Y faltan
-grabaciones de golpes, que es justo como pide ayuda alguien atrapado.
+una periodicidad marcada a su régimen de giro que un derrumbe no tiene. Y lo que falta
+no es sobre todo código: faltan **horas de `Ambiente/`** para poder calcular los falsos
+por hora de un día normal —hoy hay 44 segundos— y faltan **grabaciones de golpes**, que
+es justo como pide ayuda alguien atrapado. Las dos carpetas llevan dentro un `LEEME.md`
+diciendo qué grabar, y no hace falta programar para llenarlas.
 
 **Quinto, y es el que más vale**: que esto lo use media hora alguien que rescate para
 vivir. Las decisiones de flujo —que el buscador no grite, hablar y callarse, mirar la
@@ -324,18 +339,22 @@ instantánea). Exigir corroboración del acelerómetro para la alarma disparada 
 mata la mayoría de los falsos positivos sin bajar la sensibilidad del micrófono. Es un
 `if`, y resuelve el problema número uno de la hoja de ruta.
 
-**2. Medir falsas alarmas por hora, no aciertos.** `banco.py` cuenta aciertos y fallos
-por carpeta. Para un sistema de emergencia la cifra que decide es **falsos SOS por
-hora** sobre horas de audio ambiente normal. Un detector con 99 % de acierto que grita
-una vez por hora es inservible; uno que dice «no estoy seguro» es mucho mejor que uno
-que grita cada vez que alguien cierra una puerta. Va con esto un estado **NO
-CONCLUYENTE**: no obligar al clasificador a elegir cuando no sabe.
+~~**2. Medir falsas alarmas por hora, no aciertos.**~~ **hecho en el banco.**
+`banco.py` da los falsos por hora de las carpetas que tienen que callar, con el
+estruendo aparte porque es el único que puede levantar la sirena él solo. Lo que
+falta ya no es código: son **horas de `Ambiente/`**, porque una tasa por hora medida
+sobre once minutos de efectos de sonido no es la tasa de un día normal. El estado
+**NO CONCLUYENTE** resultó estar ya en la app —cuando dos clases empatan no acumula
+ninguna—, así que solo hacía falta contarlo: y casi nunca pasa. El motor no duda
+entre dos clases; o ve una, o no ve nada.
 
-**3. Guardar los falsos positivos como material de entrenamiento.** Cada vez que la app
-se equivoque en una prueba real, esa grabación va a `fx sounds/Falsos/` y entra en el
-banco. Es la forma más rápida de mejorar, porque enseña justo el error que comete. Y el
-banco de FX puede usarse como «átomos»: mezclar cada golpe con ruido, reverberación y
-atenuación para generar miles de escenarios en vez de tener 63 archivos.
+**3. Guardar los falsos positivos como material de entrenamiento.** La carpeta
+`fx sounds/Falsos/` ya existe, con su `LEEME.md` y contada como carpeta de silencio:
+cada archivo que entre ahí empeora la cifra de falsos por hora hasta que alguien la
+arregle, que es exactamente lo que tiene que pasar. Está vacía porque la app todavía
+no se ha llevado a campo. Lo que sigue pendiente son los **«átomos»**: mezclar cada
+golpe con ruido, reverberación y atenuación para generar miles de escenarios en vez
+de tener 63 archivos.
 
 **4. La baliza BLE no tiene saltos, y la acústica sí.** La malla acústica reenvía la
 alerta hasta cuatro móviles de distancia; la baliza de radio no reenvía nada. La idea de
@@ -389,25 +408,81 @@ forma pasiva. Es más segura que meterla en el anuncio.
 
 ## El problema abierto de verdad: los detectores
 
-La biblioteca de sonidos reales (`fx sounds/`, 63 MP3 en 9 categorías, ya
-convertidos a WAV mono 48 kHz en `fx sounds/wav/`) demostró que **el detector no
-está listo para el campo**. Las pruebas sintéticas dan 5/5 y la realidad no:
+La biblioteca de sonidos reales (`fx sounds/`, 63 MP3 en diez carpetas, tres de
+ellas todavía vacías) demostró que **el detector no está listo para el campo**. Las
+pruebas sintéticas dan 5/5 y la realidad no. La estructura de carpetas y qué se
+espera de cada una está en `fx sounds/README.md`; el sitio del archivo **es** su
+etiqueta, y el banco la lee de ahí.
+
+Banco de medida, corre en once segundos y sin móvil:
+
+```bash
+cd "fx sounds" && ./convertir.sh && python banco.py wav
+```
+
+Las perillas van por variable de entorno: `UMB_EST_DB=-30 python banco.py wav`. Los
+valores por defecto **son los de `Escucha.kt`**: correr el banco sin tocar nada mide
+la app que se instala, y eso ahora es cierto —no lo era.
+
+### Lo que el banco dice hoy
 
 | carpeta | acierta | se equivoca |
 |---|---|---|
-| Derrumbe (8) | 3 | 5 pasan por alto |
-| Escombros (4) | 0 | los 4 pasan por alto |
-| Animales (11) | 0 | 9 leídos como «grito» |
-| Humanos (21) | — | «voz» no se enciende NUNCA |
-| Maquinaria (11) | 6 en silencio | 3 falsos derrumbes |
+| Derrumbe (8) | **8**, en 0,9 s de mediana | — |
+| Escombros (4) | 0 | 2 leídos como grito o animal, 2 mudos y sin acercarse |
+| Animales (11) | 1 | **8 leídos como «grito»**, o sea como una persona |
+| Humanos (21) | — | 1 estruendo, y un llanto ahogado leído como «animal» |
+| Maquinaria (11) | 8 en silencio | 3 falsos derrumbes |
+| Rescatistas (7) | — | 2 falsos derrumbes (helicóptero y camión) |
 
-Banco de medida, corre en segundos y sin móvil:
+Y una que sobrevivió a la corrección del banco, así que ya se puede firmar: **el
+detector de voz no se enciende ni una sola vez** contra las 21 grabaciones humanas
+—ni con el tope de oscilación bueno ni con rodaje—, mientras que «grito» salta en 13
+de ellas. Era la sospecha sobre la que se decidió que el interfono no colgara de él,
+y era correcta.
 
-```bash
-cd "fx sounds" && python banco.py wav
-```
+Y la tabla que de verdad decide, **falsos por hora** sobre las carpetas que tienen
+que callar: **32,7 estruendos/hora** y 267/hora de los otros cuatro, sobre once
+minutos de audio. Un detector que acierta el 99 % pero grita una vez por hora es
+inservible, porque a la tercera vez nadie corre. Dos advertencias sobre ese número:
 
-Las perillas van por variable de entorno: `UMB_EST_DB=-25 python banco.py wav`.
+- Es la cota superior **por el lado del micrófono**. Desde que el estruendo pide
+  corroboración del acelerómetro, un estruendo de esos solo levanta la sirena si el
+  móvil se está moviendo además.
+- Es material adverso a propósito —generadores, martillos, sirenas—, no una casa un
+  martes por la tarde. La cifra de uso normal necesita **horas** de `Ambiente/`, y
+  hoy hay 44 segundos. Hasta entonces esa cifra no existe; no es que sea buena.
+
+### Lo que cambió en el banco, y por qué los números de antes eran falsos
+
+Aquí decía «derrumbe 3 de 8». Eran 3 de 8 **del banco**, no del detector:
+
+1. **El banco se había separado de `Escucha.kt`.** El tope de oscilación del tono
+   seguía en 0,35 cuando en la app era 1,2 —de ahí salió el «la voz no se enciende
+   NUNCA», que era un artefacto—, al grito y a la voz les faltaba la puerta de
+   novedad, y el umbral del estruendo estaba en −40 en vez de −25. Si se toca un
+   umbral, se toca en los dos sitios en la misma sesión.
+2. **Cada clip arrancaba en frío.** Los efectos de sonido vienen recortados al
+   ataque, así que el fondo adaptativo se enganchaba al propio derrumbe durante los
+   doce ticks de calentamiento y la novedad salía cero: el detector se quedaba ciego
+   justo en los archivos más brutales. La app no funciona así —el micrófono lleva
+   horas abierto oyendo una habitación—, y su propio autotest ya metía silencio
+   delante (`SILENCIO_N`). Ahora el banco pone delante 1,7 s de habitación a
+   −72 dBFS, que es el fondo que midió el interfono en el A10s. Solo con eso, el
+   derrumbe pasó de 3 de 8 a 8 de 8 sin tocar una línea de Kotlin.
+3. **Menos `Ambiente/` y `Maquinaria/`**, que arrancan en frío a propósito: un
+   generador lleva media hora encendido cuando el móvil lo oye, ya *es* el fondo, y
+   ponerle delante una habitación en silencio le regalaría tres falsos que no tiene.
+   Esa decisión sola mueve la maquinaria de 6 falsos derrumbes a 3.
+4. **Ya no para en el primer disparo**, que es lo que hacía imposible contar falsos
+   por hora: un archivo con un falso y otro con veinte contaban igual. Ahora corre
+   hasta el final con el enfriamiento de cada detector, el mismo del móvil.
+
+También cuenta lo que la app llama **no concluyente** —los ticks en que había dos
+candidatos y ninguno se despegó del otro—, y sale un dato: casi nunca pasa. El motor
+no duda entre dos clases; o ve una, o no ve nada. Y por archivo dice **cuánto llegó a
+llenarse el acumulador**, que es lo que separa «no dispara por poco» de «no lo ve en
+absoluto»: los dos escombros mudos están al 0 %, no al 90.
 
 **Callejones sin salida ya explorados** — no repetirlos: para separar un generador
 diésel de un derrumbe no sirve la planitud espectral (se solapan, 0,00–0,18 contra
@@ -422,6 +497,593 @@ detector no se ha comprobado nunca contra audio real. Hoy un fuego crepitando lo
 dispara.
 
 ---
+
+## La cascada de decisión (nueva, y es la base de lo que viene)
+
+Está entera en `CASCADA.md`. Lo que hay que saber sin abrirlo:
+
+- **`Postura.kt`** contesta a «de quién me fío»: `EN_REPOSO` / `ENCIMA` /
+  `DESCONOCIDO`. En reposo el acelerómetro es un sismógrafo; encima de una
+  persona mide a la persona. Es la misma decisión con la que el sistema de alerta
+  sísmica de Android lleva tres años y **tres** alertas falsas: solo vigila con el
+  móvil quieto y enchufado, y quien decide de verdad es la agregación de muchos
+  móviles. Nuestra malla es esa agregación.
+- **Medido, y desmonta una suposición**: ni el Redmi (Android 15) ni el A10s
+  (Android 11) tienen `TYPE_STATIONARY_DETECT` ni `TYPE_MOTION_DETECT`. Los
+  detectores de un disparo de AOSP no están en estos móviles, así que el respaldo
+  por acelerómetro no es un plan B: es el plan A. Verificado en el A10s — sobre
+  una mesa pasa a `EN_REPOSO` a los 30 s y a los 84 s seguía sin un solo falso.
+- **El contador de pasos sí está** en los dos, y pide `ACTIVITY_RECOGNITION`
+  (séptimo permiso, ya en el manifiesto y en la bienvenida). `pm grant` funciona
+  en el Samsung y **falla en HyperOS**, como todo lo demás.
+- **Nadie adivina si estás enterrada: se pregunta.** ESTOY BIEN con 60 s de cuenta
+  atrás, contestable desde la notificación sin desbloquear, y el silencio es la
+  respuesta. Cubre de una vez a la que huye, la que duerme, la inconsciente y la
+  que tiene el móvil a tres metros.
+- **La escalera de acciones** separa lo barato de lo caro: baliza silenciosa con
+  evidencia floja, sirena solo con mucha. Ahí está la respuesta al «99 % de
+  certeza» — no todas las acciones necesitan la misma.
+- **Dos falsos apagados con un `if`**: el móvil que se cae de la mesa y el
+  generador diésel ya no pueden encender nada sin que el suelo se haya movido.
+- `Cascada.autotest()` corre los **doce escenarios** dentro de COMPROBAR QUE TODO
+  FUNCIONA. Pasan los doce en los dos móviles.
+
+- **La pantalla «¿ESTÁS BIEN?» está hecha** (`PreguntaActivity`): sale por dos
+  caminos —la actividad y una notificación con `fullScreenIntent`— para que
+  ninguno dependa del otro, con un tic por segundo por el canal de alarma y una
+  onda que sale del número. Verificada en el A10s, incluido que sobrevive a
+  apagar y encender la pantalla y que la cuenta atrás sigue corriendo.
+- **Hay un simulacro** en Diagnóstico para poder verla sin un terremoto. No puede
+  escalar: sin sacudida la cascada se queda en NADA, comprobado dejándola vencer.
+- **El repetidor está hecho**, y al hacerlo apareció un agujero que ya existía:
+  **la malla solo reenviaba estando en alarma**, así que el que buscaba oía la
+  alerta y la cadena se cortaba ahí — justo lo contrario de lo que decía su
+  propio comentario. Ahora `MallaAcustica.reenviar()` lo usan los tres que oyen
+  sin sonar: el silenciado, el buscador y el repetidor.
+
+- **La última posición conocida está hecha** (`Ubicacion.kt`), y con una regla que
+  no se puede relajar sin volver a discutirla: **la app no enciende el GPS ni una
+  vez**. Solo lee `getLastKnownLocation` —un arreglo que ya hizo otra app—, lo
+  guarda en disco, caduca a las 24 h y sale por Wi-Fi con la ficha, solo con
+  alarma o rescate. Eso cambió una promesa que estaba escrita en tres sitios, así
+  que cambiaron los tres: el manifiesto, Diagnóstico («GPS encendido por la app:
+  NUNCA» + «Última posición conocida» con su antigüedad) y el paso 3 de la ficha.
+  Verificado en el A10s: posición de hace 5 min, ±100 m, sin encender nada.
+
+Lo que falta está al final de `CASCADA.md`: medir los 60 s con gente, ver un
+salto real entre dos móviles y el detector de golpes contra audio real.
+
+## La ficha por Wi-Fi: por qué no funcionaba entre dos móviles
+
+Síntoma: en la misma red, uno se veía y el otro no. Eran **tres fallos
+distintos**, y ninguno daba el menor error — de ahí que pareciera «que el móvil
+no accede a la red».
+
+1. **Faltaba el `MulticastLock`.** Sin él, el chip de Wi-Fi descarta los paquetes
+   de difusión antes de que Android los vea. Y depende del fabricante: el Redmi
+   los dejaba pasar y el A10s no, así que probándolo en un móvil parecía
+   funcionar. Arreglado — se coge al empezar a escuchar y se suelta al parar.
+   Necesita `CHANGE_WIFI_MULTICAST_STATE`, que no se le pide al usuario.
+2. **La difusión podía salir por los datos móviles.** Con datos encendidos la
+   ruta por defecto es la del operador, y una difusión que sale por ahí no la ve
+   nadie de la red local. Ahora el socket se ata a la red Wi-Fi
+   (`Network.bindSocket`).
+3. **Fallaba callado en tres sitios más**: la ficha vacía no se emitía sin
+   decirlo, «no hay Wi-Fi» tampoco, y ninguna interfaz aceptando la difusión
+   tampoco. Los tres se anotan ahora en el registro y se resumen en Diagnóstico
+   («Ficha por Wi-Fi»).
+
+### Lo que NO se puede arreglar desde la app, y hay que saberlo
+
+**El A10s no recibe difusiones con la pantalla apagada.** Ni con el candado de
+difusión ni con el de rendimiento (`WIFI_MODE_FULL_HIGH_PERF`) cogidos — se
+comprobó con los dos puestos y la pantalla apagada, y no llega nada; se enciende
+la pantalla y llega al instante. El mismo Redmi, con la pantalla apagada, **sí**
+recibe. Es el firmware de ese Wi-Fi y no hay API que lo cambie.
+
+Mitigación puesta: además de difundir, se manda **por unicast a los móviles que
+ya han contestado alguna vez**, porque un paquete dirigido sí pasa el filtro
+dormido. No arregla el primer contacto —para eso hace falta que el que recibe
+tenga la pantalla encendida—, pero una vez que dos móviles se han visto ya no se
+pierden. En el escenario real esto encaja: quien busca lleva la app abierta y
+mirando, y quien está atrapado es el que emite.
+
+Y el candado de rendimiento **solo se coge cuando hay motivo** —buscando, en
+alarma, en rescate o de repetidor—, porque mantiene la radio despierta y eso
+cuesta batería. Va en el latido del servicio y no en el bucle que pinta la
+pantalla: ese se para justo cuando hace falta.
+
+### Cómo se prueba, ahora sin adivinar
+
+Diagnóstico → **PROBAR LA FICHA POR WI-FI CON OTRO MÓVIL**. Manda un datagrama
+con un nombre falso —no enseña la ficha real ni enciende ninguna alarma—, deja la
+escucha a tope dos minutos, y en el otro móvil tiene que aparecer «PRUEBA» en
+Buscar. Comprobado en los dos sentidos entre el Redmi (192.168.101.22) y el A10s
+(192.168.101.27).
+
+## SILENCIO EN LA ZONA (nuevo, y a medio verificar)
+
+Un sexto código en la malla, `CODIGO_SILENCIO` a **18,8 kHz**. Lo emite quien
+busca —botón PEDIR SILENCIO EN LA ZONA, debajo de LLAMAR HACIA ABAJO— y todo
+móvil que lo oiga se calla cinco minutos: sirena, vibración, sonda y emisión
+acústica. **La baliza de radio sigue**, porque no hace ruido y es lo único que
+atraviesa el escombro; callarse entero sería desaparecer justo cuando te buscan.
+
+Existe porque los equipos de rescate escuchan con micrófonos de contacto y
+geófonos en la banda baja y piden silencio absoluto en el sitio. Una sirena tapa
+exactamente lo que buscan. Si SismoRed no puede callarse cuando se lo piden, deja
+de ser una ayuda.
+
+Y sabiendo lo que NO alcanza: a 17-18 kHz esto no atraviesa una losa, así que no
+va a llegar al móvil enterrado —ese ya está en modo rescate, un pulso cada 12 s—.
+Va dirigido a los móviles de la superficie y de alrededor, que son muchos, están
+al aire y son los que de verdad hacen ruido.
+
+**Al hacerlo apareció un fallo viejo**: el autotest de la malla recortaba a
+`MAX_HOP`, así que probaba cuatro veces los cuatro saltos y **la llamada (18,4
+kHz) no se había probado nunca** — ni ahora el silencio. Corregido: se prueban
+los seis códigos. Con eso, los seis decodifican OK en el A10s.
+
+### Lo que falta de esto, y es lo importante
+
+**No está confirmado que 18,8 kHz sobreviva el viaje por el aire.** El decodificador
+lo lee perfecto con señal sintética, y el Samsung emite el tono (`salto=6 tx=3` en
+el registro), pero el Redmi a 40 cm no lo anotó. No se pudo distinguir entre «el
+altavoz no llega a 18,8 kHz» y «la malla del Redmi no estaba escuchando». Es la
+misma prueba pendiente que la malla entera: **dos móviles, de verdad**. Hasta
+entonces el silencio es código que compila y decodifica, no una función que se
+pueda prometer.
+
+## La sonda, la respiración y el doppler: por qué no aportaban nada
+
+Las tres estaban calibradas contra señales sintéticas generosas. Al medirlas
+contra su propia física, las tres tenían el mismo tipo de fallo — y ninguno era
+de calibración de campo: **eran de aritmética, y se podían haber encontrado sin
+salir de casa**.
+
+### El eco pedía un eco cuatro veces mayor del que existe
+
+La amplitud que devuelve una pared es `(camino_directo / 2d) · R`, con el camino
+altavoz→micrófono ≈ 15 cm:
+
+| | hormigón (R≈0,9) | tabique (R≈0,5) |
+|---|---|---|
+| 1,0 m | 6,8 % | 3,8 % |
+| 2,0 m | 3,4 % | 1,9 % |
+
+El umbral estaba en **12 %**. O sea que no podía ver una pared a más de medio
+metro. Ahora hay un modelo físico en el código (`ecoFisico`), el umbral sale de
+él (3 % en la pila) y hay cuatro casos de prueba con amplitudes reales.
+
+### Y aun así medía el teléfono, no la sala
+
+Lo dijo una prueba de campo que ninguna prueba sintética habría dado: **las
+mismas cuatro superficies tapando el móvil con objetos encima**. Dos causas
+encadenadas:
+
+1. `apilar()` terminaba en `.take(4)`, así que **decía «4 superficies» siempre que
+   hubiera cuatro o más**. Era un tope disfrazado de medida.
+2. Esos cuatro eran rebotes de la propia carcasa y lóbulos del chirp: fijos,
+   presentes en los ocho disparos, y con el umbral al 3 % pasaban de sobra. Los
+   ecos de verdad quedaban por debajo y nunca entraban en la lista.
+
+Arreglado como se hace en cualquier radar con su acoplo directo: **aprender la
+firma del móvil y restarla**. Botón `APRENDER ESTE MÓVIL` en la tarjeta de la
+sonda — se sujeta lejos de todo, una ráfaga, y a partir de ahí se resta. La
+regresión reproduce el síntoma: *antes: pared=true y 3 fantasmas · después:
+pared=true y 0 fantasmas*. Y si no se ha aprendido, el registro lo dice.
+
+**Pendiente**: probarlo en el móvil. Sin aprender la firma, el eco sigue midiendo
+el teléfono.
+
+### La respiración medía donde la señal no está
+
+`Microfono.N` = 2048 a 48 kHz → cada bin son **23,4 Hz**, y el análisis miraba
+bandas laterales desde el bin 3, o sea **70 Hz**. Un tórax respirando desplaza
+**0,5 Hz**: la cincuentava parte de UN bin. No era poca sensibilidad, era el
+sitio equivocado — por eso no detectaba a nadie ni a diez centímetros.
+
+A 18,5 kHz la longitud de onda son 1,85 cm, así que 5 mm de excursión de tórax
+son **3,4 radianes de fase**. Ahora se demodula en I/Q con el índice absoluto de
+muestra y la serie es la **fase desenrollada**; `periodicidad()` no se tocó.
+
+Y el falso positivo de campo —**un ventilador oscilante leído como «PROBABLE
+CUERPO HUMANO, 9 respiraciones por minuto»**— salía justo en el borde de abajo de
+la banda. 9/min = 0,15 Hz = un ventilador que barre cada 6-7 s. La banda empieza
+ahora en **0,20 Hz (12/min)**: un adulto en reposo respira de 12 a 20, y alguien
+atrapado respira más deprisa, no más despacio. El caso de prueba que decía «9/min
+es respiración» ahora es la regresión que dice que es un ventilador.
+
+### El doppler no llegaba a ver a alguien andando
+
+Misma aritmética: la banda empezaba en el bin 3 = 70 Hz = **0,65 m/s**, y por una
+habitación se anda a 0,4-0,6 m/s. Por eso dio «0,2 veces el fondo» con gente
+circulando. Ahora empieza en el bin 2 (0,43 m/s). Al bin 1 no se baja: ahí manda
+la fuga de la portadora y la deriva de reloj entre altavoz y micrófono.
+
+### Y dos fallos del propio banco de pruebas
+
+- `return todo && autotestRespiracion()` — el `&&` corta, así que **un caso de la
+  sonda en rojo se saltaba la batería entera de respiración** sin decir nada.
+- Los autotests corrían **en el hilo principal**, y al engordar los de la sonda
+  colgaban la app al arrancar: «SismoRed no responde» si tocabas la pantalla en
+  esos segundos. Era el «a veces falla» que se veía en el Samsung. Ahora van en su
+  hilo, y comprobado aporreando la pantalla nada más arrancar: cero ANR.
+- De paso: `Ubicacion.refrescar()` se me había colado en el repintado del
+  diagnóstico, o sea llamadas al servicio de ubicación **en el hilo de la
+  interfaz** varias veces por segundo. Quien refresca es el servicio; la pantalla
+  solo lee.
+
+## Vigilancia de día y de noche, sin mirar el reloj
+
+La idea era un «modo vigía nocturno» que se alternase solo. Se hizo, pero **por
+estado y no por hora**: el reloj se equivoca con quien trabaja de noche, con la
+siesta y con el móvil olvidado en la mesa toda la tarde. `Postura` ya distingue
+`EN_REPOSO` de `ENCIMA` **midiendo**, y es el mismo criterio con el que el
+sistema de alerta sísmica de Android lleva tres años: quieto y enchufado.
+
+Lo que cambia: **el umbral sísmico ya no es un número fijo**, son dos.
+
+- `ENCIMA` → 6,0 m/s². El conservador. Andar y correr pasan de 3 sin esfuerzo, y
+  aquí no se puede afinar más sin llenar el bolsillo de falsas alarmas.
+- `EN_REPOSO` → 1,2 m/s². Un móvil quieto en una mesilla no anda ni corre, así
+  que casi todo lo que obligaba a poner el listón alto no existe. Y es justo el
+  caso en el que hay alguien durmiendo que no se va a enterar.
+
+Lo elige el latido del servicio, que corre con la pantalla apagada. Verificado en
+el A10s: dejado quieto, pasa de 6,0 a 1,2 él solo y lo dice en la línea de
+estado.
+
+**Y el móvil mide su propio sitio.** `Sismografo.calmaMedida` guarda el percentil
+98 de la sacudida mientras nadie lo toca — sobre una mesa de verdad dio **0,04
+m/s²**, o sea que 1,2 son treinta veces la calma y hay muchísimo margen. Eso
+convierte «elige un umbral en m/s²», que nadie sabe hacer, en «déjalo donde vayas
+a dormir y mira lo que se mueve esa mesa». Una mesa con la lavadora al lado no es
+una mesilla de noche y no tienen por qué compartir número.
+
+El mando de umbral **edita el del régimen en el que esté el móvil**, y la línea
+de estado dice cuál. Un solo control, siempre sobre algo que se puede juzgar. El
+mínimo baja de 0,5 a 0,2 porque en reposo el margen útil está más abajo.
+
+Lo que falta medir: si 1,2 aguanta una noche entera sin falsos con portazos, la
+lavadora y el camión de la basura. Es medida de campo, y ahora se puede hacer
+porque el móvil enseña contra qué compite.
+
+## Por qué la baliza no se activaba (y no era el umbral)
+
+Una prueba de campo lo dejó escrito en el registro, con hora:
+
+```
+20:13:15  cascada(estruendo) -> PREGUNTAR · terremoto confirmado: pregunto si está bien
+20:14:15  cascada(nadie ha contestado) -> NADA · «sacudida con el móvil encima y sin confirmar»
+```
+
+Se preguntó, nadie contestó —que es exactamente el caso que tiene que encender la
+baliza— y decidió **NADA**. Dos fallos encadenados, y ninguno era de sensibilidad:
+
+**1. La prueba caducaba antes que la pregunta.** `temblando` dura un minuto y la
+cuenta atrás dura otro: cuando tocaba juzgar el silencio, la sacudida que había
+justificado preguntar ya no existía. Ahora, **abierto un suceso, su evidencia no
+caduca**: se acumula y solo se borra al cerrar el caso. Preguntar y luego olvidar
+por qué se preguntaba era lo peor de los dos mundos.
+
+**2. El propio terremoto descalificaba al sismógrafo.** Sacudir un móvil que está
+en una mesa reinicia el reloj de quietud, así que el régimen dejaba de ser
+`EN_REPOSO` en cuanto empezaba el suceso — y con ello se perdía el umbral fino
+(1,2) y pasaba a exigir corroboración por audio. Corregido con
+`Postura.regimenRecordado()`: si hace menos de dos minutos estaba en reposo **y no
+ha dado un paso desde entonces**, sigue siendo un móvil en una mesa al que alguien
+está sacudiendo. Los pasos son lo que separa los dos casos, y no hay forma de
+sacudir un móvil dando cero pasos si lo llevas encima. Es el mismo principio que
+ya usaba el sismógrafo congelando su media lenta durante el evento.
+
+Con las dos cosas, la cadena que se esperaba funciona: móvil quieto + sacudida
+inusual → AVISAR al momento → 60 s sin respuesta → BALIZA. Hay una regresión
+nueva en `Cascada.autotest()` con ese escenario exacto («preguntó, nadie contestó,
+lo llevaba encima» → BALIZA). **Falta lanzarla en un móvil**: el Redmi no acepta
+toques por adb y el A10s se desconectó.
+
+## El atajo de volumen, solo con la pantalla apagada o bloqueada
+
+Viendo un vídeo se sube y se baja el volumen sin pensar, y tres toques en tres
+segundos pasan todos los días. Ahí el atajo no aporta nada —si estás mirando el
+móvil tienes el botón de PÁNICO en la pantalla— y en cambio lanza una alerta a
+toda la red por nada. Ahora solo cuenta si la pantalla está apagada o bloqueada.
+
+**Silenciar una alarma que ya suena sigue valiendo siempre**: quien la quiere
+callar la está mirando.
+
+Trampa de Kotlin que costó dos compilaciones: una línea que empieza por `!` se
+pega al tipo de la línea anterior y se lee como `Tipo!`, el tipo de plataforma. El
+error no menciona el signo.
+
+## HyperOS SÍ mata el servicio al cerrar la app, y no hay código que lo impida
+
+Medido deslizando la app fuera de recientes en el Redmi. El registro del sistema
+lo dice con nombre y apellidos:
+
+```
+20:44:35.112  SismoRed: app cerrada desde recientes: la vigilancia sigue   ← la app hizo lo suyo
+20:44:35.338  am_kill: [0,32587,red.sismo,50,OneKeyClean,191740]           ← MIUI la mata 226 ms después
+20:44:35.562  am_proc_died
+```
+
+`onTaskRemoved` se llamó, `stopWithTask="false"` está declarado y el servicio
+estaba en primer plano. Da igual: **`OneKeyClean`, el limpiador de tareas de
+Xiaomi, lo mata de todos modos**, y con el inicio automático desactivado tampoco
+vuelve. Contra eso no hay API.
+
+Lo único honesto es **enterarse y decirlo**, porque lo contrario es que alguien se
+vaya a dormir creyendo que está vigilado:
+
+- El servicio deja un **latido en disco** (`Opciones.latido`) cada 10 s mientras
+  vigila, y marca `deberiaVigilar`.
+- Al abrir la app, si quería vigilar, el latido es reciente y el servicio no está
+  corriendo, no ha sido el usuario: **ha sido el sistema**. Sale un aviso que lo
+  explica y lleva al ajuste de INICIO AUTOMÁTICO (la actividad de MIUI existe en
+  este HyperOS, comprobado con `cmd package query-activities`; hay respaldo a la
+  ficha de la app si no).
+- Y una fila permanente en Diagnóstico: **«Sigue vigilando con la app cerrada»**,
+  en rojo si el móvil la mató. Así no depende de haber visto el aviso.
+
+Verificado en el Redmi simulando la muerte: el aviso sale.
+
+**Lo que hay que decirle al usuario al publicar**: en Xiaomi/Redmi hay que darle
+inicio automático y fijarla en recientes con el candado. Sin eso, SismoRed solo
+vigila con la app abierta — y eso hay que decirlo antes, no después.
+
+## Y ahora hay un apagado de verdad
+
+Y se ha añadido lo que faltaba: **APAGAR SISMORED DEL TODO**, en Diagnóstico, con
+confirmación. Para la vigilancia, el micrófono, la radio y el propio servicio, y
+lo **recuerda** (`Opciones.apagada`) para no encenderse sola al siguiente arranque.
+Una app con micrófono y un servicio que sobrevive a cerrarla necesita una puerta
+de salida clara; sin ella deja de ser una herramienta y pasa a ser algo de lo que
+defenderse. Volver a abrir la app y usarla limpia la marca.
+
+## Cómo se distingue una mano de un terremoto: por el GIRO
+
+El umbral fino en reposo (0,8 m/s²) es inservible si el móvil se cree «en reposo»
+teniéndolo en la mano: una sacudida floja enciende la baliza. Y encontrar el
+discriminador costó descartar tres que no valen:
+
+- **Los pasos no bastan.** Alguien sentado en un sofá coge el móvil sin dar uno.
+- **«Estaba quieto hace dos minutos» tampoco.** Lo estaba — y por eso el móvil en
+  la mano acababa con el umbral fino puesto. Este fallo lo introduje yo al
+  arreglar el anterior.
+- **«Cuánto llevaba quieto justo antes de cruzar el umbral» tampoco.** En un
+  terremoto la sacudida también empieza medio segundo antes del cruce, así que
+  sale pequeño en los dos casos.
+
+Lo que sí los separa es la **orientación**. Un móvil en una mesa apunta siempre al
+mismo sitio: durante un terremoto se sacude, pero la gravedad le sigue entrando
+por la misma cara — el suelo se mueve, la mesa no gira. Una mano no puede
+sostener nada sin girarlo.
+
+`Sismografo.giroGrados`: gravedad filtrada (α = 0,02) y ángulo máximo contra las
+direcciones de los últimos 15 s. **Medido en el Redmi sobre una mesa: 0,0–0,2°.**
+El corte está en 10°, así que el margen es de dos órdenes de magnitud. Y manda
+sobre todo lo demás: si ha girado, hay una mano, y se acabó el umbral fino.
+
+Se ve en la pantalla de inicio junto al umbral («giro X°»), para poder
+comprobarlo sin herramientas.
+
+**Falta medirlo con el móvil en la mano** y andando, que es la otra mitad de la
+prueba. Si en la mano da menos de 10°, hay que bajar el corte; con 0,2° de mesa
+hay sitio de sobra.
+
+### Y el umbral en reposo baja a 0,8 m/s², con la escala de Mercalli detrás
+
+| MMI | aceleración de pico | qué se siente |
+|---|---|---|
+| IV | 0,14–0,38 m/s² | se nota dentro de casa |
+| V | 0,38–0,90 m/s² | **lo nota todo el mundo, se despierta la gente** |
+| VI | 0,90–1,77 m/s² | los muebles se mueven, daño leve |
+
+Con 1,2 solo saltaba ya metido en MMI VI. Con 0,8 salta dentro de MMI V, que es
+donde alguien dormido tiene que enterarse — y sigue siendo veinte veces la calma
+medida en una mesa real (0,04 m/s²). Lo que hace seguro bajarlo no es la
+amplitud, es la **duración**: hay que aguantar 0,6 s seguidos por encima. Un
+portazo es un pico; un terremoto sacude segundos.
+
+## La pantalla ACERCA DE (hecha, y en parte es obligatoria)
+
+Se llega desde Diagnóstico. No es cortesía:
+
+- **La política de privacidad tiene que estar accesible dentro de la app.** Lo
+  exige Google Play para cualquier app, y aquí hay ficha médica (dato de salud),
+  micrófono y ubicación.
+- **El permiso de accesibilidad hay que justificarlo donde se lea.** Es el mayor
+  riesgo de rechazo que tiene este proyecto: Play exige que las APIs de
+  accesibilidad se usen para accesibilidad, y aquí se usan para oír el botón de
+  volumen con la pantalla apagada. La tarjeta lo dice con todas las letras: no
+  lee la pantalla, ni lo que escribes, ni otras apps.
+- **Una app que dice detectar terremotos tiene que decir lo que NO puede hacer.**
+  Hay una tarjeta entera en rojo: no sustituye a los servicios de emergencia, no
+  garantiza que te encuentren, no detecta personas —detecta móviles— y no
+  predice nada.
+
+Seis tarjetas: qué es · lo que no puede hacer · tus datos · por qué cada permiso ·
+preguntas frecuentes · contacto y versión. La versión se lee del propio paquete,
+que escribirla a mano es garantizar que algún día mienta. El contacto es el
+repositorio, que ya estaba documentado; no se inventó ningún correo.
+
+Jerarquía igual que la pantalla de «¿estás bien?»: **rótulo rojo pequeño →
+titular blanco de una frase → cuerpo gris** (`TitularTarjeta` en themes.xml). Sin
+el titular, una tarjeta de texto largo es un muro que nadie lee.
+
+**Sin revisar en pantalla**: el Redmi no acepta toques por adb y el A10s está
+desconectado, así que compila e instala pero nadie la ha visto todavía.
+
+## La malla se inventaba balizas, y lanzaba la alarma entera
+
+El fallo más grave encontrado hasta ahora, y salió de una queja vaga —«al revisar
+permisos se disparó la baliza»— que resultó no tener nada que ver con los
+permisos. El registro:
+
+```
+panico(malla acústica (salto 2))
+panico(malla acústica (salto 4))
+```
+
+Medido con el móvil quieto en una mesa y **ningún otro emitiendo**:
+
+| | antes | después |
+|---|---|---|
+| candidatos («puede ser una alerta») | **866** | **0** |
+| balizas confirmadas | **27** | **0** |
+| alarmas completas lanzadas | **2** | **0** |
+
+El ruido ultrasónico de una habitación normal —cargadores, pantallas, focos LED—
+tiene energía de sobra para pasar los 10 dB de margen sobre el suelo que pedía el
+detector. Y una vez pasado el primer filtro, la corroboración no podía salvarlo:
+con 866 candidatos, encontrar dos separados 3 s dentro de una ventana de **30 s**
+es trivial.
+
+Lo que se cambió:
+
+- **`MARGEN_DB` de 10 a 20.** Veinte decibelios son cien veces la potencia del
+  fondo; una baliza real la emite un altavoz a todo volumen a pocos metros y pasa
+  de sobra, el ruido ambiente no.
+- **`CORROB_VENTANA` de 30 s a 12 s.** Una baliza real se repite cada ~4 s, así
+  que dos detecciones en doce segundos le sobran; con treinta se emparejaban dos
+  ruidos sin ninguna relación entre sí.
+
+### Y la contraprueba, que es la mitad del trabajo
+
+Se probó también a exigir **tres marcos seguidos** en vez de dos, y el autotest lo
+cazó al instante: `autotest malla FALLA` en los cuatro saltos. El decodificador
+tiene un contrato de dos marcos con todo lo que lo usa. **Subir un umbral sin
+comprobar que sigue oyendo lo de verdad es cambiar un fallo ruidoso por uno
+mudo**, que es peor porque no se nota. Configuración final: 20 dB, dos marcos,
+ventana de 12 s — cero falsos y los cuatro saltos OK.
+
+### Lo que falta aquí, y es de diseño
+
+El margen es un parche bueno, no la solución. El protocolo actual es «portadora
+más uno de cuatro tonos»: cualquier ruido con energía en dos bins lo imita. Lo
+que de verdad separa una baliza del ruido no es el nivel, es la **estructura
+temporal** — la ráfaga de 0,25 s encendida y 0,15 apagada, seis veces. Exigir esa
+firma (correlar contra el patrón, como hace cualquier enlace digital con su
+palabra de sincronismo) rechaza el ruido sin necesidad de pedir volumen, y de
+paso quita el ataque trivial de reproducir un tono. Está a medias: `verCadencia`
+ya cuenta ráfagas, pero no se exige el patrón completo.
+
+> **La lista de lo que falta está en `SIGUIENTE.md`**, ordenada por lo que más
+> decide: las cinco pruebas de cinco minutos, la firma temporal de la malla, la
+> confirmación de rescate, la ficha fragmentada por radio, el relé de la alerta
+> sísmica de Google, las pruebas de campo y lo que bloquea publicar.
+
+## La firma temporal de la malla (hecha, y medida antes de escribirla)
+
+El margen de 20 dB quitó los 866 falsos candidatos, pero era un parche: el
+protocolo es «portadora más uno de cuatro tonos» y cualquier ruido con energía en
+dos bins lo imita. Ahora se exige la FORMA de la trama —250 ms de tono, 150 de
+silencio— y no más volumen.
+
+**Lo primero que hizo falta fue desmentir la aritmética obvia.** `Microfono.SALTO`
+es N/2: los marcos se solapan al 50 %, así que cae uno cada **21,3 ms y no cada
+42,7**, y la ventana de 42,7 ms desborda los bordes de la ráfaga. Sintetizando la
+trama de `emitirUna()` y pasándola por el propio decodificador
+(`fx sounds/cadencia.py`):
+
+| señal | ON | OFF | periodo |
+|---|---|---|---|
+| al lado | 277-299 ms | 107-128 | 384-405 |
+| lejos (1/800 de amplitud) | 235-256 | 149-171 | 384-405 |
+| con reverberación fuerte | 213-363 | 43-64 | 341-406 |
+| tono continuo | una racha de 2411 ms | — | — |
+
+Una ráfaga de 250 ms se ve de 213 a 363. Haber puesto la ventana «en 250 ± algo»
+habría dejado la malla muda, y muda no se nota usándola.
+
+**El periodo es el discriminador, no el ciclo de trabajo.** La reverberación
+cambia el reparto entre tono y silencio; no cambia cuándo empieza la ráfaga
+siguiente. Por eso el corte fino va en el periodo (340-460 ms, y que no se mueva
+más de 45 ms entre ráfagas consecutivas) y las ventanas de ON y OFF son anchas.
+
+**Cuántas ráfagas.** Medido contra ruido que parpadea a todas las velocidades
+posibles (`fx sounds/rechazo.py`), una hora por caso:
+
+| regla | peor caso |
+|---|---|
+| dos flancos de subida (lo de antes) | SIEMPRE |
+| tres ráfagas seguidas | 19/hora |
+| **cuatro ráfagas seguidas** | **2/hora** |
+| cinco ráfagas seguidas | 0/hora |
+
+Cinco tienta y es justo lo que no se puede hacer: la trama trae seis, así que
+pedir cinco es no dejar margen para perder una — y quien escucha se engancha a
+mitad de trama constantemente. Con cuatro se pueden perder dos.
+
+Lo que cuesta: la confirmación llega en la quinta ráfaga y no en la segunda,
+**1,7 s de trama en vez de 0,5**. También en el atajo de «está temblando».
+
+**Y hay un autotest nuevo que es el que de verdad protege**, porque el fallo a
+cazar aquí es mudo: `autotestCadencia()` sintetiza la trama entera y la pasa por
+el decodificador con el solape real, y exige las dos mitades — que la baliza pase
+y que un tono continuo no. Verificado en el A10s:
+
+```
+autotest cadencia OK · firma temporal: la baliza da 6 ráfagas de 4 y un tono continuo 0
+autotest malla OK · salto 1..6
+```
+
+Cuesta unas décimas y va dentro de COMPROBAR TODO, anotándose **salga bien o mal**:
+el número es la prueba de que nadie ha endurecido el umbral hasta dejar de oír.
+
+**Lo que NO cubre**: una sala con reverberación de 0,6 s y cola al 80 % funde las
+ráfagas en una sola racha de 96 marcos y la firma no la ve. Ningún criterio de
+forma la vería. La baliza repite cada 4 s, así que sigue intentándolo.
+
+## La pasada de interfaz con el Samsung delante
+
+El A10s **sí acepta `input tap`**, así que por primera vez se puede navegar,
+tocar y medir. `uiautomator dump` no sirve en esta app —las consolas parpadean y
+la ventana nunca queda en reposo: «could not get idle state»—, así que se mide
+sobre los píxeles de la captura (`medir.py`, 2 px por dp a densidad 320).
+
+Las tarjetas de instrucciones (`paso.xml`), medidas y arregladas:
+
+- **El título no tenía jerarquía**: 13 sp contra 12,5 del cuerpo. Media décima no
+  es jerarquía, es la misma línea escrita dos veces. Ahora 14 contra 12.
+- **Los títulos se partían en dos líneas** y la segunda se leía como cuerpo. Los
+  33 títulos están reescritos a **≤ 29 caracteres**, que es lo que cabe en una
+  línea en la columna que dejan el icono y el número. No hay `maxLines`: recortar
+  con puntos suspensivos es peor que partir, así que la regla la cumple el texto.
+- **Los cuerpos llegaban a seis líneas.** Reescritos a **dos**, justificados con la
+  misma receta de `DocCuerpo` (`high_quality` + `none` + `inter_word`).
+- **Cada paso es ahora una tarjeta de verdad** (`drawable/tarjeta_paso.xml`), con
+  borde y tono propios y 10 dp entre ellas; fuera las 23 líneas divisorias. El
+  primer intento reusó `fila_op` y no se vio nada: es del mismo #14171A que la
+  tarjeta madre, así que separar sin cambiar de tono es solo más espacio en
+  blanco.
+- **Márgenes medidos**: 46,5-48 dp entre pasos, 23,5 arriba y 22-23,5 abajo. La
+  diferencia es tinta —una línea sin trazos descendentes mide 1,5 dp menos—; el
+  relleno es exactamente 16 dp por lado.
+
+Y la excepción, a propósito: **`paso_f3` sigue en cinco líneas**. Es la única
+pantalla donde el usuario ve que por Wi-Fi sale la ficha ENTERA. Recortarla a dos
+líneas sería romper una promesa escrita, no ahorrar una línea.
+
+Dos rótulos más que se cortaban con puntos suspensivos en el centro de opciones:
+«PROBAR LA FICHA POR WI-…» y «COMPROBAR QUE FUNCIO…», ahora **PROBAR LA WI-FI** y
+**COMPROBAR TODO**.
+
+**Y la malla que se montaba encima de sí misma.** En MALLA DE PROPAGACIÓN se leía
+«Balizas detectadasRetransmisiones». No era un solape de dibujo: las tres columnas
+de `stats3` iban a peso 1 y **sin un solo pixel entre ellas**, y «Balizas
+detectadas» ocupaba 190 px de los 198 de su columna. Ahora hay 10 dp de hueco y
+los rótulos son **Balizas oídas** y **Reenvíos**.
+
+### Lo que queda visto pero sin arreglar
+
+- En MALLA DE PROPAGACIÓN, dos marcas «--» sueltas flotando encima de «Estado de
+  la malla». Es otro caso del alto calculado a cero que ya está documentado en
+  esta misma tarjeta.
+- En Diagnóstico, la fila «Ficha por Wi-Fi» corta el valor por la derecha:
+  «192.168.101.27 (con».
+- La cuadrícula de respuesta **sigue sin revisarse** en pantalla.
 
 ## Trampas de esta sesión, para no volver a pisarlas
 

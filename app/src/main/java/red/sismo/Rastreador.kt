@@ -82,6 +82,35 @@ class Rastreador(private val ctx: Context) {
         @Volatile var marcaHistoria = 0L
         /** Potencia con la que el otro dice que emite, si la anuncia. */
         @Volatile var txPower = 127
+
+        /* ---------- la ficha, que llega a trozos ----------
+           En 31 bytes no cabe, así que el otro móvil la manda en tramas y aquí se
+           juntan. Lo que se pierde llega en la vuelta siguiente, porque la baliza
+           repite sin parar mientras dure la emergencia.
+
+           `tramas` no es un detalle técnico: «7 de 9» es una medida honesta de la
+           calidad del enlace, y es justo lo que necesita saber quien busca —si
+           sube, se está acercando; si se queda en 3 de 9, hay demasiado escombro
+           en medio. */
+        val trozos = java.util.concurrent.ConcurrentHashMap<Int, ByteArray>()
+        @Volatile var totalTramas = 0
+
+        /** Las que han llegado de las que hay. */
+        fun tramas(): String =
+            if (totalTramas == 0) "" else "${trozos.size} de $totalTramas"
+
+        /** La ficha armada, o vacío mientras falte alguna. */
+        fun fichaCompleta(): String {
+            if (totalTramas == 0 || trozos.size < totalTramas) return ""
+            var b = ByteArray(0)
+            for (k in 1..totalTramas) b += (trozos[k] ?: return "")
+            val campos = String(b, Charsets.UTF_8).split("")
+            val et = listOf("Edad", "Avisos", "Contacto")
+            return campos.mapIndexedNotNull { i, v ->
+                val t = v.trim()
+                if (t.isEmpty() || i >= et.size) null else "${et[i]}: $t"
+            }.joinToString(System.lineSeparator())
+        }
         /** Pérdida de trayecto en dB: lo que emitió menos lo que llega. Es más
          *  comparable entre modelos que el dBm crudo, porque descuenta que cada
          *  móvil emite con una potencia distinta. Sigue SIN ser distancia. */
@@ -176,6 +205,19 @@ class Rastreador(private val ctx: Context) {
                edad ahí, y un móvil sin ficha no manda nada. Se descarta cualquier
                cosa que no sea texto imprimible para que un byte de otra versión no
                salga en pantalla como un jeroglífico. */
+            /* ¿Es una trama de continuación? El 0x01 lo marca, y no puede
+               confundirse con un nombre: UTF-8 no empieza ningún carácter con un
+               byte de control. */
+            if (datos.size > 5 && datos[4] == Baliza.TRAMA_MARCA) {
+                val cab = datos[5].toInt() and 0xFF
+                val k = (cab shr 4) and 0x0F
+                val total = cab and 0x0F
+                if (k in 1..total && total <= Baliza.MAX_TRAMAS) {
+                    h.totalTramas = total
+                    h.trozos[k] = datos.copyOfRange(6, datos.size)
+                }
+                return
+            }
             h.nombre = if (datos.size > 4) {
                 val s = String(datos, 4, datos.size - 4, Charsets.UTF_8).trim()
                 if (s.length in 1..Baliza.MAX_NOMBRE && s.all { it.isLetter() || it == ' ' || it == '\'' || it == '-' }) s

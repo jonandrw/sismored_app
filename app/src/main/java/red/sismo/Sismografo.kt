@@ -40,8 +40,56 @@ class Sismografo(
        campo con el móvil en el bolsillo, andando, corriendo y en el día a día.
        Por debajo de 3 hay falsos positivos en uso normal, aunque en las pruebas
        con señales sintéticas 1,2 pareciera suficiente. Manda el móvil real. */
+    /** El umbral que se aplica AHORA. Lo elige el servicio según la postura:
+     *  con el móvil encima manda el conservador, en reposo el fino. */
     var umbral = 6.0                 // m/s², ajustable por el usuario
     var armado = false
+
+    /**
+     * La calma que mide este móvil donde está: el percentil alto de la sacudida
+     * mientras nadie lo toca.
+     *
+     * Es lo que convierte «elige un umbral en m/s²» —que nadie sabe hacer— en
+     * «déjalo en la mesilla y él aprende cuánto se mueve esa mesa». Una mesa con
+     * la lavadora al lado no es una mesilla de noche, y no tienen por qué
+     * compartir número.
+     */
+    @Volatile var calmaMedida = 0.0; private set
+
+    /**
+     * Cuánto ha girado el móvil en los últimos segundos, en grados.
+     *
+     * **Este es el dato que separa una mano de un terremoto**, y ninguno de los
+     * que probé antes lo hacía:
+     *
+     *  - Los pasos no valen: alguien sentado en un sofá coge el móvil sin dar uno.
+     *  - «Estaba quieto hace dos minutos» tampoco: lo estaba, y por eso el móvil
+     *    en la mano acababa con el umbral fino puesto.
+     *  - «Cuánto llevaba quieto justo antes del cruce» tampoco: en un terremoto la
+     *    sacudida también empieza medio segundo antes de cruzar el umbral, así que
+     *    sale pequeño en los dos casos.
+     *
+     * Lo que de verdad los distingue es la ORIENTACIÓN. Un móvil en una mesa
+     * apunta siempre al mismo sitio: durante un terremoto se sacude, pero la
+     * gravedad le sigue entrando por la misma cara — el suelo se mueve, la mesa no
+     * gira. Una mano no puede sostener nada sin girarlo: al cogerlo, al agitarlo,
+     * al andar. Son grados contra décimas de grado, no es un matiz.
+     *
+     * Se mide contra las direcciones de hace hasta quince segundos, así que un
+     * giro lento cuenta igual que uno brusco.
+     */
+    @Volatile var giroGrados = 0.0; private set
+    private val calma = DoubleArray(256)
+    private var ci = 0
+    private var cn = 0
+
+    /* La dirección de la gravedad, filtrada, y las de los últimos 15 s. El
+       filtro es lento a propósito: lo que interesa es hacia dónde apunta el
+       móvil, no la sacudida. */
+    private var gx = 0.0; private var gy = 0.0; private var gz = 0.0
+    private val dirX = DoubleArray(30); private val dirY = DoubleArray(30); private val dirZ = DoubleArray(30)
+    private var di = 0; private var dn = 0
+    private var ultimaDir = 0L
 
     private var lta = 9.81
     private var sta = 0.0
@@ -111,10 +159,38 @@ class Sismografo(
             e.values[2] * e.values[2]
         ).toDouble()
 
+        /* Orientación: gravedad filtrada y ángulo contra los últimos 15 s. */
+        val ax = e.values[0].toDouble(); val ay = e.values[1].toDouble(); val az = e.values[2].toDouble()
+        if (gx == 0.0 && gy == 0.0 && gz == 0.0) { gx = ax; gy = ay; gz = az }
+        gx += (ax - gx) * 0.02; gy += (ay - gy) * 0.02; gz += (az - gz) * 0.02
+        val gn = sqrt(gx * gx + gy * gy + gz * gz)
+        if (gn > 1e-3) {
+            val ux = gx / gn; val uy = gy / gn; val uz = gz / gn
+            val ahora = System.currentTimeMillis()
+            if (ahora - ultimaDir > 500) {
+                ultimaDir = ahora
+                dirX[di] = ux; dirY[di] = uy; dirZ[di] = uz
+                di = (di + 1) % dirX.size; if (dn < dirX.size) dn++
+            }
+            var peor = 0.0
+            for (k in 0 until dn) {
+                val c = (ux * dirX[k] + uy * dirY[k] + uz * dirZ[k]).coerceIn(-1.0, 1.0)
+                val ang = Math.toDegrees(kotlin.math.acos(c))
+                if (ang > peor) peor = ang
+            }
+            giroGrados = peor
+        }
+
         // 1) media lenta congelada durante el evento
         val dev0 = abs(mag - lta)
         if (dev0 < umbral) lta += (mag - lta) * 0.004
         val dev = abs(mag - lta)
+        /* «Quieto» quiere decir quieto de verdad: medido con el móvil sobre una
+           mesa, esto no salta ni una vez en ochenta segundos, y la postura pasa a
+           EN_REPOSO como debe. Es el respaldo del que depende todo, porque ni el
+           Redmi (Android 15) ni el A10s (Android 11) tienen los detectores de un
+           disparo de AOSP: `TYPE_STATIONARY_DETECT` y `TYPE_MOTION_DETECT` no
+           existen en ninguno de los dos. */
         if (dev > 0.6) ultimoMovimiento = System.currentTimeMillis()
 
         // 3) media rápida con recorte y bajada más rápida que la subida
@@ -124,6 +200,19 @@ class Sismografo(
         // medio umbral: el suelo se mueve, aunque todavía no sea para disparar
         if (sta > umbral * 0.5) ultimoTemblor = System.currentTimeMillis()
         historia[hi] = sta.toFloat(); hi = (hi + 1) % historia.size
+
+        /* La calma se mide SOLO cuando no está pasando nada: si se dejara correr
+           durante un evento, aprendería que el terremoto es normal. Y se guarda
+           un percentil alto, no la media: lo que hay que superar no es el ruido
+           típico de la mesa, es su peor rato. */
+        if (sta < umbral * 0.5) {
+            calma[ci] = sta; ci = (ci + 1) % calma.size
+            if (cn < calma.size) cn++
+            if (cn >= 64 && ci % 32 == 0) {
+                val v = calma.copyOf(cn).sortedArray()
+                calmaMedida = v[(v.size * 0.98).toInt().coerceAtMost(v.size - 1)]
+            }
+        }
 
         // Caída libre seguida de impacto: el móvil se soltó de la mano y golpeó.
         // Correr no lo activa: nunca da 100 ms seguidos de gravedad casi nula.
@@ -139,6 +228,7 @@ class Sismografo(
 
         // 2) contador asimétrico
         if (armado && sta > umbral) {
+            // el instante del cruce: aquí, y solo aquí, se sabe de dónde venía
             over++
             if (over > MUESTRAS_DISPARO) {
                 over = 0

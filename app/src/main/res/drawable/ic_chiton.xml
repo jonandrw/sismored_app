@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Una persona pidiendo silencio: el botón de PEDIR SILENCIO EN LA ZONA.
+
+     Antes llevaba `ic_parar`, un cuadrado, que no dice nada — y menos aquí, que
+     es el gesto que hace de verdad un equipo de rescate cuando va a escuchar con
+     geófonos. El dedo delante de la boca es universal y no hace falta leer.
+
+     La primera versión tenía la cabeza centrada en y=3 con radio 4,6: se salía
+     por arriba del lienzo y el dedo caía DENTRO de la cara. Un icono se mira en
+     pantalla, no se calcula. Ahora la cabeza está en y=7 y el dedo cruza por
+     delante de la boca y baja de la barbilla, que es lo que se reconoce. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- La cabeza -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.7"
+        android:pathData="M12,7 m-4.2,0 a4.2,4.2 0 1,0 8.4,0 a4.2,4.2 0 1,0 -8.4,0" />
+
+    <!-- Los hombros -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.7"
+        android:strokeLineCap="round"
+        android:pathData="M4.2,22 A8,8 0 0 1 19.8,22" />
+
+    <!-- El dedo delante de la boca: cruza la mitad baja de la cara y baja de la
+         barbilla, que es lo que hace legible el gesto -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M12,8.4 L12,14.6" />
+
+    <!-- La mano que lo sostiene, justo debajo -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M9.4,16.2 L12,14.4 L14.6,16.2" />
+</vector>

@@ -87,6 +87,41 @@ class Baliza(private val ctx: Context) {
            años, lo primero sirve para llamarlo y lo segundo no. */
         const val MAX_NOMBRE = 13
 
+        /* ---------- la ficha completa, en tramas ----------
+           En 31 bytes no cabe una ficha. Pero la baliza no manda UN anuncio:
+           manda el mismo cada pocos milisegundos durante horas. Así que se manda
+           por partes y el que busca las junta — que es lo que hace cualquier
+           enlace con poco ancho de banda y mucho tiempo.
+
+           El reparto de los 17 bytes de contenido:
+
+             trama 0   VER · estado · salto · grupo · nombre de pila (13)
+             trama k   VER · estado · salto · grupo · 0x01 · k y total · 11 bytes
+
+           **La trama 0 es la de hoy, byte por byte.** Es deliberado: quien pille
+           un solo anuncio, aunque sea uno suelto entre escombros, ya sabe a quién
+           pertenece el móvil y de qué grupo es. Todo lo demás es mejora; eso es
+           lo mínimo, y no puede depender de recibir la ficha entera.
+
+           El 0x01 marca las tramas de continuación y no puede confundirse con
+           texto: UTF-8 nunca empieza un carácter con un byte de control. */
+        const val TRAMA_MARCA: Byte = 0x01
+        const val TRAMA_CARGA = 11
+        const val MAX_TRAMAS = 15
+
+        /** El resto de la ficha —lo que no cabe en la trama 0— en bytes. Los
+         *  campos van separados por un carácter de unidad, que no aparece nunca
+         *  en un texto escrito por una persona. */
+        fun restoDeFicha(edad: String, medicacion: String, contacto: String): ByteArray {
+            val t = listOf(edad.trim(), medicacion.trim(), contacto.trim()).joinToString("")
+            return if (t.replace("", "").isEmpty()) ByteArray(0)
+                   else t.toByteArray(Charsets.UTF_8)
+        }
+
+        /** Cuántas tramas de continuación hacen falta para [n] bytes. */
+        fun cuantasTramas(n: Int): Int =
+            if (n <= 0) 0 else minOf(MAX_TRAMAS - 1, (n + TRAMA_CARGA - 1) / TRAMA_CARGA)
+
         /** El nombre de pila, recortado a lo que cabe sin partir un carácter por
          *  la mitad. Un recorte a ciegas dentro de una «ñ» o una tilde deja un
          *  byte suelto que al otro lado se lee como basura. */
@@ -191,11 +226,53 @@ class Baliza(private val ctx: Context) {
      * quien decide eso es el servicio, no esta clase. Fuera de eso van a cero y
      * el anuncio no lleva ni un dato personal.
      */
-    fun emitir(estado: Int, salto: Int, sangre: Int, nombre: String): Boolean {
+    fun emitir(estado: Int, salto: Int, sangre: Int, nombre: String): Boolean =
+        emitir(estado, salto, sangre, nombre, ByteArray(0))
+
+    /**
+     * Igual, pero con el resto de la ficha para mandarlo en tramas.
+     *
+     * Con [resto] vacío se comporta exactamente como antes: una sola trama con
+     * el nombre. Con contenido, la baliza va rotando entre la trama 0 y las de
+     * continuación, y el que busca las junta.
+     */
+    fun emitir(estado: Int, salto: Int, sangre: Int, nombre: String, resto: ByteArray): Boolean {
         ultimoEstado = estado; ultimoSalto = salto; ultimaSangre = sangre
         ultimoNombre = nombre
+        ultimoResto = resto
         sinNombre = false
-        return emitirYa()
+        trama = 0
+        val ok = emitirYa()
+        rotarTramas()
+        return ok
+    }
+
+    /* ---------- rotación de tramas ----------
+       Cada anuncio lleva una trama, y se cambia cada 1,2 s. No más deprisa: cada
+       cambio para y rearranca el emisor, y un rescatista que pasa cerca tiene que
+       poder pillar la misma trama varias veces. Con nueve tramas, la ficha entera
+       tarda unos once segundos en pasar completa — y se repite sin parar, así que
+       lo que se pierda llega en la vuelta siguiente. */
+    private var ultimoResto = ByteArray(0)
+    @Volatile private var trama = 0
+    private val relojTramas = android.os.Handler(android.os.Looper.getMainLooper())
+    private var tareaTramas: Runnable? = null
+
+    private fun rotarTramas() {
+        tareaTramas?.let { relojTramas.removeCallbacks(it) }
+        tareaTramas = null
+        val n = cuantasTramas(ultimoResto.size)
+        if (n == 0 || !emitiendo) return
+        val t = object : Runnable {
+            override fun run() {
+                if (!emitiendo) return
+                trama = (trama + 1) % (n + 1)
+                emitirYa()
+                relojTramas.postDelayed(this, 1200)
+            }
+        }
+        tareaTramas = t
+        relojTramas.postDelayed(t, 1200)
     }
 
     /* Lo último que se pidió emitir, para poder reintentarlo sin el nombre si el
@@ -230,13 +307,23 @@ class Baliza(private val ctx: Context) {
 
         /* Cuatro bytes fijos —versión, estado, salto, grupo— y detrás el nombre de
            pila en UTF-8, hasta trece. Ver la cuenta de los 31 bytes arriba. */
-        val np = if (sinNombre) ByteArray(0) else nombreCorto(ultimoNombre)
-        val datos = byteArrayOf(
+        val cabecera = byteArrayOf(
             VERSION.toByte(),
             estado.coerceIn(0, 3).toByte(),
             salto.coerceIn(0, MallaAcustica.MAX_HOP).toByte(),
             sangre.coerceIn(0, 8).toByte()
-        ) + np
+        )
+        val total = cuantasTramas(ultimoResto.size)
+        val datos = if (trama == 0 || total == 0) {
+            // la trama de siempre: quien pille solo esta ya sabe de quién es el móvil
+            cabecera + (if (sinNombre) ByteArray(0) else nombreCorto(ultimoNombre))
+        } else {
+            val k = trama.coerceIn(1, total)
+            val desde = (k - 1) * TRAMA_CARGA
+            val hasta = minOf(ultimoResto.size, desde + TRAMA_CARGA)
+            cabecera + byteArrayOf(TRAMA_MARCA, ((k shl 4) or total).toByte()) +
+                ultimoResto.copyOfRange(desde, hasta)
+        }
 
         val ajustes = AdvertiseSettings.Builder()
             /* Potencia máxima y frecuencia alta: esto es exactamente lo contrario

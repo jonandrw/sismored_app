@@ -23,6 +23,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import kotlin.concurrent.thread
+import kotlin.math.abs
 import kotlin.math.PI
 import kotlin.math.sin
 
@@ -56,6 +57,8 @@ class ServicioSos : Service() {
         /* La sonda vive en el servicio, no en la pantalla, porque el micrófono
            es único: si la actividad abriera el suyo, dejaría sorda a la malla. */
         const val ACCION_SONDA = "red.sismo.SONDA"
+        /** Aprender qué devuelve el móvil oyéndose a sí mismo, para restarlo. */
+        const val ACCION_APRENDER_MOVIL = "red.sismo.APRENDER_MOVIL"
         const val ACCION_DOPPLER = "red.sismo.DOPPLER"
         const val ACCION_BARRIDO = "red.sismo.BARRIDO"
         const val ACCION_RESPIRA = "red.sismo.RESPIRA"
@@ -74,6 +77,49 @@ class ServicioSos : Service() {
         const val ACCION_ENVIAR = "red.sismo.ENVIAR"
         /** El que busca llama hacia abajo: sirena audible + tono de llamada. */
         const val ACCION_LLAMAR = "red.sismo.LLAMAR"
+        /** El que busca pide SILENCIO en la zona: todos los móviles que lo oigan
+         *  dejan de sonar cinco minutos, sin dejar de emitir la baliza. */
+        const val ACCION_SILENCIO_ZONA = "red.sismo.SILENCIO_ZONA"
+        /** Apagar SismoRed del todo: nada de vigilancia, nada en segundo plano. */
+        const val ACCION_APAGAR = "red.sismo.APAGAR"
+        /** ESTOY BIEN: la respuesta a la pregunta de la cascada. Es la acción más
+         *  importante de la app después de PÁNICO, porque es la que apaga todo lo
+         *  demás — y por eso también está en la notificación, para poder
+         *  contestar sin desbloquear. */
+        const val ACCION_ESTOY_BIEN = "red.sismo.ESTOY_BIEN"
+
+        /** Instante en que vence la pregunta «¿estás bien?». 0 = no hay pregunta
+         *  en curso. La pantalla pinta la cuenta atrás a partir de esto. */
+        @Volatile var preguntaHasta = 0L
+        /** Lo último que la cascada se atreve a afirmar, para el rótulo. */
+        @Volatile var cascadaQuien = Cascada.Quien.NADIE
+        @Volatile var cascadaMotivo = ""
+
+        /**
+         * Ha contestado que está bien, así que este móvil pasa a ser un nodo de
+         * la red en vez de un cliente de ella: escucha, no grita y **reenvía**.
+         *
+         * Es el multiplicador más grande que tiene SismoRed y no cuesta casi
+         * nada. En un terremoto la mayoría de la gente está bien, y cada uno de
+         * esos móviles tiene batería, altavoz y a alguien mirándolo: son los que
+         * pueden llevar la alerta de quien no puede hacer nada. Un móvil que oye
+         * y no reenvía es un agujero en la malla.
+         */
+        @Volatile var repetidor = false; private set
+
+        /** El umbral que se está aplicando ahora mismo, y en qué régimen. Se
+         *  pinta: un detector que cambia de sensibilidad solo tiene que decirlo. */
+        @Volatile var umbralActivo = 0.0
+        @Volatile var enReposoAhora = false
+        /** Lo que este móvil mide de sacudida donde está, sin que nadie lo toque.
+         *  Es lo que permite proponer un umbral en vez de pedirlo. */
+        @Volatile var calmaMedida = 0.0
+        /** Cuánto ha girado el móvil. Es lo que distingue una mano de una mesa. */
+        @Volatile var giroGrados = 0.0
+        /** Cuándo se contestó ESTOY BIEN por última vez. Se pinta durante unos
+         *  minutos: pulsar algo y que no pase nada visible es indistinguible de
+         *  que el botón no funcione, y eso hace imposible diagnosticarlo. */
+        @Volatile var contestoBien = 0L
 
         /** Cifras de la malla, para las pestañas Inicio y Red. */
         @Volatile var mallaRx = 0; private set
@@ -146,6 +192,9 @@ class ServicioSos : Service() {
         /** Las fichas completas que han llegado por Wi-Fi, ya formateadas. Vacio si
          *  no hay ninguna: entonces el bloque de la pantalla no se enseña. */
         @Volatile var fichasWifi = ""
+        /** Qué está pasando con la ficha por Wi-Fi, con sus palabras. Sin esto,
+         *  el canal fallaba en silencio y no había forma de saber por qué. */
+        @Volatile var fichaLanEstado = "sin arrancar"
         @Volatile var tipoRed = "—"; private set
 
         /** Lo último que dijo la sonda. Va aquí y no al registro porque es lo que
@@ -218,6 +267,32 @@ class ServicioSos : Service() {
         private const val ESCALA_QUIETO_MS = 180_000L
         private const val ESCALA_SIN_MOVER_MS = 120_000L
         private const val ESCALA_TOPE_MS = 600_000L
+
+        /* ---------- la pregunta ----------
+           Sesenta segundos. Es un compromiso, y conviene saber entre qué: si es
+           muy corto, alguien que está buscando a su hijo bajo una mesa no llega a
+           contestar y su móvil se pone a emitir sin hacer falta. Si es muy largo,
+           una persona inconsciente pierde ese minuto entero antes de que su
+           baliza empiece a sonar. Sesenta segundos permiten salir de debajo de
+           una mesa y mirar el móvil; hay que medirlo con gente, no decidirlo
+           aquí. */
+        private const val PREGUNTA_MS = 60_000L
+        /** Simulacro: enseña «¿ESTÁS BIEN?» sin que haya pasado nada. No puede
+         *  escalar — sin sacudida la cascada se queda en NADA aunque no se
+         *  conteste. */
+        const val ACCION_PROBAR_PREGUNTA = "red.sismo.PROBAR_PREGUNTA"
+
+        /** Manda un datagrama de prueba por la Wi-Fi. No enseña la ficha real ni
+         *  enciende ninguna alarma: sirve para que dos personas comprueben que
+         *  se ven en la red antes de necesitarlo. */
+        const val ACCION_PROBAR_FICHA_LAN = "red.sismo.PROBAR_FICHA_LAN"
+
+        /** Notificación aparte de la del servicio: la del servicio es
+         *  permanente y no puede convertirse en la pregunta y luego volver. */
+        const val ID_PREGUNTA = 2
+        const val ID_FICHA = 3
+        /** Cuánto vale una caída libre como prueba: pasado esto ya no cuenta. */
+        private const val CAIDA_VALE_MS = 120_000L
     }
 
     private lateinit var sirena: Sirena
@@ -242,6 +317,43 @@ class ServicioSos : Service() {
     /** Saltos que lleva recorridos la alerta que estamos propagando. 0 = nace aquí. */
     private var saltoEntrante = 0
     private val reloj = Handler(Looper.getMainLooper())
+
+    /* ---------- la cascada ----------
+       El estado del suceso en curso. Todo esto es de un solo suceso: se pone en
+       marcha con la primera prueba y se limpia al parar. */
+    private var postura: Postura? = null
+    /** La última posición conocida, sin encender el GPS nunca. */
+    private var ubicacion: Ubicacion? = null
+    /** Cuándo empezó el suceso que se está evaluando. 0 = no hay ninguno. */
+    private var sucesoDesde = 0L
+    /** Pasos que llevaba el móvil cuando empezó el suceso, para poder restar. */
+    private var pasosAlSuceso = -1L
+    private var ultimoEstruendo = 0L
+    /** Cuándo se soltó el móvil y golpeó. Es una prueba, no una alarma. */
+    private var ultimaCaida = 0L
+    private val huboCaida: Boolean
+        get() = ultimaCaida > 0 && System.currentTimeMillis() - ultimaCaida < CAIDA_VALE_MS
+    /** Ya se ha preguntado y se ha agotado la cuenta atrás. */
+    private var preguntaVencida = false
+    /** Ha pulsado ESTOY BIEN. Mata la cascada de este suceso entero. */
+    private var haContestado = false
+    private var preguntaTarea: Runnable? = null
+
+    /* ---------- la evidencia del suceso, que NO caduca ----------
+       Se vio en una prueba de campo y es el fallo más grave que ha tenido la
+       cascada: se preguntó «¿estás bien?», pasó el minuto sin respuesta, y al
+       volver a decidir salió NADA — «sacudida con el móvil encima y sin
+       confirmar». ¿Por qué? Porque `temblando` dura un minuto y la pregunta dura
+       otro: **la prueba que justificó preguntar se había evaporado justo cuando
+       tocaba juzgar el silencio.**
+
+       Una vez abierto un suceso, lo que se vio se vio. La evidencia se acumula y
+       no se borra hasta cerrar el caso. Lo contrario es preguntar y luego olvidar
+       por qué se preguntaba. */
+    private var sucesoSacudida = false
+    private var sucesoEstruendo = false
+    private var sucesoCorroborada = false
+    private var sucesoRegimen = Postura.Regimen.DESCONOCIDO
 
     // SOS en morse: · · · — — — · · ·
     private val patronSos = longArrayOf(
@@ -275,11 +387,22 @@ class ServicioSos : Service() {
         // alarma clavada al 50 % sin poder subirla.
         // Con el servicio en primer plano, el acelerómetro sigue leyendo con la
         // pantalla apagada. Es lo que permite disparar sin que nadie toque nada.
-        sismo = Sismografo(this) { motivo -> panico(motivo) }
+        /* El sismógrafo ya no llama a panico() directamente: ahora entrega lo que
+           ha visto a la cascada, que es quien decide qué hacer con ello. La
+           diferencia se nota sobre todo en la caída libre — que el móvil se te
+           caiga de la mesa ya no puede encender la sirena si el suelo no se ha
+           movido. */
+        sismo = Sismografo(this) { motivo -> pruebaNueva(motivo) }
         sismo.umbral = opciones.umbral
         sismo.armado = opciones.armado
         armado = sismo.armado
         sismo.arrancar()
+        postura = Postura(this) { m -> anotar(m) }
+        try { postura?.arrancar() } catch (_: Exception) {}
+        /* Una mirada a la última posición conocida al arrancar. No enciende el
+           GPS: lee lo que ya había. */
+        ubicacion = Ubicacion(this)
+        try { ubicacion?.refrescar() } catch (_: Exception) {}
         vigilarInmovilidad()
 
         /* La malla es lo que convierte un móvil que grita en una red que avisa.
@@ -296,13 +419,39 @@ class ServicioSos : Service() {
                    sigue retransmitiendo para la red; lo que se calla es este
                    móvil. Al que busca se le avisa por vibración, destello de
                    pantalla y flash, y eso lo lleva la vista de Búsqueda. */
-                if (buscando) {
-                    anotar("ALERTA OÍDA a $hop saltos · no sueno porque estás buscando")
+                /* Y quien ya ha contestado que está bien, tampoco. Pero los dos
+                   TIENEN que pasar la alerta al siguiente: un móvil que oye y no
+                   reenvía es un agujero en la malla, y era justo lo que pasaba —
+                   el que buscaba la anotaba y ahí se acababa el viaje. */
+                if (buscando || repetidor) {
+                    val quien = if (buscando) "estás buscando" else "has dicho que estás bien"
+                    anotar("ALERTA OÍDA a $hop saltos · no sueno porque $quien")
+                    if (malla?.reenviar(hop) != true)
+                        anotar("no la reenvío: ya ha dado los $hop saltos o he emitido demasiado")
                 } else {
                     panico("malla acústica (salto $hop)")
                 }
             },
-            onLlamada = { respuestaReforzada() },
+            onLlamada = {
+                respuestaReforzada()
+                /* Y la ficha, sola y a pantalla completa. Oír la llamada
+                   significa que quien busca está al lado —ese tono no atraviesa
+                   casi nada—, y lo que se va a encontrar es un móvil bloqueado.
+                   Solo si este teléfono está pidiendo ayuda: en el del que busca
+                   no se abre nunca. */
+                if (enAlarma || enRescate) mostrarFichaSola()
+            },
+            /* Silencio pedido desde arriba. Se calla TODO lo que hace ruido y se
+               deja lo que no molesta: la baliza de radio sigue, porque no suena y
+               es lo único que atraviesa el escombro. Callarse entero sería
+               desaparecer justo cuando te están buscando. */
+            onSilencio = {
+                try { sirena.stop() } catch (_: Exception) {}
+                try { vibrador?.cancel() } catch (_: Exception) {}
+                try { sonda?.pararTodo(); barridoOn = false } catch (_: Exception) {}
+                try { malla?.pararEmision() } catch (_: Exception) {}
+                anotar("SILENCIO pedido por quien busca: me callo 5 minutos. La baliza de radio sigue.")
+            },
             onRegistro = { m -> anotar(m) }
         )
         /* La escucha forense comparte el micrófono con la malla. Un derrumbe
@@ -332,8 +481,8 @@ class ServicioSos : Service() {
                no porcentaje de aciertos. */
             onEstruendo = {
                 if (sismo.armado) {
-                    if (temblando) panico("estruendo por micrófono + sacudida")
-                    else anotar("Estruendo oído sin sacudida: no disparo la alarma")
+                    ultimoEstruendo = System.currentTimeMillis()
+                    pruebaNueva("estruendo por micrófono")
                 }
             },
             onRegistro = { m -> anotar(m) }
@@ -406,6 +555,12 @@ class ServicioSos : Service() {
                El tono es uno y el altavoz es uno, asi que encender movimiento o
                respiracion apaga a la otra: se hace aqui, no en la pantalla, para
                que valga igual si la orden llega del atajo de volumen. */
+            /* Aprender la firma del propio móvil: una ráfaga con el teléfono
+               lejos de todo. Sin esto el eco mide el teléfono, no la sala. */
+            ACCION_APRENDER_MOVIL -> sonda?.aprenderMovil(
+                { p -> ecoSalida = p },
+                { r -> ecoSalida = r; anotar(r) }
+            )
             ACCION_SONDA -> if (sonda?.ecoContinuo == true) {
                 sonda?.eco(false, {}, {})
                 ecoSalida = "Apagado."
@@ -457,6 +612,26 @@ class ServicioSos : Service() {
                aviso de que te estás acercando, y tiene que poder verse de reojo
                sin tapar el sonido de los escombros. */
             ACCION_PULSO -> try { linterna?.destello(90) } catch (_: Exception) {}
+            ACCION_ESTOY_BIEN -> estoyBien()
+            ACCION_SILENCIO_ZONA -> silencioZona()
+            ACCION_APAGAR -> { apagarDelTodo(); return START_NOT_STICKY }
+            ACCION_PROBAR_FICHA_LAN -> {
+                anotar("Probando la ficha por Wi-Fi: " + (fichaLan?.estado() ?: "sin arrancar"))
+                /* Durante la prueba se escucha a tope dos minutos, aunque se
+                   apague la pantalla: es la única forma de comprobar el canal en
+                   las mismas condiciones en que va a hacer falta. Se suelta solo,
+                   porque mantener la radio despierta cuesta batería. */
+                fichaLan?.escuchaFuerte(true)
+                reloj.postDelayed({
+                    if (!buscando && !enAlarma && !enRescate && !repetidor)
+                        try { fichaLan?.escuchaFuerte(false) } catch (_: Exception) {}
+                }, 120_000L)
+                fichaLan?.probar()
+            }
+            ACCION_PROBAR_PREGUNTA -> {
+                anotar("Simulacro: esta es la pantalla que sale sola tras un terremoto.")
+                preguntar(false, "simulacro")
+            }
             ACCION_DIAGNOSTICO -> comprobarTodo()
         }
         // ya estamos en primer plano: aquí sí se puede grabar. Si el usuario apagó
@@ -510,7 +685,15 @@ class ServicioSos : Service() {
         // La malla se autocomprueba sola al arrancar (ver MallaAcustica.arrancarRx).
         if (mallaEscuchando) {
             if (!escuchaApagadaAMano) arrancarEscucha()
-            sonda?.autotest()
+            /* La autocomprobación de la sonda, FUERA del hilo principal. Son
+               filtros adaptados sobre decenas de ráfagas simuladas y tardan
+               segundos; corriendo aquí bloqueaban la interfaz al arrancar, y si
+               el usuario tocaba la pantalla en ese rato Android sacaba «SismoRed
+               no responde». Es el «a veces falla» que se veía en el Samsung.
+               Comprobar que todo funciona no puede impedir usar la app. */
+            thread(name = "autotest-sonda", isDaemon = true) {
+                try { sonda?.autotest() } catch (_: Exception) {}
+            }
             actualizarNotificacion()
         }
     }
@@ -523,8 +706,10 @@ class ServicioSos : Service() {
         val e = escucha ?: return
         if (e.escuchando) return
         if (e.arrancar()) {
-            e.autotest()
-            comprobarDetectores()
+            // igual que la sonda: comprobar no puede colgar la pantalla
+            thread(name = "autotest-escucha", isDaemon = true) {
+                try { e.autotest(); comprobarDetectores() } catch (_: Exception) {}
+            }
             oyeEscuchando = true
             oyeDesde = System.currentTimeMillis()
         }
@@ -578,6 +763,337 @@ class ServicioSos : Service() {
      * puede ser lo que decida si esta noche la encuentran. Cuando el botón lo
      * pulsa una persona sí se respetan sus opciones — está delante y ha elegido.
      */
+    /**
+     * «Silencio en la zona»: lo que se pulsa cuando el equipo de rescate pide
+     * silencio para escuchar con sus micrófonos de contacto.
+     *
+     * Manda el tono a la malla tres veces —una sola ráfaga se pierde— y se calla
+     * también este móvil, que si no sería el único gritando. Lo que NO se apaga
+     * es la baliza de radio: no hace ruido, no interfiere con nadie y es lo único
+     * que atraviesa el escombro.
+     */
+    private fun silencioZona() {
+        anotar("SILENCIO EN LA ZONA: aviso a todos los móviles que me oigan.")
+        try { sirena.stop() } catch (_: Exception) {}
+        try { sonda?.pararTodo(); barridoOn = false } catch (_: Exception) {}
+        try { malla?.silenciadoHasta = System.currentTimeMillis() + MallaAcustica.SILENCIO_ORDEN_MS } catch (_: Exception) {}
+        val m = malla ?: return
+        for (i in 0 until 3) {
+            reloj.postDelayed({ try { m.emitirUna(MallaAcustica.CODIGO_SILENCIO) } catch (_: Exception) {} },
+                i * 3500L)
+        }
+    }
+
+    /**
+     * Apagar SismoRed entera: la vigilancia, el micrófono, la radio y el propio
+     * servicio.
+     *
+     * Existe porque tiene que existir. Una app que se queda corriendo en segundo
+     * plano pase lo que pase, con micrófono y con un servicio que sobrevive a
+     * cerrarla, necesita una puerta de salida clara — y que esa puerta no la
+     * anule ella sola al siguiente arranque. Por eso se recuerda en `Opciones`.
+     *
+     * `START_NOT_STICKY` al devolver: sin eso el sistema volvería a levantar el
+     * servicio que acabamos de parar.
+     */
+    private fun apagarDelTodo() {
+        anotar("SismoRed apagada del todo. No vigila, no escucha y no queda nada en segundo plano.")
+        opciones.apagada = true
+        opciones.deberiaVigilar = false
+        try { parar() } catch (_: Exception) {}
+        try { sismo.armado = false; sismo.parar() } catch (_: Exception) {}
+        try { postura?.parar() } catch (_: Exception) {}
+        try { escucha?.parar() } catch (_: Exception) {}
+        try { malla?.parar() } catch (_: Exception) {}
+        try { sonda?.pararTodo() } catch (_: Exception) {}
+        try { fichaLan?.escuchar(false); fichaLan?.emitir(false) } catch (_: Exception) {}
+        try { radio?.parar() } catch (_: Exception) {}
+        mallaEscuchando = false; oyeEscuchando = false; armado = false
+        try { wakeLock?.release() } catch (_: Exception) {}
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) stopForeground(STOP_FOREGROUND_REMOVE)
+            else @Suppress("DEPRECATION") stopForeground(true)
+        } catch (_: Exception) {}
+        Log.i("SismoRed", "apagada del todo por el usuario")
+        stopSelf()
+    }
+
+    /**
+     * Abrir la ficha a pantalla completa desde el servicio.
+     *
+     * Se hace por notificación con `fullScreenIntent` además de por lanzamiento
+     * directo, por lo mismo que la pregunta: lanzar una actividad desde segundo
+     * plano está limitado, y esto tiene que salir sí o sí — es lo único que le
+     * dice a quien te encuentra tu grupo sanguíneo.
+     */
+    private fun mostrarFichaSola() {
+        if (Ficha(this).vacia()) return          // sin ficha no hay nada que enseñar
+        val i = Intent(this, FichaActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        val pi = PendingIntent.getActivity(this, 9, i,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        try {
+            val n = Notification.Builder(this, CANAL)
+                .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+                .setContentTitle("Ficha médica")
+                .setContentText("Alguien te está buscando muy cerca")
+                .setCategory(Notification.CATEGORY_ALARM)
+                .setContentIntent(pi)
+                .setFullScreenIntent(pi, true)
+                .build()
+            (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(ID_FICHA, n)
+        } catch (_: Exception) {}
+        try { startActivity(i) } catch (_: Exception) {}
+        anotar("Te buscan al lado: enseño tu ficha en la pantalla.")
+    }
+
+    /* ===================== la cascada ===================== */
+
+    /**
+     * Ha llegado una prueba nueva: el sismógrafo, el micrófono o la malla. Se
+     * juntan todas las que hay ahora mismo, se pregunta a [Cascada] y se hace lo
+     * que diga. Nadie más decide.
+     *
+     * Antes cada detector llamaba a `panico()` por su cuenta, y de ahí venían los
+     * dos falsos que podían encender la sirena sin que se hubiera movido nada: el
+     * móvil cayéndose de la mesa y el generador diésel. Ahora los dos llegan
+     * hasta aquí y aquí se paran.
+     */
+    private fun pruebaNueva(motivo: String) {
+        if (motivo.startsWith("caída")) ultimaCaida = System.currentTimeMillis()
+        if (!sismo.armado && !enAlarma) { anotar("$motivo (vigilancia desarmada)"); return }
+        if (sucesoDesde == 0L) {
+            sucesoDesde = System.currentTimeMillis()
+            pasosAlSuceso = postura?.pasos ?: -1L
+            /* El régimen de ANTES del suceso, no el de ahora: sacudir un móvil
+               que está en una mesa reinicia el reloj de quietud, y entonces el
+               propio terremoto descalificaba al sismógrafo que tenía que verlo. */
+            sucesoRegimen = try {
+                postura?.regimenRecordado(sismo.quietoDesdeHace(), sismo.giroGrados)
+                    ?: Postura.Regimen.DESCONOCIDO
+            } catch (_: Exception) { Postura.Regimen.DESCONOCIDO }
+            /* La luz solo se mira a partir de aquí: bajo escombros es de noche a
+               las tres de la tarde, pero un bolsillo también es oscuro, así que
+               sola no decide nada y no merece estar encendida todo el día. */
+            try { postura?.vigilarLuz(true) } catch (_: Exception) {}
+            try { ubicacion?.refrescar() } catch (_: Exception) {}
+        }
+        evaluar(motivo)
+    }
+
+    /** Las pruebas de este instante, tal como las ve el servicio. */
+    private fun pruebas(): Cascada.Pruebas {
+        val p = postura
+        val quieto = try { sismo.quietoDesdeHace() } catch (_: Exception) { 0L }
+        val pasosDespues = if (p != null && p.hayPasos && pasosAlSuceso >= 0)
+            (p.pasos - pasosAlSuceso).coerceAtLeast(0L).toInt() else -1
+
+        // la evidencia se acumula mientras el suceso esté abierto, y no caduca
+        val estruendoAhora = System.currentTimeMillis() - ultimoEstruendo < 60_000L
+        if (sucesoDesde > 0L) {
+            if (temblando) sucesoSacudida = true
+            if (estruendoAhora) sucesoEstruendo = true
+            if (saltoEntrante > 0) sucesoCorroborada = true
+        }
+        return Cascada.Pruebas(
+            regimen = if (sucesoDesde > 0L) sucesoRegimen
+                      else p?.regimenRecordado(quieto, sismo.giroGrados) ?: Postura.Regimen.DESCONOCIDO,
+            sacudida = sucesoSacudida || temblando,
+            estruendo = sucesoEstruendo || estruendoAhora,
+            corroborada = sucesoCorroborada || saltoEntrante > 0,
+            caidaImpacto = huboCaida,
+            preguntado = preguntaVencida,
+            contestado = haContestado,
+            pasosDespues = pasosDespues,
+            /* Solo cuenta si desbloqueó DESPUÉS del suceso: que hubiera mirado el
+               móvil hace una hora no dice nada de ahora. */
+            interaccion = p != null && sucesoDesde > 0 &&
+                p.ultimaInteraccion > sucesoDesde,
+            quietoMs = quieto,
+            /* Golpes o voz junto al móvil en el último minuto. La voz no se
+               enciende nunca contra grabaciones humanas reales —comprobado
+               contra las 21 del banco—, así que quien de verdad manda aquí es el
+               de golpes, y ese todavía no se ha medido contra audio real. */
+            vozOGolpesCerca = oyeCuando.let { c ->
+                val ahora = System.currentTimeMillis()
+                val iG = Escucha.CLAVES.indexOf("golpes")
+                val iV = Escucha.CLAVES.indexOf("grito")
+                (iG >= 0 && c[iG] > 0 && ahora - c[iG] < 60_000L) ||
+                (iV >= 0 && c[iV] > 0 && ahora - c[iV] < 60_000L)
+            }
+        )
+    }
+
+    private fun evaluar(motivo: String) {
+        val d = Cascada.decidir(pruebas())
+        cascadaQuien = d.quien
+        cascadaMotivo = d.motivo
+        Log.i("SismoRed", "cascada($motivo) -> $d")
+        when (d.accion) {
+            Cascada.Accion.NADA -> {
+                anotar("$motivo · ${d.motivo}")
+                /* Quien está bien no es un espectador: su móvil es un nodo con
+                   batería, con red y con alguien mirándolo. Se queda escuchando
+                   y retransmitiendo la malla, que es el multiplicador más grande
+                   que tiene esta red y no cuesta nada. */
+                if (sucesoDesde > 0 && (haContestado || preguntaVencida)) cerrarSuceso()
+            }
+            Cascada.Accion.PREGUNTAR -> preguntar(false, d.motivo)
+            Cascada.Accion.AVISAR -> preguntar(true, d.motivo)
+            Cascada.Accion.BALIZA -> balizaSilenciosa(d)
+            Cascada.Accion.AUXILIO -> {
+                anotar("${Cascada.rotulo(d.quien)} · ${d.motivo}")
+                panico(d.motivo)
+            }
+        }
+    }
+
+    /**
+     * La pregunta que resuelve lo que ningún sensor puede resolver.
+     *
+     * No se intenta adivinar si está enterrada: se le pregunta, y el silencio es
+     * la respuesta. Es el mismo mecanismo que la detección de caídas de los
+     * relojes, y cubre de una vez los cuatro escenarios — la que huye contesta o
+     * sigue andando, la que duerme no contesta, la inconsciente no contesta y la
+     * que tiene el móvil a tres metros tampoco.
+     *
+     * Con [conRuido] suena además la sirena: es el caso de la que está dormida en
+     * un quinto piso y no se ha enterado de nada. Es la única razón por la que
+     * existe una sirena que se enciende sola.
+     */
+    private fun preguntar(conRuido: Boolean, motivo: String) {
+        if (preguntaHasta > System.currentTimeMillis()) return      // ya está preguntada
+        preguntaHasta = System.currentTimeMillis() + PREGUNTA_MS
+        anotar(if (conRuido) "TERREMOTO · te despierto y te pregunto si estás bien"
+               else "TERREMOTO · ¿estás bien? Tienes ${PREGUNTA_MS / 1000} s para contestar")
+        if (conRuido) {
+            try { sirena.start() } catch (_: Exception) {}
+            try { destello("pregunta") } catch (_: Exception) {}
+        }
+        try { reloj.post { sacarPregunta() } } catch (_: Exception) {}
+        try { actualizarNotificacion() } catch (_: Exception) {}
+        preguntaTarea?.let { reloj.removeCallbacks(it) }
+        val t = Runnable {
+            /* Se acabó el tiempo. A partir de aquí el silencio ya es una
+               respuesta, y la cascada vuelve a decidir con eso encima de la
+               mesa. */
+            preguntaVencida = true
+            preguntaHasta = 0L
+            quitarPregunta()
+            if (conRuido) try { sirena.stop() } catch (_: Exception) {}
+            evaluar("nadie ha contestado")
+        }
+        preguntaTarea = t
+        reloj.postDelayed(t, PREGUNTA_MS)
+    }
+
+    /**
+     * Sacar la pregunta a la cara, pase lo que pase.
+     *
+     * Se intenta por los dos caminos a la vez y a propósito:
+     *
+     *  1. **Lanzar la pantalla.** Funciona con la app abierta o recién usada.
+     *  2. **Una notificación con `fullScreenIntent`.** Es la que funciona con el
+     *     móvil bloqueado en la mesilla, que es el caso que importa.
+     *
+     * El segundo camino puede estar cerrado: desde Android 14 el permiso de
+     * pantalla completa solo se concede solo a apps de llamada o de alarma. Si
+     * está denegado, la notificación sigue saliendo como aviso de máxima
+     * prioridad — se ve, se oye y se puede contestar desde ella. **Lo que no
+     * puede pasar nunca es que no se pregunte**, y por eso hay dos caminos y
+     * ninguno depende del otro.
+     */
+    private fun sacarPregunta() {
+        val abrir = PendingIntent.getActivity(
+            this, 7, Intent(this, PreguntaActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val b = Notification.Builder(this, CANAL)
+            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+            .setContentTitle("¿Estás bien?")
+            .setContentText("Si no contestas, este móvil empezará a emitir tu señal.")
+            .setCategory(Notification.CATEGORY_ALARM)
+            .setOngoing(true)
+            .setContentIntent(abrir)
+            .setFullScreenIntent(abrir, true)
+            .addAction(Notification.Action.Builder(null, "ESTOY BIEN", pi(ACCION_ESTOY_BIEN)).build())
+            .addAction(Notification.Action.Builder(null, "NECESITO AYUDA", pi(ACCION_PANICO)).build())
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) b.setForegroundServiceBehavior(1)
+        try {
+            (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
+                .notify(ID_PREGUNTA, b.build())
+        } catch (_: Exception) {}
+        try { startActivity(Intent(this, PreguntaActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)) }
+        catch (_: Exception) {}
+    }
+
+    private fun quitarPregunta() {
+        try { (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).cancel(ID_PREGUNTA) }
+        catch (_: Exception) {}
+    }
+
+    /** Ha pulsado ESTOY BIEN, en la pantalla o en la notificación. */
+    private fun estoyBien() {
+        haContestado = true
+        preguntaHasta = 0L
+        quitarPregunta()
+        preguntaTarea?.let { reloj.removeCallbacks(it) }
+        preguntaTarea = null
+        try { sirena.stop() } catch (_: Exception) {}
+        /* Y desde este momento el móvil trabaja para los demás. Encender la
+           malla aquí es la única vez que se enciende sin que la pida el usuario,
+           y se dice en el registro en vez de hacerlo por la espalda: quien acaba
+           de decir que está bien en un terremoto es exactamente el nodo que la
+           red necesita, y no va a acordarse de encenderlo. */
+        repetidor = true
+        contestoBien = System.currentTimeMillis()
+        Log.i("SismoRed", "estoyBien(): paso a repetidor")
+        if (!mallaEscuchando) { mallaApagadaAMano = false; arrancarMalla() }
+        anotar("Estás bien. Este móvil pasa a repetidor: escucha, no suena y reenvía lo que oiga.")
+        cerrarSuceso()
+        try { actualizarNotificacion() } catch (_: Exception) {}
+    }
+
+    /**
+     * La baliza sin ruido. Es la acción barata de la escalera: no despierta a
+     * nadie, no gasta apenas y puede ser lo único que quede de alguien. Por eso
+     * su listón es mucho más bajo que el de la sirena — y por eso se enciende
+     * aunque no haya ninguna prueba de que la persona esté aquí, diciendo con
+     * todas las letras lo que se sabe y lo que no.
+     */
+    private fun balizaSilenciosa(d: Cascada.Decision) {
+        anotar("${Cascada.rotulo(d.quien)} · ${d.motivo}")
+        if (enAlarma || enRescate) return
+        try { emitirRadio(Baliza.ALARMA) } catch (_: Exception) {}
+        try { fichaLan?.emitir(true); fichaLan?.escuchaFuerte(true) } catch (_: Exception) {}
+        try { malla?.emitirEnBucle(saltoEntrante + 1) } catch (_: Exception) {}
+        try {
+            partes.encolar(d.motivo, saltoEntrante, mallaPorSalto)
+            enCola = partes.cuantos()
+        } catch (_: Exception) {}
+        /* Y se pasa a rescate directamente, sin la sirena de por medio: quien no
+           contesta no va a apagarla, y diez minutos de sirena son una mordida
+           seria a la batería que aquí no compra nada. */
+        rescate()
+    }
+
+    /** El suceso se ha resuelto: se limpia para poder ver el siguiente. */
+    private fun cerrarSuceso() {
+        sucesoDesde = 0L
+        sucesoSacudida = false; sucesoEstruendo = false; sucesoCorroborada = false
+        sucesoRegimen = Postura.Regimen.DESCONOCIDO
+        pasosAlSuceso = -1L
+        preguntaVencida = false
+        haContestado = false
+        preguntaHasta = 0L
+        preguntaTarea?.let { reloj.removeCallbacks(it) }
+        preguntaTarea = null
+        quitarPregunta()
+        try { postura?.vigilarLuz(false) } catch (_: Exception) {}
+    }
+
     private fun panico(motivo: String, automatico: Boolean = true) {
         Log.i("SismoRed", "panico($motivo) auto=$automatico enAlarma=$enAlarma enRescate=$enRescate")
         if (enAlarma) return
@@ -586,6 +1102,9 @@ class ServicioSos : Service() {
            batería: se sigue retransmitiendo, pero no se enciende la sirena. */
         if (enRescate) { anotar("alerta recibida en modo rescate: se retransmite sin sirena"); return }
         enAlarma = true
+        /* Se acabó lo de repetir para otros: ahora el que necesita la red es
+           este móvil. */
+        repetidor = false
         alarmaDesde = System.currentTimeMillis()
         // con disparo automático manda la autonomía, no las casillas
         val todo = automatico
@@ -606,7 +1125,7 @@ class ServicioSos : Service() {
         if (todo || opciones.baliza) try { malla?.emitirEnBucle(saltoEntrante + 1) } catch (_: Exception) {}
         if (automatico) anotar("nadie ha reaccionado: se enciende todo sin esperar")
         try { emitirRadio(Baliza.ALARMA) } catch (_: Exception) {}
-        try { fichaLan?.emitir(true) } catch (_: Exception) {}
+        try { fichaLan?.emitir(true); fichaLan?.escuchaFuerte(true) } catch (_: Exception) {}
         /* El parte se encola siempre, haya red o no y esté el envío activado o
            no. Sin consentimiento no sale del móvil nunca; con él, saldrá cuando
            aparezca cobertura, que en un terremoto es horas después. */
@@ -625,6 +1144,11 @@ class ServicioSos : Service() {
         enRescate = false
         rescateTarea?.let { reloj.removeCallbacks(it) }
         rescateTarea = null
+        /* DETENER también cancela la pregunta y el suceso en curso: quien pulsa
+           DETENER está delante del móvil, y eso ya es la respuesta. Y sale del
+           modo repetidor: si alguien para la app entera, la para entera. */
+        repetidor = false
+        cerrarSuceso()
         try { sirena.stop() } catch (_: Exception) {}
         try { vibrador?.cancel() } catch (_: Exception) {}
         try { linterna?.parar() } catch (_: Exception) {}
@@ -841,10 +1365,17 @@ class ServicioSos : Service() {
 
     private fun emitirRadio(estado: Int) {
         val f = Ficha(this)
+        /* Con la alarma o el rescate activos va la ficha ENTERA, en tramas: la
+           trama 0 es la de siempre —nombre y grupo, legible ella sola— y detrás
+           edad, avisos y contacto. Fuera de eso no se manda nada personal, que es
+           la misma regla que ya tenía la baliza. */
+        val resto = if (estado == Baliza.ALARMA || estado == Baliza.RESCATE)
+            Baliza.restoDeFicha(f.edad, f.medicacion, f.contacto) else ByteArray(0)
         val ok = radio?.emitir(
             estado, saltoEntrante,
             Baliza.codigoSangre(f.sangre),
-            f.nombre
+            f.nombre,
+            resto
         ) ?: false
         radioEmitiendo = ok
         radioMotivo = radio?.motivo ?: "sin baliza"
@@ -879,7 +1410,20 @@ class ServicioSos : Service() {
         try { mic?.let { Escucha(it, onEstruendo = {}, onRegistro = {}).autotestClasificador() } ?: false }
         catch (e: Exception) { Log.e("SismoRed", "comprobar detectores", e); false }
 
+    /**
+     * El diagnóstico completo, **fuera del hilo principal**.
+     *
+     * Estaba corriendo en el hilo del servicio, y al crecer las pruebas de la
+     * sonda —filtros adaptados sobre decenas de ráfagas simuladas— tardó lo
+     * bastante como para que Android sacara «SismoRed no responde». Un
+     * diagnóstico que cuelga la app es peor que no tenerlo: la vigilancia se
+     * queda sin atender justo mientras se comprueba que funciona.
+     */
     private fun comprobarTodo() {
+        thread(name = "diagnostico", isDaemon = true) { comprobarTodoAhora() }
+    }
+
+    private fun comprobarTodoAhora() {
         /* Instancia aparte para la malla: la comprobación toca el estado del
            decodificador, y hacerlo sobre el que está escuchando de verdad podría
            hacerle perder una baliza real justo mientras se comprueba. */
@@ -887,7 +1431,22 @@ class ServicioSos : Service() {
         try {
             mic?.let { m ->
                 val prueba = MallaAcustica(m, onConfirmada = {}, onRegistro = {})
-                for (hop in 1..MallaAcustica.MAX_HOP) mallaOk = prueba.autotest(hop) && mallaOk
+                /* Los seis códigos, no solo los cuatro saltos: la llamada y el
+                   SILENCIO van por el mismo canal, y el de silencio está a
+                   18,8 kHz — lo más alto del protocolo. Si un altavoz o un
+                   micrófono no llegan ahí, hay que saberlo aquí y no el día que
+                   un equipo de rescate pida silencio. */
+                for (hop in 1..MallaAcustica.TONOS.size) mallaOk = prueba.autotest(hop) && mallaOk
+
+                /* Y la firma temporal, que es lo único que comprueba que la
+                   malla sigue OYENDO una trama entera. Los seis de arriba miran
+                   el tono; este mira la forma, y es el que caza el fallo mudo:
+                   una ventana mal puesta no da error, solo deja la malla sorda.
+                   Se anota siempre, salga bien o mal, porque el número es la
+                   prueba de que no se ha endurecido el umbral hasta no oír. */
+                val (cadOk, cadTxt) = prueba.autotestCadencia()
+                anotar(cadTxt)
+                mallaOk = cadOk && mallaOk
             }
         } catch (_: Exception) { mallaOk = false }
 
@@ -896,12 +1455,33 @@ class ServicioSos : Service() {
         } catch (_: Exception) { false }
         val sondaOk = try { sonda?.autotest() ?: false } catch (_: Exception) { false }
 
+        /* La cascada entera contra los doce escenarios reales: el móvil que se
+           cae de la mesa, el generador, la que huye corriendo, la que duerme en
+           un quinto, la que queda enterrada con el móvil al lado y la que lo
+           tiene a tres metros. Tarda microsegundos y es lo único que comprueba
+           las DECISIONES en vez de los sensores. */
+        val cascadaOk = try {
+            val (ok, txt) = Cascada.autotest()
+            if (!ok) anotar("cascada: $txt")
+            ok
+        } catch (_: Exception) { false }
+
+        /* Y qué se sabe de la postura, que es de lo que depende todo lo demás.
+           No es un aprobado o un suspenso: hay móviles sin contador de pasos, y
+           lo que importa es que se vea cuál es este. */
+        try {
+            val r = postura?.resumen(sismo.quietoDesdeHace()) ?: "sin postura"
+            Log.i("SismoRed", "autotest $r")
+            anotar(r)
+        } catch (_: Exception) {}
+
         val fallan = ArrayList<String>()
         if (!mallaOk) fallan.add("la malla")
         if (!oidoOk) fallan.add("el oído")
         if (!sondaOk) fallan.add("la sonda")
+        if (!cascadaOk) fallan.add("la cascada de decisión")
         anotar(
-            if (fallan.isEmpty()) "Todo funciona: la malla, el oído y la sonda responden bien."
+            if (fallan.isEmpty()) "Todo funciona: la malla, el oído, la sonda y la cascada responden bien."
             else "Algo no va bien en " + fallan.joinToString(" y ") +
                  ". Vuélvelo a probar en un sitio en silencio."
         )
@@ -1010,7 +1590,10 @@ class ServicioSos : Service() {
                     barridoActivo = barridoOn
                 }
                 interfonoOcupado = interfono?.ocupado ?: false
-                fichaLan?.let { fichasWifi = if (it.fichas().isEmpty()) "" else it.comoTexto() }
+                fichaLan?.let {
+                    fichasWifi = if (it.fichas().isEmpty()) "" else it.comoTexto()
+                    fichaLanEstado = it.estado()
+                }
                 /* La baliza contesta por callback, así que justo después de
                    pedirla el motivo todavía dice «sin arrancar». Sin refrescarlo
                    aquí, Diagnóstico se quedaba enseñando ese texto para siempre
@@ -1108,6 +1691,51 @@ class ServicioSos : Service() {
     private fun vigilarInmovilidad() {
         val tarea = object : Runnable {
             override fun run() {
+                /* Sin ahorro de Wi-Fi solo cuando hay un motivo: buscando, en
+                   alarma, en rescate o de repetidor. Con la pantalla apagada y
+                   el ahorro puesto este canal PIERDE paquetes —medido en el
+                   A10s—, y quien busca no puede perderlos. El resto del tiempo
+                   manda durar.
+
+                   Y va aquí, en el latido del servicio, y no en el bucle que
+                   pinta la pantalla: ese se para al apagarla, que es justo
+                   cuando hace falta. */
+                /* Latido en disco: si la app se abre y esto es reciente pero el
+                   servicio no está, es que lo han matado por detrás. */
+                try {
+                    opciones.latido = System.currentTimeMillis()
+                    opciones.deberiaVigilar = !opciones.apagada
+                } catch (_: Exception) {}
+                try {
+                    fichaLan?.escuchaFuerte(buscando || enAlarma || enRescate || repetidor)
+                } catch (_: Exception) {}
+                /* El umbral sísmico según DÓNDE está el móvil, no según la hora.
+                   Quieto en una mesilla no anda, no corre y no se mete en un
+                   bolsillo: casi todo lo que obliga a poner el listón alto no
+                   existe ahí, y ahí es justo donde hay alguien durmiendo que no
+                   se va a enterar. Encima de una persona manda el conservador.
+
+                   Va por el estado y no por el reloj a propósito: la hora se
+                   equivoca con quien trabaja de noche, con la siesta y con el
+                   móvil olvidado en la mesa toda la tarde. El estado se mide. */
+                try {
+                    val quieto = sismo.quietoDesdeHace()
+                    val enReposo = postura?.regimenRecordado(quieto, sismo.giroGrados) ==
+                        Postura.Regimen.EN_REPOSO
+                    val nuevo = if (enReposo) opciones.umbralReposo else opciones.umbral
+                    if (abs(sismo.umbral - nuevo) > 0.01) {
+                        sismo.umbral = nuevo
+                        umbralActivo = nuevo
+                        enReposoAhora = enReposo
+                        anotar("Móvil %s: vigilo a %.1f m/s²".format(
+                            if (enReposo) "en reposo" else "encima de ti", nuevo))
+                    }
+                    calmaMedida = sismo.calmaMedida
+                    giroGrados = sismo.giroGrados
+                    Log.i("SismoRed", "postura %s · giro %.1f° · quieto %d s · calma %.2f · umbral %.1f".format(
+                        if (enReposo) "EN_REPOSO" else "ENCIMA", sismo.giroGrados, quieto / 1000,
+                        sismo.calmaMedida, nuevo))
+                } catch (_: Exception) {}
                 val sonando = System.currentTimeMillis() - alarmaDesde
                 val quieto = sonando > ESCALA_QUIETO_MS && sismo.quietoDesdeHace() > ESCALA_SIN_MOVER_MS
                 val tope = sonando > ESCALA_TOPE_MS
@@ -1127,6 +1755,7 @@ class ServicioSos : Service() {
 
     override fun onDestroy() {
         try { sismo.parar() } catch (_: Exception) {}
+        try { postura?.parar() } catch (_: Exception) {}
         try { escucha?.parar() } catch (_: Exception) {}
         try { malla?.parar() } catch (_: Exception) {}
         mallaEscuchando = false
@@ -1198,6 +1827,11 @@ class ServicioSos : Service() {
             .setOngoing(true)
             .setContentIntent(abrir)
 
+        /* Contestar tiene que poder hacerse desde la notificación, sin
+           desbloquear: si hay que desbloquear para decir «estoy bien», la mitad
+           de la gente no llega a tiempo y su móvil se pone a emitir sin falta. */
+        if (preguntaHasta > System.currentTimeMillis())
+            b.addAction(Notification.Action.Builder(null, "ESTOY BIEN", pi(ACCION_ESTOY_BIEN)).build())
         if (alarma || enRescate) b.addAction(Notification.Action.Builder(null, "DETENER", pi(ACCION_PARAR)).build())
         else b.addAction(Notification.Action.Builder(null, "PÁNICO", pi(ACCION_PANICO)).build())
         return b.build()

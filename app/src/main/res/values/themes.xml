@@ -65,6 +65,53 @@
         <item name="autoSizeStepGranularity">0.5sp</item>
     </style>
 
+    <!-- ===== los bloques de acciones de Diagnóstico =====
+         Eran seis rectángulos idénticos, en gris claro sobre gris oscuro, dos de
+         ellos con el mismo candado y varios partidos en dos líneas. Planos y sin
+         orden: nada decía cuál es la acción principal ni cuál es la que apaga la
+         app entera.
+
+         Ahora hay tres pesos, y el color informa:
+           · BLOQUE   — lo normal. Texto en BLANCO (no gris) y el icono con su
+                        color: el gris sobre gris es lo que los aplanaba.
+           · PRINCIPAL— fondo blanco y letra roja. Es la del logotipo, y marca la
+                        acción de la pantalla.
+           · DESTRUYE — fondo rojo y letra blanca. La inversa exacta, para lo que
+                        apaga la vigilancia entera.
+         Y todos en UNA línea: `maxLines=1` con autoescalado, así que el rótulo se
+         encoge lo justo en vez de partirse. -->
+    <style name="Boton.Bloque" parent="Boton.Ancho">
+        <item name="android:textColor">@color/tx</item>
+        <item name="android:minHeight">62dp</item>
+        <item name="android:maxLines">1</item>
+        <item name="autoSizeTextType">uniform</item>
+        <item name="autoSizeMinTextSize">9sp</item>
+        <item name="autoSizeMaxTextSize">13sp</item>
+        <item name="autoSizeStepGranularity">0.5sp</item>
+        <item name="android:layout_marginTop">8dp</item>
+    </style>
+
+    <style name="Boton.Bloque.Principal">
+        <item name="backgroundTint">@color/tx</item>
+        <item name="android:textColor">@color/rd</item>
+        <item name="strokeWidth">0dp</item>
+    </style>
+
+    <style name="Boton.Bloque.Destruye">
+        <item name="backgroundTint">@color/rd</item>
+        <item name="android:textColor">@color/tx</item>
+        <item name="strokeWidth">0dp</item>
+    </style>
+
+    <!-- La de más peso de la pantalla: la que apaga la vigilancia entera. Más
+         alta y con la letra más grande que las demás, porque es la única que
+         deja el móvil sin hacer nada. -->
+    <style name="Boton.Bloque.Grande" parent="Boton.Bloque.Destruye">
+        <item name="android:minHeight">76dp</item>
+        <item name="autoSizeMaxTextSize">16sp</item>
+        <item name="android:letterSpacing">0.1</item>
+    </style>
+
     <!-- Secundario: el que solo se usa de vez en cuando, en gris. -->
     <style name="Boton.Tenue">
         <item name="android:textColor">@color/dim</item>
@@ -251,6 +298,82 @@
         <item name="android:text">@string/guion</item>
     </style>
 
+    <!-- El titular de una tarjeta de texto: UNA frase, en blanco, que dice la
+         idea. Debajo va el desarrollo en gris (`Ayuda`). Es la misma jerarquía de
+         la pantalla de «¿estás bien?» —rótulo rojo, titular blanco, cuerpo
+         gris—, y sin ella una tarjeta de texto largo es un muro que nadie lee. -->
+    <style name="TitularTarjeta">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">2dp</item>
+        <item name="android:layout_marginBottom">10dp</item>
+        <item name="android:breakStrategy">simple</item>
+        <item name="android:hyphenationFrequency">none</item>
+        <item name="android:lineSpacingMultiplier">1.35</item>
+        <item name="android:fontFamily">@font/montserrat</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/tx</item>
+        <item name="android:textSize">15sp</item>
+    </style>
+
+    <!-- ===== documento largo (Acerca de) =====
+         Sin tarjetas, sin iconos y sin color: esto se lee, no se ojea. Cajas y
+         adornos cada dos párrafos convierten un texto legal en un muro a bloques
+         que nadie termina. Lo que hace legible un documento es una sola columna,
+         una jerarquía clara y aire entre líneas. -->
+    <!-- La jerarquía iba al revés: el rótulo en mayúsculas hacía de título y era
+         lo MÁS pequeño de la pantalla, mientras el subtítulo era lo más grande.
+         Ahora manda el título, el subtítulo va por debajo de él y el cuerpo
+         cierra. Y todos los tamaños bajaron: el titular de 19sp era un cartel,
+         no un título de sección. -->
+    <style name="DocSeccion">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">36dp</item>
+        <item name="android:layout_marginBottom">7dp</item>
+        <item name="android:fontFamily">@font/montserrat_bold</item>
+        <item name="android:letterSpacing">0.10</item>
+        <item name="android:textColor">@color/tx</item>
+        <item name="android:textSize">14.5sp</item>
+    </style>
+
+    <!-- Subtítulo: por debajo del título en mayúsculas, y en gris. Es la entrada
+         al texto, no un segundo titular compitiendo con él. -->
+    <style name="DocTitular">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginBottom">13dp</item>
+        <item name="android:breakStrategy">simple</item>
+        <item name="android:hyphenationFrequency">none</item>
+        <item name="android:lineSpacingMultiplier">1.4</item>
+        <item name="android:fontFamily">@font/montserrat</item>
+        <item name="android:textColor">@color/dim</item>
+        <item name="android:textSize">12.5sp</item>
+    </style>
+
+    <!-- Cuerpo: justificado a ambos lados y SIN partir palabras. La partición
+         automática dejaba guiones a mitad de palabra, que en castellano se lee
+         fatal y además el algoritmo de Android no conoce nuestras reglas de
+         separación silábica. Justificar sin partir obliga a que el espaciado
+         entre palabras haga el trabajo, que es lo correcto aquí. -->
+    <style name="DocCuerpo">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:breakStrategy">high_quality</item>
+        <item name="android:hyphenationFrequency">none</item>
+        <item name="android:justificationMode">inter_word</item>
+        <item name="android:lineSpacingMultiplier">1.58</item>
+        <item name="android:textColor">@color/lectura</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
+    <style name="DocLinea">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">1dp</item>
+        <item name="android:layout_marginTop">30dp</item>
+        <item name="android:background">@color/line</item>
+    </style>
+
     <!-- Texto de ayuda al pie de una tarjeta (`.hint`). -->
     <style name="Ayuda">
         <item name="android:layout_width">match_parent</item>
@@ -265,9 +388,15 @@
     </style>
 
     <!-- Tarjeta: el contenedor que repiten las nueve. -->
+    <!-- El margen SUPERIOR faltaba, y por eso cualquier tarjeta que siguiera a
+         algo que no fuera otra tarjeta —una cuadrícula, un botón, un rótulo—
+         quedaba pegada a ello y parecía formar parte de lo anterior. Se arregla
+         aquí y no tarjeta por tarjeta: son nueve, y la siguiente que alguien
+         añada volvería a salir pegada. -->
     <style name="Tarjeta">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">16dp</item>
         <item name="android:layout_marginBottom">16dp</item>
         <item name="android:background">@drawable/tarjeta</item>
         <item name="android:orientation">vertical</item>

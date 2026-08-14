@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- El cuadrado del icono. Separarlo del fondo de la fila es lo que da relieve:
+     sin él, el icono flota y la fila se ve plana. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#2C3238" />
+</shape>

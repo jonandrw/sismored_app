@@ -1,6 +1,7 @@
 package red.sismo
 
 import android.Manifest
+import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -38,6 +39,8 @@ import androidx.core.content.ContextCompat
 private const val PIDE_NOTIF = 1
 private const val PIDE_MICRO = 2
 private const val PIDE_RADIO = 3
+private const val PIDE_PASOS = 4
+private const val PIDE_UBI = 5
 
 class MainActivity : AppCompatActivity() {
 
@@ -61,7 +64,8 @@ class MainActivity : AppCompatActivity() {
     private val subtitulos = mapOf(
         R.id.v_respuesta to R.string.v_respuesta,
         R.id.v_diag to R.string.v_diagnostico,
-        R.id.v_registro to R.string.v_registro
+        R.id.v_registro to R.string.v_registro,
+        R.id.v_acerca to R.string.v_acerca
     )
     private val todasLasVistas by lazy {
         pestanas.map { it.second } + subtitulos.keys
@@ -113,6 +117,7 @@ class MainActivity : AppCompatActivity() {
         for ((tab, _) in pestanas) findViewById<View>(tab).setOnClickListener { ir(tab) }
         ir(R.id.t_inicio)
 
+
         // La campana lleva al registro; el engranaje, al diagnóstico.
         findViewById<View>(R.id.go_log).setOnClickListener { ir(R.id.v_registro) }
         findViewById<View>(R.id.go_diag).setOnClickListener { ir(R.id.v_diag) }
@@ -125,6 +130,8 @@ class MainActivity : AppCompatActivity() {
            todas y además deja al usuario decidir en su orden. */
         if (prefs().getBoolean("bienvenida_hecha", false)) {
             pedirPermisos()
+            reactivarSiEstabaApagada()
+            avisarSiLoMataron()
         } else {
             enBienvenida = true
             montarBienvenida()
@@ -236,6 +243,20 @@ class MainActivity : AppCompatActivity() {
         l.add(Permiso(R.drawable.ic_volumen, R.string.ob_teclas, R.string.ob_teclas_para,
             { teclasActivas(this) },
             { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }))
+        /* La última posición conocida. El texto dice lo que hace y lo que NO:
+           la app no enciende el GPS, solo mira lo que el móvil ya sabía. Si
+           alguien lo deja sin conceder, todo lo demás sigue funcionando. */
+        l.add(Permiso(R.drawable.ic_baliza, R.string.ob_ubi, R.string.ob_ubi_para,
+            { Ubicacion(this).hayPermiso() },
+            { requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), PIDE_UBI) }))
+        /* El contador de pasos. Va el último a propósito: es el único de los seis
+           sin el que la app sigue haciendo su trabajo — si falta, la cascada
+           trata «no sé si anda» como «no ha andado», que es el lado seguro. */
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) l.add(Permiso(
+            R.drawable.ic_nodo, R.string.ob_pasos, R.string.ob_pasos_para,
+            { checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED },
+            { requestPermissions(arrayOf(Manifest.permission.ACTIVITY_RECOGNITION), PIDE_PASOS) }
+        ))
         return l
     }
 
@@ -259,6 +280,42 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<Button>(R.id.ob_saltar).setOnClickListener { cerrarBienvenida() }
         pintarBienvenida()
+    }
+
+    /**
+     * Volver a abrir la app es querer que vigile otra vez.
+     *
+     * APAGAR DEL TODO para el servicio y lo recuerda, para no encenderse sola por
+     * la espalda. Pero cuando la persona vuelve a abrirla, el sentido cambia: ya
+     * no es una app que se resucita sola, es alguien que la está abriendo. Así
+     * que se reactiva todo — y se le recuerda lo único que la app no puede
+     * reactivar por su cuenta, que es el atajo de volumen: activar un servicio de
+     * accesibilidad lo tiene que hacer la persona en Ajustes, no hay API.
+     */
+    private fun reactivarSiEstabaApagada() {
+        if (!op.apagada) return
+        op.apagada = false
+        arrancarServicio(ServicioSos.ACCION_MALLA)
+        anotar("SismoRed vuelve a vigilar.")
+        if (!teclasActivas(this)) {
+            AlertDialog.Builder(this)
+                .setTitle(R.string.reactivar_titulo)
+                .setMessage(R.string.reactivar_texto)
+                .setNegativeButton(R.string.matada_luego, null)
+                .setPositiveButton(R.string.reactivar_ir) { _, _ ->
+                    startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                }
+                .show()
+        }
+    }
+
+    /** La misma lista de la bienvenida, reabierta para revisarla cuando quieras.
+     *  Es la única pantalla que dice qué le falta a la app y por qué le hace
+     *  falta, así que no puede verse una sola vez y no volver nunca. */
+    private fun abrirListaPermisos() {
+        enBienvenida = true
+        montarBienvenida()
+        findViewById<View>(R.id.v_onboard).visibility = View.VISIBLE
     }
 
     /** Se repinta en cada vuelta a la app: muchos de estos se conceden en
@@ -437,18 +494,54 @@ class MainActivity : AppCompatActivity() {
         (vista(id) as VistaConsola).escribir(texto)
     }
 
-    private fun casilla(id: Int, icono: Int, nombre: Int, alPulsar: () -> Unit) {
+    /**
+     * Una fila del centro de opciones.
+     *
+     * Solo hay dos aspectos, y es a propósito: todas iguales menos la que apaga
+     * la vigilancia entera. Si destacan dos, ninguna destaca — y la única que de
+     * verdad tiene que separarse del resto es la que deja el móvil sin hacer
+     * nada. Comprobar que funciona es una acción normal, no una decisión.
+     */
+    private fun opcion(id: Int, icono: Int, titulo: Int, desc: Int, apaga: Boolean = false,
+                       alPulsar: () -> Unit) {
+        val f = findViewById<View>(id)
+        f.findViewById<ImageView>(R.id.of_icono).setImageResource(icono)
+        f.findViewById<TextView>(R.id.of_titulo).setText(titulo)
+        f.findViewById<TextView>(R.id.of_desc).setText(desc)
+        f.setOnClickListener { alPulsar() }
+
+        f.setBackgroundResource(if (apaga) R.drawable.fila_op_rd else R.drawable.fila_op)
+        f.findViewById<View>(R.id.of_azulejo).setBackgroundResource(
+            if (apaga) R.drawable.azulejo_rd_claro else R.drawable.azulejo)
+        f.findViewById<ImageView>(R.id.of_icono).setColorFilter(getColor(R.color.tx))
+        f.findViewById<TextView>(R.id.of_titulo).setTextColor(getColor(R.color.tx))
+        f.findViewById<TextView>(R.id.of_desc).setTextColor(
+            getColor(if (apaga) R.color.tx else R.color.dim))
+        f.findViewById<ImageView>(R.id.of_flecha).setColorFilter(
+            getColor(if (apaga) R.color.tx else R.color.ctl))
+    }
+
+    private fun casilla(id: Int, icono: Int, nombre: Int, que: Int, alPulsar: () -> Unit) {
         val c = findViewById<View>(id)
         c.findViewById<ImageView>(R.id.cs_icono).setImageResource(icono)
         c.findViewById<TextView>(R.id.cs_nombre).setText(nombre)
+        c.findViewById<TextView>(R.id.cs_que).setText(que)
         c.setOnClickListener { alPulsar() }
     }
+
+    /** Las que van en rojo al encenderse: no son un interruptor más, cambian
+     *  cuánto dura el móvil. El color aquí informa, no decora. */
+    private val casillasCaras = setOf(R.id.cs_rescate, R.id.cs_mantener)
 
     private fun casillaEstado(id: Int, activo: Boolean) {
         if (!cambio(id, activo)) return
         val c = vista(id)
-        c.setBackgroundResource(if (activo) R.drawable.casilla_on else R.drawable.casilla)
-        val col = getColor(if (activo) R.color.gr else R.color.ctl)
+        val cara = id in casillasCaras
+        c.setBackgroundResource(
+            if (!activo) R.drawable.casilla
+            else if (cara) R.drawable.casilla_on_rd else R.drawable.casilla_on
+        )
+        val col = getColor(if (!activo) R.color.ctl else if (cara) R.color.rd else R.color.gr)
         c.findViewById<ImageView>(R.id.cs_icono).setColorFilter(col)
         c.findViewById<TextView>(R.id.cs_estado).let {
             it.setText(if (activo) R.string.on else R.string.off)
@@ -529,8 +622,6 @@ class MainActivity : AppCompatActivity() {
         cabecera(R.id.ch_sonda, R.drawable.ic_sonar, R.string.rot_sonda)
         cabecera(R.id.ch_personal, R.drawable.ic_ficha, R.string.rot_personal)
         cabecera(R.id.ch_busqueda, R.drawable.ic_baliza, R.string.rot_busqueda)
-        cabecera(R.id.ch_sistema, R.drawable.ic_diag, R.string.rot_sistema)
-        cabecera(R.id.ch_capacidades, R.drawable.ic_diag, R.string.rot_capacidades)
         cabecera(R.id.ch_registro, R.drawable.ic_registro, R.string.rot_registro)
         cabecera(R.id.ch_como_malla, R.drawable.ic_onda, R.string.rot_como_malla)
         cabecera(R.id.ch_como_ficha, R.drawable.ic_candado, R.string.rot_como_ficha)
@@ -571,9 +662,19 @@ class MainActivity : AppCompatActivity() {
 
         // ---- DETECTOR SÍSMICO ----
         kv(R.id.kv_sacudida, R.string.k_sacudida)
+        /* Un solo mando, y edita el umbral del régimen en el que esté el móvil.
+           Son dos números —quieto en una mesa y encima de una persona— y no
+           tienen nada que ver entre sí, pero poner dos mandos obliga a explicar
+           cuál es cuál y a que alguien elija en abstracto. Así se toca el que
+           está pasando ahora, que es el único que se puede juzgar: se deja el
+           móvil donde vaya a dormir, se mira lo que se mueve esa mesa y se sube o
+           se baja hasta que convenza. La línea de estado dice cuál se está
+           tocando. */
         paso(
             R.id.paso_umbral, Opciones.UMBRAL_MIN, Opciones.UMBRAL_MAX, Opciones.UMBRAL_PASO,
-            { op.umbral }, { op.umbral = it }, { "%.1f".format(it) }
+            { if (ServicioSos.enReposoAhora) op.umbralReposo else op.umbral },
+            { if (ServicioSos.enReposoAhora) op.umbralReposo = it else op.umbral = it },
+            { "%.1f".format(it) }
         )
         conmutador(R.id.cm_auto, R.string.sw_auto) {
             arrancarServicio(ServicioSos.ACCION_ARMAR); pintar()
@@ -675,6 +776,9 @@ class MainActivity : AppCompatActivity() {
         /* Las cuatro herramientas de la sonda son interruptores, y las cuatro van
            por el servicio: el microfono es unico, y si la actividad abriera el suyo
            dejaria sorda a la malla. */
+        findViewById<Button>(R.id.b_aprender_movil).setOnClickListener {
+            arrancarServicio(ServicioSos.ACCION_APRENDER_MOVIL)
+        }
         conmutadorAncho(R.id.cm_eco, R.string.cm_eco) {
             arrancarServicio(ServicioSos.ACCION_SONDA); pintar()
         }
@@ -697,24 +801,24 @@ class MainActivity : AppCompatActivity() {
     private fun montarRespuesta() {
         paso(R.id.paso_r1, 1, R.drawable.ic_alerta, R.string.paso_r1_t, R.string.paso_r1)
         paso(R.id.paso_r2, 2, R.drawable.ic_casco, R.string.paso_r2_t, R.string.paso_r2)
-        casilla(R.id.cs_linterna, R.drawable.ic_linterna, R.string.t_linterna) {
+        casilla(R.id.cs_linterna, R.drawable.ic_linterna, R.string.t_linterna, R.string.q_linterna) {
             op.linterna = !op.linterna; aplicar()
         }
-        casilla(R.id.cs_vibracion, R.drawable.ic_vibracion, R.string.t_vibracion) {
+        casilla(R.id.cs_vibracion, R.drawable.ic_vibracion, R.string.t_vibracion, R.string.q_vibracion) {
             op.vibracion = !op.vibracion; aplicar()
         }
-        casilla(R.id.cs_pantalla, R.drawable.ic_pantalla, R.string.t_pantalla) {
+        casilla(R.id.cs_pantalla, R.drawable.ic_pantalla, R.string.t_pantalla, R.string.q_pantalla) {
             op.pantalla = !op.pantalla; aplicar()
         }
-        casilla(R.id.cs_baliza, R.drawable.ic_baliza, R.string.t_baliza) {
+        casilla(R.id.cs_baliza, R.drawable.ic_baliza, R.string.t_baliza, R.string.q_baliza) {
             op.baliza = !op.baliza; aplicar()
         }
-        casilla(R.id.cs_mantener, R.drawable.ic_candado, R.string.t_mantener) {
+        casilla(R.id.cs_mantener, R.drawable.ic_candado, R.string.t_mantener, R.string.q_mantener) {
             op.mantener = !op.mantener; aplicar()
         }
         /* El rescate no es una preferencia guardada: es una acción que se
            enciende y se apaga ahora mismo, y quien manda es el servicio. */
-        casilla(R.id.cs_rescate, R.drawable.ic_casco, R.string.t_rescate) {
+        casilla(R.id.cs_rescate, R.drawable.ic_casco, R.string.t_rescate, R.string.q_rescate) {
             arrancarServicio(ServicioSos.ACCION_RESCATE); pintar()
         }
     }
@@ -761,6 +865,9 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<Button>(R.id.b_olvidar).setOnClickListener {
             rastreador.olvidar(); pintar()
+        }
+        findViewById<Button>(R.id.b_silencio_zona).setOnClickListener {
+            arrancarServicio(ServicioSos.ACCION_SILENCIO_ZONA)
         }
         findViewById<Button>(R.id.b_llamar).setOnClickListener {
             arrancarServicio(ServicioSos.ACCION_LLAMAR)
@@ -921,7 +1028,8 @@ class MainActivity : AppCompatActivity() {
                que hace falta al llegar. */
             f.findViewById<TextView>(R.id.hz_ficha).let {
                 val partes = ArrayList<String>(2)
-                if (h.nombre.isNotBlank()) partes.add(h.nombre)
+                if (h.nombre.isNotBlank()) partes.add("de " + h.nombre)
+                if (h.totalTramas > 0 && h.fichaCompleta().isBlank()) partes.add("ficha " + h.tramas())
                 if (h.sangre > 0) partes.add("Grupo ${Baliza.SANGRE[h.sangre]}")
                 it.visibility = if (partes.isEmpty()) View.GONE else View.VISIBLE
                 it.text = partes.joinToString(" · ")
@@ -961,7 +1069,20 @@ class MainActivity : AppCompatActivity() {
         lineas.add("")
         lineas.add("Llámalo por su nombre: saber que alguien de arriba te llama por tu nombre cambia lo que aguanta una persona.")
         lineas.add("")
-        lineas.add("La edad, las alergias y el contacto NO se emiten por radio: en el anuncio solo caben trece bytes de nombre, y el resto se lee en la pantalla de su móvil cuando lo encuentres.")
+        /* El resto de la ficha llega en tramas, y se arma sola conforme mejora el
+           enlace. «7 de 9» no es un detalle técnico: es la medida honesta de la
+           calidad de la señal, y si sube es que te estás acercando. */
+        val completa = h.fichaCompleta()
+        if (completa.isNotBlank()) {
+            lineas.add("RESTO DE LA FICHA")
+            lineas.add(completa)
+        } else if (h.totalTramas > 0) {
+            lineas.add("RESTO DE LA FICHA")
+            lineas.add("Llegando por partes: " + h.tramas() + " tramas.")
+            lineas.add("Quédate cerca o acércate: lo que falte llega en la siguiente vuelta.")
+        } else {
+            lineas.add("Este móvil no está mandando el resto de la ficha. Solo la manda con la alarma o el modo rescate activos.")
+        }
         lineas.add("")
         lineas.add("SEÑAL")
         lineas.add("Ahora: " + h.suave.toInt() + " dBm")
@@ -993,13 +1114,39 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun montarDiagnostico() {
-        findViewById<Button>(R.id.ir_permisos).setOnClickListener { abrirAjustesDeLaApp() }
-        /* Comprueba la app entera sin altavoz, sin micrófono y sin segundo
-           móvil: se le inyectan señales conocidas a cada pieza. Si esto falla,
-           no hace falta salir a la calle a probar nada. */
-        findViewById<Button>(R.id.autotest).setOnClickListener {
+        /* REVISAR PERMISOS abre la LISTA de la app, no los ajustes del sistema.
+           Los de Android enseñan permisos sueltos, sin decir para qué los quiere
+           esta app, y la mitad de los que hacen falta aquí —accesibilidad,
+           batería— ni siquiera salen ahí. */
+        opcion(R.id.op_permisos, R.drawable.ic_candado, R.string.b_permisos,
+            R.string.d_permisos) { abrirListaPermisos() }
+        opcion(R.id.op_acerca, R.drawable.ic_registro, R.string.b_acerca,
+            R.string.d_acerca) { ir(R.id.v_acerca) }
+        opcion(R.id.op_ficha_lan, R.drawable.ic_red, R.string.b_probar_ficha_lan,
+            R.string.d_ficha_lan) {
+            arrancarServicio(ServicioSos.ACCION_PROBAR_FICHA_LAN)
+            ir(R.id.v_registro)
+        }
+        opcion(R.id.op_simulacro, R.drawable.ic_alerta, R.string.b_probar_pregunta,
+            R.string.d_simulacro) { arrancarServicio(ServicioSos.ACCION_PROBAR_PREGUNTA) }
+        /* Comprueba la app entera sin altavoz, sin micrófono y sin segundo móvil:
+           se le inyectan señales conocidas a cada pieza. */
+        opcion(R.id.op_autotest, R.drawable.ic_diag, R.string.autotest,
+            R.string.d_autotest) {
             arrancarServicio(ServicioSos.ACCION_DIAGNOSTICO)
             ir(R.id.v_registro)
+        }
+        opcion(R.id.op_apagar, R.drawable.ic_parar, R.string.b_apagar_todo,
+            R.string.d_apagar, apaga = true) {
+            AlertDialog.Builder(this)
+                .setTitle(R.string.b_apagar_todo)
+                .setMessage(R.string.b_apagar_aviso)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.b_apagar_todo) { _, _ ->
+                    arrancarServicio(ServicioSos.ACCION_APAGAR)
+                    anotar("SismoRed apagada. Vuelve a abrir la app para encenderla.")
+                }
+                .show()
         }
     }
 
@@ -1202,14 +1349,34 @@ class MainActivity : AppCompatActivity() {
             else -> "EN REPOSO"
         }
         estado.setTextColor(getColor(if (alarma || rescate) R.color.rd else if (ServicioSos.armado) R.color.gr else R.color.dim))
-        findViewById<TextView>(R.id.estado_sub).setText(
-            when {
-                alarma -> R.string.sub_alarma
-                rescate -> R.string.sub_rescate
-                ServicioSos.armado -> R.string.sub_vigilando
-                else -> R.string.sub_reposo
+        /* Y aquí se dice CÓMO está vigilando, que es lo que cambia solo según
+           dónde esté el móvil. Un detector que se vuelve más fino cuando lo dejas
+           en la mesilla tiene que decirlo, o parece que se ha vuelto loco. */
+        val sub = findViewById<TextView>(R.id.estado_sub)
+        when {
+            alarma -> sub.setText(R.string.sub_alarma)
+            rescate -> sub.setText(R.string.sub_rescate)
+            /* Que se vea que el ESTOY BIEN llegó. Sin esto, pulsarlo y que la
+               pantalla se cierre es exactamente igual a que el botón no funcione,
+               y no hay forma de saber cuál de las dos cosas ha pasado. */
+            ServicioSos.contestoBien > 0 &&
+                System.currentTimeMillis() - ServicioSos.contestoBien < 300_000L -> {
+                sub.text = "Has dicho que estás bien. Este móvil repite las alertas de otros."
             }
-        )
+            ServicioSos.armado -> {
+                val u = ServicioSos.umbralActivo
+                val calma = ServicioSos.calmaMedida
+                sub.text = if (u > 0)
+                    "%s · dispara a %.1f m/s² · giro %.0f°%s".format(
+                        if (ServicioSos.enReposoAhora) "En reposo, vigilancia fina" else "Lo llevas encima",
+                        u,
+                        ServicioSos.giroGrados,
+                        if (calma > 0) " · aquí se mueve %.2f".format(calma) else ""
+                    )
+                else getString(R.string.sub_vigilando)
+            }
+            else -> sub.setText(R.string.sub_reposo)
+        }
         // El borde rojo es lo que se ve de reojo sin llegar a leer nada.
         if (cambio(R.id.tarjeta_estado, alarma || rescate)) {
             vista(R.id.tarjeta_estado).setBackgroundResource(
@@ -1261,6 +1428,9 @@ class MainActivity : AppCompatActivity() {
         // La traza se pinta sola a 60 fps leyendo el servicio; de aquí solo
         // necesita el umbral, que lo cambia una persona y no cada marco.
         (vista(R.id.traza) as VistaTraza).umbral = op.umbral
+        /* Corta: esta fila es estrecha y el texto se partía. Lo que hace falta
+           para entender el número —a qué umbral vigila y cuánto se mueve este
+           sitio— va en la línea de estado, que tiene sitio. */
         kvValor(R.id.kv_sacudida, "%.2f m/s²".format(ServicioSos.sacudida))
         conmutadorEstado(R.id.cm_auto, ServicioSos.armado)
         conmutadorEstado(R.id.cm_sirena, op.sirena)
@@ -1385,7 +1555,12 @@ class MainActivity : AppCompatActivity() {
         val f = LayoutInflater.from(this).inflate(R.layout.fila_kv, donde, false)
         f.findViewById<TextView>(R.id.kv_clave).text = nombre
         f.findViewById<TextView>(R.id.kv_valor).let {
-            it.text = valor
+            /* La mayúscula va aquí y no en cada llamada: son veintidós filas y
+               la siguiente que alguien añada saldría en minúscula otra vez. Solo
+               toca la primera letra, así que las que ya van en mayúsculas —SIN
+               CONCEDER, NINGUNA— y las que empiezan por un número se quedan
+               como están. */
+            it.text = valor.replaceFirstChar { c -> c.titlecase(java.util.Locale.getDefault()) }
             it.setTextColor(getColor(color))
         }
         donde.addView(f)
@@ -1397,6 +1572,8 @@ class MainActivity : AppCompatActivity() {
      *  ritmo del resto: inflar veinte layouts dos veces por segundo cuesta
      *  bastante más que cambiar veinte textos, y aquí nada cambia tan deprisa. */
     private var diagUltimo = 0L
+    /** Se crea una vez, no en cada repintado. Solo se lee. */
+    private var ubicacion: Ubicacion? = null
 
     private fun pintarDiagnostico(forzar: Boolean = false) {
         val ahora = System.currentTimeMillis()
@@ -1430,7 +1607,26 @@ class MainActivity : AppCompatActivity() {
             if (ServicioSos.enCola > 0) R.color.dim else R.color.gr)
         fila(sis, "Red usada", if (op.envio) "solo partes, si la activas" else "NINGUNA",
             if (op.envio) R.color.dim else R.color.gr)
-        fila(sis, "GPS usado", "NINGUNO", R.color.gr)
+        /* Antes decía «GPS usado: NINGUNO» y era verdad. Sigue siéndolo en lo que
+           importa —la app no enciende el GPS ni una vez—, pero ahora lee la
+           última posición que dejó otra app, así que la fila tiene que decir eso
+           y no una media verdad más cómoda. */
+        /* SOLO LEER. `refrescar()` pregunta al servicio de ubicación del sistema,
+           que es una llamada al otro lado de un binder y puede tardar; metida en
+           el repintado del diagnóstico —que corre varias veces por segundo en el
+           hilo de la interfaz— colgó la app entera: «Input dispatching timed out,
+           MainActivity is not responding». Quien refresca es el servicio, al
+           arrancar y en cada suceso. Aquí se pinta lo que ya hay. */
+        val ubi = ubicacion ?: Ubicacion(this).also { ubicacion = it }
+        /* El canal que fallaba en silencio: si el chip filtra la difusión o no
+           hay Wi-Fi, aquí se lee en vez de quedarse esperando una ficha que no
+           va a llegar nunca. */
+        val fl = ServicioSos.fichaLanEstado
+        fila(sis, "Ficha por Wi-Fi", fl,
+            if (fl.startsWith("escuchando") || fl.startsWith("emitiendo")) R.color.gr else R.color.dim)
+        fila(sis, "GPS encendido por la app", "NUNCA", R.color.gr)
+        fila(sis, "Última posición conocida", ubi.resumen(),
+            if (ubi.hay() && ubi.hayPermiso()) R.color.dim else R.color.ctl)
 
         val cap = findViewById<LinearLayout>(R.id.diag_capacidades)
         cap.removeAllViews()
@@ -1470,6 +1666,36 @@ class MainActivity : AppCompatActivity() {
             (getSystemService(Context.BLUETOOTH_SERVICE) as? android.bluetooth.BluetoothManager)?.adapter?.isEnabled == true
         } catch (_: Exception) { false }
         fila(cap, "Bluetooth encendido", quiza(bt), si(bt))
+        /* Lo que decide si esta app sirve de algo con la pantalla guardada. En
+           HyperOS, deslizarla fuera de recientes la mata aunque esté vigilando
+           (`OneKeyClean` en el registro del sistema) — y la app no puede
+           impedirlo, solo enterarse. Aquí se ve sin tener que provocarlo. */
+        val vivo = servicioVivo()
+        /* Mismo criterio que el aviso: un hueco en el latido, no la foto de este
+           instante. Si no, al abrir la app la fila salía en rojo un segundo
+           aunque todo estuviera bien. */
+        val hueco = System.currentTimeMillis() - op.latido
+        val murio = op.deberiaVigilar && !op.apagada && !vivo && op.latido > 0 &&
+            hueco in 120_000L..(6 * 3600_000L)
+        fila(cap, "Sigue vigilando con la app cerrada",
+            when {
+                murio -> "NO: tu móvil la mató"
+                vivo -> "sí"
+                op.apagada -> "apagada por ti"
+                else -> "sin comprobar todavía"
+            },
+            if (murio) R.color.rd else if (vivo) R.color.gr else R.color.dim)
+        /* Si esto está en NO, «¿estás bien?» no puede salir a pantalla completa
+           con el móvil bloqueado y llega como aviso normal. Se sigue pudiendo
+           contestar, pero hay que verlo, así que tiene que estar dicho. */
+        val pc = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+            try {
+                (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+                    .canUseFullScreenIntent()
+            } catch (_: Exception) { false }
+        else true
+        fila(cap, "Preguntar con el móvil bloqueado",
+            if (pc) "sí" else "NO: llegará como aviso", si(pc))
         fila(cap, "Funciona sin conexión", "sí, entera", R.color.gr)
     }
 
@@ -1504,9 +1730,77 @@ class MainActivity : AppCompatActivity() {
         checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
 
     private fun arrancarServicio(accion: String?) {
+        /* Abrir la app y usarla es querer que funcione: se limpia la marca de
+           apagado. Menos cuando lo que se pide es justamente apagarla. */
+        if (accion != ServicioSos.ACCION_APAGAR && op.apagada) op.apagada = false
         val i = Intent(this, ServicioSos::class.java)
         if (accion != null) i.action = accion
         ContextCompat.startForegroundService(this, i)
+    }
+
+    /**
+     * ¿Me mataron mientras no miraba?
+     *
+     * Si el usuario quería vigilancia, el servicio dio señales de vida hace poco
+     * y ahora no está corriendo, no ha sido él: ha sido el sistema. En HyperOS
+     * pasa al deslizar la app fuera de recientes —el registro del sistema lo
+     * llama `OneKeyClean`— y ocurre 200 ms después de que la app haya hecho todo
+     * lo que puede hacer: declararse `stopWithTask="false"` y volver a primer
+     * plano en `onTaskRemoved`.
+     *
+     * Contra eso no hay código. Lo único honesto es enterarse y decirlo, porque
+     * lo contrario es que alguien se vaya a dormir creyendo que está vigilado.
+     */
+    private fun avisarSiLoMataron() {
+        if (op.apagada || !op.deberiaVigilar || op.latido == 0L) return
+        val ahora = System.currentTimeMillis()
+        val hueco = ahora - op.latido
+
+        /* La pregunta NO es «¿está corriendo ahora?». Al abrir la app el servicio
+           aún no ha arrancado, así que con esa pregunta el aviso salía en todos
+           los arranques, incluso con la vigilancia funcionando perfectamente.
+
+           La pregunta buena es si hubo un HUECO: el servicio deja un latido cada
+           10 s, así que si el último es de hace un momento, estaba vivo hasta
+           ahora mismo y no ha pasado nada. Si es de hace media hora, alguien lo
+           mató mientras nadie miraba. */
+        if (hueco < 2 * 60_000L) return
+        // ni tan viejo que ya no signifique nada (el móvil apagado una semana)
+        if (hueco > 6 * 3600_000L) return
+        if (servicioVivo()) return
+        // y como mucho una vez al día: un aviso que se repite deja de leerse
+        if (ahora - op.ultimoAvisoMuerte < 24 * 3600_000L) return
+        op.ultimoAvisoMuerte = ahora
+        AlertDialog.Builder(this)
+            .setTitle(R.string.matada_titulo)
+            .setMessage(R.string.matada_texto)
+            .setNegativeButton(R.string.matada_luego, null)
+            .setPositiveButton(R.string.matada_ajustes) { _, _ -> abrirInicioAutomatico() }
+            .show()
+        anotar("El sistema paró SismoRed al cerrar la app. Sin arreglarlo, no vigila cuando la cierras.")
+    }
+
+    private fun servicioVivo(): Boolean = try {
+        @Suppress("DEPRECATION")
+        (getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager)
+            .getRunningServices(Int.MAX_VALUE)
+            .any { it.service.className == ServicioSos::class.java.name }
+    } catch (_: Exception) { true }
+
+    /** El ajuste de «inicio automático» de MIUI/HyperOS, y si no existe, la
+     *  ficha de la app. No hay API estándar: cada fabricante se lo inventa. */
+    private fun abrirInicioAutomatico() {
+        val intentos = listOf(
+            Intent().setClassName("com.miui.securitycenter",
+                "com.miui.permcenter.autostart.AutoStartManagementActivity"),
+            Intent().setClassName("com.samsung.android.lool",
+                "com.samsung.android.sm.ui.battery.BatteryActivity"),
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                .setData(Uri.parse("package:$packageName"))
+        )
+        for (i in intentos) {
+            try { startActivity(i); return } catch (_: Exception) {}
+        }
     }
 
     private fun pedirPermisos() {

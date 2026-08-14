@@ -6,6 +6,8 @@ import android.util.Log
 import kotlin.concurrent.thread
 import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.atan2
+import kotlin.math.hypot
 import kotlin.math.cos
 import kotlin.math.ln
 import kotlin.math.log10
@@ -109,8 +111,18 @@ class Sonda(
         private fun VENTANA_N(sr: Int) = (sr * 0.40).roundToInt()
         /** Sobre la pila el ruido ya está promediado, así que se puede bajar el
          *  listón respecto al 0,18 que hacía falta con un solo disparo. */
-        private const val UMBRAL_PILA = 0.12
-        private const val UMBRAL_INDIV = 0.10
+        /** Altavoz→micrófono por el cuerpo del móvil. Es la referencia contra la
+         *  que se mide todo, porque el análisis normaliza por el pico directo. */
+        private const val CAMINO_DIRECTO_M = 0.15
+
+        /* Los umbrales, ahora sacados de la física y no de un eco inventado.
+           Con 3 % se ve hormigón hasta ~2,2 m y tabique hasta ~1,2 m, que es el
+           rango en el que esta herramienta tiene sentido —un hueco, una pared al
+           otro lado de un escombro—. Bajar más no compra alcance útil y empieza a
+           inventar: lo comprueba el propio autotest, que con solo ruido no puede
+           dar ni un eco. */
+        private const val UMBRAL_PILA = 0.030
+        private const val UMBRAL_INDIV = 0.025
         /** El doppler va justo por encima de la banda de la malla; ver `doppler()`. */
         private const val F_DOPPLER = 18500.0
 
@@ -127,7 +139,22 @@ class Sonda(
         /** 9 a 36 respiraciones por minuto, en hercios. Por debajo de 9 ya no se
          *  distingue de un escombro asentándose; por encima de 36 no es respirar,
          *  es moverse. */
-        private const val RESP_HZ_MIN = 0.15
+        /* 0,20 Hz = 12 respiraciones por minuto, y ANTES estaba en 0,15 (9/min).
+           Lo bajó de golpe una medida de campo: con un ventilador oscilante en la
+           sala y nadie cerca del móvil, el detector dijo **PROBABLE CUERPO
+           HUMANO, 9 respiraciones por minuto** — exactamente el borde de abajo de
+           la banda. Un ventilador que barre de lado a lado cada 6-7 segundos son
+           0,15 Hz clavados, y ahí es donde viven también las cortinas, las puertas
+           que oscilan y cualquier cosa colgada.
+
+           Un adulto en reposo respira entre 12 y 20 por minuto, y alguien
+           atrapado y asustado respira MÁS deprisa, no más despacio. O sea que la
+           franja de 9 a 12 aportaba casi ninguna persona real y todos los
+           ventiladores del mundo. Se pierde poco y se gana no mentir.
+
+           Esto es la primera vez que este detector se mide contra audio real, y
+           lo primero que hizo fue un falso positivo. */
+        private const val RESP_HZ_MIN = 0.20
         private const val RESP_HZ_MAX = 0.6
         /** Medido contra series sintéticas (`fx sounds/resp.py`): respirando da
          *  entre 0,45 y 0,97 —incluso con el ruido al doble de la señal, o con el
@@ -215,6 +242,28 @@ class Sonda(
      *  hilo del micrófono y la lee el del doppler, de ahí el @Volatile. */
     @Volatile private var dopplerRel = 0.0
 
+    /* ---------- fase del tono, que es lo que ve una respiración ----------
+       La relación bandas/portadora NO puede ver respirar, y no es cuestión de
+       umbrales: con marcos de 2048 a 48 kHz cada bin son 23,4 Hz, la banda que se
+       analizaba empieza en el bin 3 —70 Hz— y un tórax respirando desplaza
+       **0,5 Hz**. Es la cincuentava parte de UN bin. Estaba midiendo en un sitio
+       donde la señal no está, y por eso no detectaba a nadie ni a diez
+       centímetros.
+
+       Lo que sí la ve es la FASE. A 18,5 kHz la longitud de onda son 1,85 cm, y
+       una excursión de tórax de 5 mm cambia el camino de ida y vuelta en 1 cm:
+       **3,4 radianes**. No es una señal pequeña, es enorme — solo había que
+       mirarla donde estaba.
+
+       Se demodula en I/Q con el índice ABSOLUTO de muestra: si se usara el índice
+       local de cada marco, el salto de fase entre marcos sería un valor distinto
+       cada vez y metería un ruido que no existe. */
+    @Volatile private var fase = 0.0
+    /** Amplitud del propio tono recibido. Si esto es ~0, el móvil no se está
+     *  oyendo a sí mismo y cualquier veredicto sería inventado. */
+    @Volatile private var faseAmp = 0.0
+    private var marcosVistos = 0L
+
     /* ================= chirp y filtro adaptado ================= */
 
     /** Chirp lineal con ventana de Hann: sin ventana, los cortes secos ensucian
@@ -228,6 +277,9 @@ class Sonda(
             (sin(2.0 * PI * (f0 * t + 0.5 * k * t * t)) * w).toFloat()
         }
     }
+
+    /** Cuántos reflectores encontró la última pila, antes de recortar a cuatro. */
+    @Volatile var encontrados = 0; private set
 
     class Pico(val distancia: Double, val amplitud: Double)
     class Eco(val picos: List<Pico>, val maximo: Double, val directo: Int)
@@ -286,6 +338,36 @@ class Sonda(
      * El análisis de la ráfaga, sin altavoz y sin micrófono, para que se pueda
      * autocomprobar entero sin salir a ninguna parte.
      */
+    /**
+     * La firma del propio móvil: lo que devuelve la correlación **sin que haya
+     * nada delante**. Caminos altavoz→micrófono por la carcasa, resonancias del
+     * cuerpo y los lóbulos del propio chirp.
+     *
+     * Esto es lo que rompía la herramienta, y se vio en campo: daba **las mismas
+     * cuatro superficies tapando el móvil con objetos encima**. Claro — esos
+     * cuatro picos no eran de la sala. Son fijos, se apilan perfecto en los ocho
+     * disparos porque están en todos, y con el umbral bajado al 3 % pasan de
+     * sobra. Los ecos de verdad (3-7 %) quedaban por debajo y nunca entraban en
+     * la lista de cuatro.
+     *
+     * Se aprende una vez y se resta siempre. Es lo mismo que hace cualquier radar
+     * con su acoplo directo, y sin ello un móvil no puede sondear nada.
+     */
+    @Volatile var firma: DoubleArray? = null
+        private set
+
+    fun firmaBorrar() { firma = null }
+
+    fun aprenderFirma(tramos: List<DoubleArray>) {
+        if (tramos.isEmpty()) return
+        val maxLag = tramos[0].size - 1
+        val f = DoubleArray(maxLag + 1)
+        for (t in tramos) for (k in 0..maxLag) f[k] += t[k]
+        for (k in f.indices) f[k] /= tramos.size
+        firma = f
+        Log.i(TAG, "sonda: firma del móvil aprendida (%d puntos, pico %.3f)".format(f.size, f.max()))
+    }
+
     fun apilar(tramos: List<DoubleArray>, sr: Int): List<Reflector> {
         if (tramos.isEmpty()) return emptyList()
         val maxLag = tramos[0].size - 1
@@ -295,6 +377,11 @@ class Sonda(
         val pila = DoubleArray(maxLag + 1)
         for (t in tramos) for (k in 0..maxLag) pila[k] += t[k]
         for (k in pila.indices) pila[k] /= n
+        /* Fuera la firma del propio móvil. Lo que queda es lo que ha cambiado
+           respecto a «el teléfono solo», que es la definición de reflector. */
+        firma?.let { f ->
+            if (f.size == pila.size) for (k in pila.indices) pila[k] = max(0.0, pila[k] - f[k])
+        }
 
         val refs = ArrayList<Reflector>()
         var i = ciego
@@ -319,6 +406,11 @@ class Sonda(
             }
             i++
         }
+        /* Se siguen dando como mucho cuatro para no llenar la pantalla, pero
+           quien llama sabe cuántos había: decir «4 superficies» siempre que haya
+           cuatro o más es un tope disfrazado de medida, y en campo salía 4 en las
+           cinco rondas pasara lo que pasara. */
+        encontrados = refs.size
         return refs.sortedByDescending { it.amplitud }.take(4).sortedBy { it.distancia }
     }
 
@@ -437,6 +529,26 @@ class Sonda(
         }
     }
 
+    /** Si está en true, la próxima ráfaga se guarda como firma del móvil en vez
+     *  de analizarse. Es la misma captura: no hay dos códigos que mantener. */
+    @Volatile private var aprendiendo = false
+
+    /**
+     * Aprender la firma del propio móvil con una ráfaga de verdad.
+     *
+     * Hay que sujetarlo **lejos de todo** —brazo estirado, hacia arriba, nada a
+     * menos de dos metros—. Lo que devuelva ahí es el teléfono oyéndose a sí
+     * mismo, y es lo que se resta a partir de entonces.
+     *
+     * Sin esto el arreglo no sirve de nada: la firma se queda vacía y el eco
+     * vuelve a dar las mismas cuatro superficies pase lo que pase.
+     */
+    fun aprenderMovil(onProgreso: (String) -> Unit = {}, onResultado: (String) -> Unit) {
+        if (ocupada) { h.post { onResultado("Espera: ya hay una medida en marcha.") }; return }
+        aprendiendo = true
+        sondear(onProgreso, onResultado)
+    }
+
     fun sondear(onProgreso: (String) -> Unit = {}, onResultado: (String) -> Unit) {
         /* Pulsar y que no pase nada visible es el peor resultado posible: quien
            lo prueba concluye que la app está rota. Así que todos los caminos,
@@ -484,9 +596,27 @@ class Sonda(
                     }
                 }
 
+                if (aprendiendo) {
+                    aprendiendo = false
+                    aprenderFirma(tramos)
+                    val n = firma?.size ?: 0
+                    h.post {
+                        onResultado(linea(
+                            "Firma del móvil aprendida ($n puntos).",
+                            "A partir de ahora se resta de cada medida, así que lo que",
+                            "salga será de la sala y no del propio teléfono.",
+                            "Si cambias de funda o de móvil, vuelve a aprenderla."
+                        ))
+                    }
+                    ocupada = false
+                    return@thread
+                }
+
                 val refs = apilar(tramos, sr)
                 val t = ultima?.let { rt60(it, sr, ultimoDirecto + tpl.size) } ?: 0.0
 
+                // se dice cuántos había de verdad, no siempre "4"
+                val cuantos = encontrados
                 val donde = if (refs.isEmpty())
                     "sin ecos que se repitan: espacio abierto, o el micrófono está tapado"
                 else refs.joinToString("\n") {
@@ -510,7 +640,13 @@ class Sonda(
                     ?.takeIf { it.distancia < 0.8 && it.dispersion < 0.12 && it.presencia * 2 > it.total }
                 val txt = donde + "\n" + cola +
                     if (firme != null) "\nsuperficie firme a menos de 80 cm: probable confinamiento" else ""
-                reg("Sonda: ${refs.size} superficie(s) alrededor")
+                /* El número de verdad, y si se han recortado, decirlo. «4
+                   superficies» siempre que hubiera cuatro o más era un tope
+                   disfrazado de medida, y en campo salía 4 en las cinco rondas
+                   pasara lo que pasara. */
+                reg("Sonda: $cuantos superficie(s) alrededor" +
+                    (if (cuantos > refs.size) ", enseño las ${refs.size} más fuertes" else "") +
+                    (if (firma == null) " · SIN la firma del móvil aprendida" else ""))
                 h.post { onResultado(txt) }
             } catch (ex: Exception) {
                 Log.e(TAG, "sonda falló", ex)
@@ -561,8 +697,19 @@ class Sonda(
         val oyente = Microfono.Oyente { marco ->
             Fft.magnitudes(marco, ventana, espectro)
             val port = espectro.getOrElse(c) { 0.0 }.let { it * it } + 1e-12
+            /* Desde el bin 2, no desde el 3. Cada bin son 23,4 Hz y el
+               desplazamiento doppler es 2·v·f/c: empezar en el bin 3 son 70 Hz,
+               o sea 0,65 m/s, y **una persona andando por una habitación va a
+               0,4-0,6 m/s**. O sea que el detector se estaba perdiendo justo el
+               movimiento que tiene que ver, y por eso dio 0,2 veces el fondo con
+               gente circulando. Desde el bin 2 la banda empieza en 0,43 m/s.
+
+               Bajar a 1 sería tentador y no se hace: ahí manda la fuga de la
+               propia portadora. Y da igual que sea constante, porque el veredicto
+               es contra un fondo medido — pero al bin 1 llega también cualquier
+               deriva de reloj entre altavoz y micrófono, que no es constante. */
             var lado = 0.0
-            for (k in 3..25) {
+            for (k in 2..25) {
                 lado += espectro.getOrElse(c - k) { 0.0 }.let { it * it }
                 lado += espectro.getOrElse(c + k) { 0.0 }.let { it * it }
             }
@@ -703,16 +850,22 @@ class Sonda(
         val res = sr.toDouble() / Microfono.N
         val c = (f / res).roundToInt()
 
-        dopplerRel = 0.0
+        /* Demodulación I/Q a la frecuencia del tono. `marcosVistos` da el índice
+           absoluto para que la fase sea continua entre marcos. */
+        marcosVistos = 0
+        fase = 0.0; faseAmp = 0.0
+        val w = 2.0 * PI * f / sr
         val oyente = Microfono.Oyente { marco ->
-            Fft.magnitudes(marco, ventana, espectro)
-            val port = espectro.getOrElse(c) { 0.0 }.let { it * it } + 1e-12
-            var lado = 0.0
-            for (k in 3..25) {
-                lado += espectro.getOrElse(c - k) { 0.0 }.let { it * it }
-                lado += espectro.getOrElse(c + k) { 0.0 }.let { it * it }
+            val base = marcosVistos * marco.size
+            marcosVistos++
+            var si = 0.0; var sq = 0.0
+            for (n in marco.indices) {
+                val x = marco[n].toDouble()
+                val a = w * (base + n)
+                si += x * cos(a); sq += x * sin(a)
             }
-            dopplerRel = lado / port
+            faseAmp = hypot(si, sq) / marco.size
+            fase = atan2(sq, si)
         }
 
         thread(name = "respiracion", isDaemon = true) {
@@ -737,6 +890,8 @@ class Sonda(
                 while (tonoVivo && ciclo < INTENTOS) {
                 ciclo++
                 val serie = ArrayList<Double>(segundos * MUESTRAS_S)
+                var faseAnt = fase
+                var faseAcum = 0.0
                 val t0 = System.currentTimeMillis()
                 while (tonoVivo && System.currentTimeMillis() - t0 < segundos * 1000L) {
                     Thread.sleep(1000L / MUESTRAS_S)
@@ -744,8 +899,17 @@ class Sonda(
                        solo golpe cerca la multiplica por cien. En log, ese golpe
                        es un escalón y no aplasta la respiración, que es un rizo
                        pequeño encima. */
-                    serie.add(ln(dopplerRel + 1e-9))
-                    nivelDoppler = dopplerRel
+                    /* Fase desenrollada: sin desenrollar, cada vuelta de 2π es
+                       un salto de 6,28 que el análisis lee como un golpe. Una
+                       respiración son 3,4 rad, así que cruza el corte a menudo. */
+                    val cruda = fase
+                    var d = cruda - faseAnt
+                    while (d > PI) d -= 2 * PI
+                    while (d < -PI) d += 2 * PI
+                    faseAcum += d
+                    faseAnt = cruda
+                    serie.add(faseAcum)
+                    nivelDoppler = faseAmp
                     val queda = segundos - (System.currentTimeMillis() - t0) / 1000
                     val n = ciclo
                     h.post {
@@ -965,7 +1129,31 @@ class Sonda(
        salir a probar nada. */
 
     /** Una grabación sintética: directo + eco a [d] metros, sobre ruido. */
-    private fun simular(sr: Int, tpl: FloatArray, d: Double, eco: Float, ruido: Double): FloatArray {
+    /**
+     * Cuánto vuelve de verdad de una pared a [d] metros, en tanto por uno de la
+     * amplitud del sonido directo.
+     *
+     * Esto es el número que faltaba, y por no tenerlo la sonda no servía. El
+     * autotest inyectaba un eco al 35 % y con eso cualquier umbral pasa; una
+     * pared real está un orden de magnitud por debajo:
+     *
+     *   amplitud ∝ 1/r, camino directo ≈ 15 cm (altavoz→micrófono por el cuerpo
+     *   del móvil), camino del eco = 2d, por el coeficiente de reflexión.
+     *
+     *     1,2 m de hormigón (R≈0,9) →  5,6 %
+     *     1,2 m de tabique  (R≈0,5) →  3,1 %
+     *     2,0 m de hormigón         →  3,4 %
+     *
+     * El umbral estaba en el 12 %. O sea que la sonda **no podía ver una pared a
+     * más de medio metro**, y ninguna prueba lo decía porque ninguna prueba usaba
+     * una amplitud real. Esto no es una calibración de campo: es aritmética, y se
+     * podía haber hecho sin salir de casa.
+     */
+    fun ecoFisico(d: Double, r: Double = 0.9): Float =
+        ((CAMINO_DIRECTO_M / (2 * d)) * r).toFloat()
+
+    private fun simular(sr: Int, tpl: FloatArray, d: Double, eco: Float, ruido: Double,
+                        artefacto: Boolean = false): FloatArray {
         val rec = FloatArray((sr * 0.25).roundToInt())
         for (i in rec.indices) rec[i] = ((Math.random() - 0.5) * ruido).toFloat()
         val off = (sr * 0.02).roundToInt()
@@ -973,6 +1161,23 @@ class Sonda(
         for (i in tpl.indices) {
             if (off + i < rec.size) rec[off + i] += tpl[i]                          // directo
             if (eco > 0 && off + lag + i < rec.size) rec[off + lag + i] += tpl[i] * eco
+        }
+        /* La firma del propio móvil: dos rebotes fijos por la carcasa, siempre en
+           el mismo sitio y siempre presentes. Es lo que en campo salía como
+           «4 superficies» pasara lo que pasara. */
+        if (artefacto) {
+            /* CUATRO, no dos: en el móvil real llenaban la lista de cuatro y por
+               eso salía siempre «4 superficies» y la pared no entraba nunca. Con
+               dos, la simulación no reproducía el síntoma y la prueba no probaba
+               nada. Todos por encima del eco de una pared a 2 m (3,4 %). */
+            for ((lagFijo, amp) in listOf(
+                (sr * 0.0020).roundToInt() to 0.20f, (sr * 0.0031).roundToInt() to 0.16f,
+                (sr * 0.0045).roundToInt() to 0.12f, (sr * 0.0060).roundToInt() to 0.09f
+            )) {
+                for (i in tpl.indices) {
+                    if (off + lagFijo + i < rec.size) rec[off + lagFijo + i] += tpl[i] * amp
+                }
+            }
         }
         return rec
     }
@@ -984,6 +1189,70 @@ class Sonda(
         val maxLag = (sr * 2 * ALCANCE_M / C_AIRE).roundToInt()
         val partes = ArrayList<String>()
         var todo = true
+
+        /* -1) La firma del propio móvil. Es la prueba de lo que se vio en campo:
+               con dos rebotes fijos de la carcasa —más fuertes que cualquier
+               pared— la lista de cuatro se llena con ellos y la pared de verdad
+               no entra. Aprendiendo la firma con el móvil "al aire" y restándola,
+               la pared aparece. Sin esto, la sonda mide el teléfono, no la sala. */
+        run {
+            val dPared = 2.0
+            val amp = ecoFisico(dPared, 0.9)
+            fun rafaga(conPared: Boolean): List<DoubleArray> {
+                val l = ArrayList<DoubleArray>()
+                for (r in 0 until CHASQUIDOS) {
+                    val rec = simular(sr, tpl, dPared, if (conPared) amp else 0f, 0.10, artefacto = true)
+                    tramo(correlar(rec, tpl), maxLag)?.let { l.add(it) }
+                }
+                return l
+            }
+            firmaBorrar()
+            val sinRestar = apilar(rafaga(true), sr)
+            val veSinRestar = sinRestar.any { abs(it.distancia - dPared) < 0.12 }
+            aprenderFirma(rafaga(false))                 // el móvil "al aire"
+            val conRestar = apilar(rafaga(true), sr)
+            val veConRestar = conRestar.any { abs(it.distancia - dPared) < 0.12 }
+            firmaBorrar()
+            /* Y lo que de verdad hay que exigir: que los artefactos DESAPAREZCAN.
+               Que la pared se vea es la consecuencia; que el móvil deje de
+               reportarse a sí mismo es la causa. */
+            val fantasmas = conRestar.count { it.distancia < 1.1 }
+            val fantasmasAntes = sinRestar.count { it.distancia < 1.1 }
+            if (!veConRestar || fantasmas > 0) todo = false
+            partes.add("firma del móvil → antes: pared=$veSinRestar y $fantasmasAntes fantasmas · " +
+                "después: pared=$veConRestar y $fantasmas fantasmas " +
+                if (veConRestar && fantasmas == 0) "OK" else "FALLÓ")
+        }
+
+        /* 0) LO PRIMERO: paredes con la amplitud que devuelven de verdad.
+              Estos cuatro casos son los que faltaban, y son los que dicen si esta
+              herramienta sirve para algo. Un eco al 35 % no existe en la
+              naturaleza: a 1,2 m el hormigón devuelve 5,6 % y el tabique 3,1 %.
+              Si estos fallan, la sonda no ve una pared por mucho que pasen los
+              demás. */
+        for ((dist, refl, mat) in listOf(
+            Triple(1.0, 0.9, "hormigón a 1 m"), Triple(2.0, 0.9, "hormigón a 2 m"),
+            Triple(1.0, 0.5, "tabique a 1 m"), Triple(1.5, 0.5, "tabique a 1,5 m")
+        )) {
+            val amp = ecoFisico(dist, refl)
+            val t = ArrayList<DoubleArray>()
+            for (r in 0 until CHASQUIDOS) {
+                tramo(correlar(simular(sr, tpl, dist, amp, 0.10), tpl), maxLag)?.let { t.add(it) }
+            }
+            val v = apilar(t, sr).firstOrNull { abs(it.distancia - dist) < 0.12 }
+            /* Por debajo del umbral no se exige verla: es el BORDE de la
+               herramienta, no un defecto. Decir que falla cuando hace justo lo
+               que tiene que hacer deja el diagnóstico en rojo para siempre, y un
+               rojo permanente deja de mirarse. */
+            val exigible = amp >= UMBRAL_PILA
+            if (exigible && v == null) todo = false
+            partes.add("$mat (${"%.1f".format(amp * 100)} %) → " +
+                when {
+                    v != null -> "%.2f m OK".format(v.distancia)
+                    exigible -> "NO LA VE, FALLÓ"
+                    else -> "no la ve (por debajo del umbral, es el límite)"
+                })
+        }
 
         // 1) un solo disparo, como antes: el filtro adaptado tiene que ver el eco
         val e = analizarEco(simular(sr, tpl, d, 0.35f, 0.02), tpl, sr)
@@ -1020,7 +1289,12 @@ class Sonda(
             if (falsos.isEmpty()) "OK" else "FALLÓ")
 
         Log.i(TAG, "autotest sonda · " + partes.joinToString(" | "))
-        return todo && autotestRespiracion()
+        /* Los dos, SIEMPRE. Con `todo && autotestRespiracion()` el `&&` corta: en
+           cuanto un caso de la sonda salía mal, la batería entera de respiración
+           no llegaba a correr y nadie se enteraba. Un banco de pruebas que se
+           salta pruebas en silencio es peor que no tenerlo. */
+        val resp = autotestRespiracion()
+        return todo && resp
     }
 
     /**
@@ -1074,7 +1348,12 @@ class Sonda(
         }
 
         caso("respira 15/min con ruido igual", serie(0.25, 0.3, 0.30), true, 15.0)
-        caso("respira 9/min, el más lento de la banda", serie(0.15, 0.4, 0.15), true, 9.0)
+        /* Este caso ha cambiado de bando, y por una medida real: un ventilador
+           oscilante da exactamente esto y el detector lo llamó cuerpo humano.
+           Ahora 9/min tiene que salir NEGATIVO — es la regresión que impide que
+           alguien vuelva a bajar la banda sin saber lo que cuesta. */
+        caso("ventilador oscilante a 9/min (era el borde de la banda)", serie(0.15, 0.4, 0.15), false)
+        caso("respira 12/min, el más lento que se admite", serie(0.20, 0.4, 0.15), true, 12.0)
         caso("acercándose andando", serie(0.25, 0.4, 0.15, deriva = 0.5), true, 15.0)
         caso("solo ruido", serie(0.0, 0.0, 0.30), false)
         caso("vibración de 2 Hz", serie(2.0, 0.6, 0.10), false)

@@ -1,6 +1,7 @@
 package red.sismo
 
 import android.accessibilityservice.AccessibilityService
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.util.Log
@@ -39,6 +40,39 @@ class ServicioTeclas : AccessibilityService() {
 
     private var desdeAlarma = 0L
 
+    /**
+     * El atajo **solo cuenta con la pantalla apagada o bloqueada**.
+     *
+     * Salió de una prueba de uso normal: viendo un vídeo se sube y se baja el
+     * volumen sin pensar, y tres toques en tres segundos es algo que pasa todos
+     * los días. Ahí el atajo no aporta nada —si estás mirando el móvil, tienes el
+     * botón de PÁNICO en la pantalla— y en cambio dispara una alarma en toda la
+     * red por nada.
+     *
+     * Con la pantalla apagada o bloqueada es al revés: es el único camino que
+     * queda, y nadie ajusta el volumen tres veces seguidas con el móvil guardado
+     * y bloqueado sin querer algo.
+     *
+     * Silenciar una alarma que ya suena SÍ vale siempre: eso no puede depender de
+     * si la pantalla está encendida, porque quien la quiere callar la está
+     * mirando.
+     */
+    private fun pantallaDisponible(): Boolean {
+        // si no se puede saber, se comporta como antes
+        return try {
+            val pm = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+            val km = getSystemService(Context.KEYGUARD_SERVICE) as android.app.KeyguardManager
+            /* Ojo con empezar la línea siguiente por `!`: Kotlin lo pega al tipo
+               de la línea de arriba y lo lee como `KeyguardManager!`, el tipo de
+               plataforma. El error que da no menciona el signo. */
+            val despierta = pm.isInteractive
+            val bloqueada = km.isKeyguardLocked
+            (!despierta) || bloqueada
+        } catch (_: Exception) {
+            true
+        }
+    }
+
     override fun onKeyEvent(event: KeyEvent): Boolean {
         if (event.action == KeyEvent.ACTION_DOWN &&
             (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP ||
@@ -71,6 +105,15 @@ class ServicioTeclas : AccessibilityService() {
             return
         }
 
+        /* Aquí, y no antes: callar la alarma vale siempre, disparar no. */
+        if (!pantallaDisponible()) {
+            if (pulsaciones.size >= NECESARIAS) {
+                pulsaciones.clear()
+                Log.i("SismoRed", "atajo ignorado: estás usando el móvil")
+            }
+            return
+        }
+
         if (pulsaciones.size >= NECESARIAS) {
             pulsaciones.clear()
             Log.i("SismoRed", "DISPARO por teclas de volumen")
@@ -97,9 +140,37 @@ class ServicioTeclas : AccessibilityService() {
 
 /** ¿Ha activado el usuario el servicio en Ajustes? */
 fun teclasActivas(ctx: Context): Boolean {
+    /* Por qué no basta con mirar la cadena de Ajustes:
+       `ENABLED_ACCESSIBILITY_SERVICES` guarda los componentes, pero cada
+       fabricante los escribe como le parece — unos ponen la forma larga
+       («red.sismo/red.sismo.ServicioTeclas») y otros la corta
+       («red.sismo/.ServicioTeclas»). Buscando solo la larga, el atajo salía como
+       SIN ACTIVAR estando activo, y por eso el estado parecía inconsistente. Y
+       hay un segundo interruptor, el maestro de accesibilidad, que puede estar
+       apagado con el servicio marcado.
+
+       Así que primero se le pregunta al gestor, que es quien lo sabe de verdad, y
+       la cadena queda solo de respaldo — con sus dos formas. */
+    try {
+        val am = ctx.getSystemService(Context.ACCESSIBILITY_SERVICE)
+            as android.view.accessibility.AccessibilityManager
+        val mio = ComponentName(ctx, ServicioTeclas::class.java)
+        val lista = am.getEnabledAccessibilityServiceList(
+            android.accessibilityservice.AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
+        for (s in lista) {
+            val id = s.id ?: continue
+            if (ComponentName.unflattenFromString(id) == mio) return true
+        }
+        // el gestor ha contestado y no está: no hace falta mirar la cadena
+        if (lista != null) return false
+    } catch (_: Exception) {}
+
     val activos = android.provider.Settings.Secure.getString(
         ctx.contentResolver,
         android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
     ) ?: return false
-    return activos.contains("${ctx.packageName}/${ServicioTeclas::class.java.name}")
+    val p = ctx.packageName
+    val corto = "$p/.${ServicioTeclas::class.java.simpleName}"
+    val largo = "$p/${ServicioTeclas::class.java.name}"
+    return activos.contains(largo) || activos.contains(corto)
 }

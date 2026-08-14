@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- «¿ESTÁS BIEN?» a pantalla completa.
+
+     La lee alguien que acaba de sentir un terremoto, quizá a oscuras y con la
+     casa moviéndose todavía. Así que todo está centrado y todo tiene un solo
+     nivel de lectura por bloque:
+
+       rótulo   por qué estoy viendo esto
+       TÍTULO   la pregunta
+       subtítulo qué ha pasado
+       NÚMERO   el tiempo que queda
+       subtítulo qué pasa cuando llegue a cero
+       botones  las dos únicas respuestas posibles
+
+     Detrás de todo, y por debajo, la onda que sale del número (`VistaOndaCuenta`):
+     dice que el reloj corre sin pedir que se lea nada.
+
+     Los dos botones son la misma pareja de colores invertida, que es la del
+     logotipo: el que responde va en blanco con letra roja, y el que pide ayuda en
+     rojo con letra blanca. Nada de verde aquí — en esta pantalla no hay ningún
+     estado que celebrar, hay dos caminos y hay que distinguirlos de un vistazo. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg">
+
+    <red.sismo.VistaOndaCuenta
+        android:id="@+id/pr_onda"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- fillViewport + gravity=center: centrado de verdad en una pantalla alta, y
+         con scroll en una pequeña en vez de comerse los botones. -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:minHeight="0dp"
+            android:orientation="vertical"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:paddingTop="28dp"
+            android:paddingBottom="28dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/montserrat_bold"
+                android:gravity="center"
+                android:letterSpacing="0.14"
+                android:text="@string/pr_rotulo"
+                android:textColor="@color/rd"
+                android:textSize="11sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:fontFamily="@font/montserrat_bold"
+                android:gravity="center"
+                android:letterSpacing="-0.02"
+                android:maxLines="1"
+                android:text="@string/pr_titulo"
+                android:textColor="@color/tx"
+                android:textSize="42sp"
+                app:autoSizeMaxTextSize="42sp"
+                app:autoSizeMinTextSize="26sp"
+                app:autoSizeTextType="uniform" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:gravity="center"
+                android:lineSpacingMultiplier="1.25"
+                android:text="@string/pr_sub"
+                android:textColor="@color/dim"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/pr_cuenta"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:fontFamily="@font/montserrat_bold"
+                android:gravity="center"
+                android:letterSpacing="-0.03"
+                android:maxLines="1"
+                android:text="60"
+                android:textColor="@color/rd"
+                android:textSize="128sp"
+                app:autoSizeMaxTextSize="128sp"
+                app:autoSizeMinTextSize="64sp"
+                app:autoSizeTextType="uniform" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/montserrat_bold"
+                android:gravity="center"
+                android:letterSpacing="0.14"
+                android:text="@string/pr_cuenta_sub"
+                android:textColor="@color/dim"
+                android:textSize="11sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:gravity="center"
+                android:lineSpacingMultiplier="1.3"
+                android:text="@string/pr_explica"
+                android:textColor="@color/dim"
+                android:textSize="14sp" />
+
+            <!-- La respuesta. Blanco con letra roja, como el logotipo. -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/pr_bien"
+                style="@style/Boton.UnaLinea"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="26dp"
+                android:backgroundTint="@color/tx"
+                android:minHeight="76dp"
+                android:text="@string/pr_bien"
+                android:textColor="@color/rd"
+                app:autoSizeMaxTextSize="26sp"
+                app:autoSizeMinTextSize="16sp" />
+
+            <!-- Y lo contrario: rojo con letra blanca, en una línea. -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/pr_ayuda"
+                style="@style/Boton.UnaLinea"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:backgroundTint="@color/rd"
+                android:minHeight="60dp"
+                android:text="@string/pr_ayuda"
+                android:textColor="@color/tx"
+                app:autoSizeMaxTextSize="15sp"
+                app:autoSizeMinTextSize="10sp" />
+        </LinearLayout>
+    </ScrollView>
+</FrameLayout>
