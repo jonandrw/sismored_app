@@ -46,17 +46,21 @@ class Opciones(ctx: Context) {
     var armado: Boolean
         get() = leer("op_armado", true); set(v) = poner("op_armado", v)
 
-    /** m/s². 3,0 medido en campo con el móvil en el bolsillo — ver CONTINUAR.md.
-     *  Ajustable de 0,5 a 8 porque un móvil en una mesa y otro en un bolsillo no
-     *  aguantan lo mismo, pero el valor de fábrica no se toca sin volver a medir. */
     /**
-     * El umbral con el móvil ENCIMA de alguien. Es el conservador: andar y correr
-     * pasan de 3 m/s² sin esfuerzo, así que aquí no se puede afinar más sin
-     * llenar el bolsillo de falsas alarmas. Medido en campo.
+     * El umbral con el móvil ENCIMA de alguien. Es el conservador, y sigue
+     * existiendo por lo mismo de siempre: andar y correr sacuden un bolsillo más
+     * que un terremoto sacude una mesa, y ahí no hay forma de afinar.
+     *
+     * **2,5 m/s² horizontales**, no los 6,0 de antes. El cambio no es una
+     * decisión nueva sino la misma en la escala nueva: al medir solo la
+     * componente perpendicular a la gravedad, andar da menos que antes —parte de
+     * la pisada era vertical— así que el listón equivalente baja. Clave nueva
+     * (`op_umbral_h`) por el mismo motivo que en el de reposo: heredar un 6,0 de
+     * la escala vieja sería quedarse sordo sin que nadie lo note.
      */
     var umbral: Double
-        get() = p.getFloat("op_umbral", 6.0f).toDouble().coerceIn(0.5, 8.0)
-        set(v) = p.edit().putFloat("op_umbral", v.coerceIn(0.5, 8.0).toFloat()).apply()
+        get() = p.getFloat("op_umbral_h", 2.5f).toDouble().coerceIn(0.3, 6.0)
+        set(v) = p.edit().putFloat("op_umbral_h", v.coerceIn(0.3, 6.0).toFloat()).apply()
 
     /**
      * El usuario ha apagado SismoRed del todo, a mano.
@@ -102,27 +106,36 @@ class Opciones(ctx: Context) {
     /**
      * El umbral con el móvil EN REPOSO, quieto sobre algo.
      *
-     * **0,8 m/s², y el número sale de la escala de Mercalli, no del dedo.** La
-     * tabla de aceleración de pico del USGS:
+     * **0,25 m/s² de aceleración HORIZONTAL**, y la clave está en esa palabra:
+     * desde que el sismógrafo mide la componente perpendicular a la gravedad en
+     * vez del módulo del vector, este número está en otra escala y no se puede
+     * comparar con el 0,8 de antes. Por eso la clave del ajuste cambió de
+     * `op_umbral_reposo` a `op_umbral_reposo_h`: un valor guardado en la escala
+     * vieja aplicado a la nueva dejaría el detector sordo, y en silencio.
+     *
+     * La tabla de aceleración de pico del USGS sigue mandando:
      *
      *     MMI IV   0,14-0,38 m/s²   se nota dentro de casa
-     *     MMI V    0,38-0,90 m/s²   lo nota todo el mundo, SE DESPIERTA LA GENTE
+     *     MMI V    0,38-0,90 m/s²   lo nota todo el mundo, se despierta la gente
      *     MMI VI   0,90-1,77 m/s²   los muebles se mueven, daño leve
      *
-     * Con 1,2 solo saltaba ya metido en MMI VI. Con 0,8 salta dentro de MMI V,
-     * que es el nivel en el que alguien dormido tiene que enterarse. Y sigue
-     * siendo veinte veces la calma medida en una mesa real (0,04 m/s²).
+     * El umbral se compara contra la media rápida, que es más baja que el pico:
+     * un MMI V de 0,7 m/s² de pico deja la media en torno a 0,46. Con 0,25 se
+     * coge MMI V entero, y aun así queda cinco veces por encima de lo que
+     * produce una mesa con alguien tecleando (0,05).
      *
-     * Lo que hace seguro bajarlo no es la amplitud, es la DURACIÓN: hay que
-     * aguantar 36 muestras seguidas por encima, unos 0,6 s. Un portazo es un pico
-     * y se acabó; un terremoto sacude segundos.
+     * Lo que hace seguro bajarlo tanto no es la amplitud: es que **lo vertical
+     * ya no cuenta**. El portazo, el martillazo en la mesa y el tirón de la mano
+     * llegan por la vertical y ahora dan cero. Y el ciclo de trabajo:
+     * `Sismografo.CICLO_MIN` exige que el 15 % de dos segundos esté por encima,
+     * y un golpe es una muestra.
      *
      * Y este umbral solo se aplica si el móvil estaba quieto **justo antes** del
      * suceso: ver `Sismografo.quietoAntesDelEvento`.
      */
     var umbralReposo: Double
-        get() = p.getFloat("op_umbral_reposo", 0.8f).toDouble().coerceIn(0.2, 8.0)
-        set(v) = p.edit().putFloat("op_umbral_reposo", v.coerceIn(0.2, 8.0).toFloat()).apply()
+        get() = p.getFloat("op_umbral_reposo_h", 0.25f).toDouble().coerceIn(0.05, 3.0)
+        set(v) = p.edit().putFloat("op_umbral_reposo_h", v.coerceIn(0.05, 3.0).toFloat()).apply()
 
     /** kHz del tono del doppler. Por encima de 18 kHz para no pisar la malla más
      *  de lo imprescindible; ver el aviso de `Sonda.doppler()`. */

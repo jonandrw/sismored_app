@@ -84,6 +84,23 @@ object Cascada {
         /** Otro móvil de la malla dice lo mismo. Es la corroboración que a Google
          *  se la da su servidor y a nosotros nos la tiene que dar la malla. */
         val corroborada: Boolean = false,
+        /**
+         * Una red sísmica nacional ha confirmado el terremoto: la alerta de
+         * Google ha entrado por la notificación.
+         *
+         * **No sustituye a nada de lo de arriba: se suma.** El móvil sigue
+         * midiendo con su acelerómetro y su micrófono exactamente igual; esto es
+         * una prueba MÁS, y de otra naturaleza — la primera que no sale de este
+         * teléfono ni de otro teléfono, sino de una red de sismómetros de verdad.
+         *
+         * Y por eso **no abre un suceso ella sola**, aunque sea la mejor prueba
+         * que va a llegar nunca: la alerta llega SEGUNDOS ANTES de que sacuda, o
+         * sea que en ese instante todavía no ha pasado nada. Preguntar «¿estás
+         * bien?» ahí sería gastar la pregunta justo antes del terremoto, con la
+         * persona contestando que sí porque aún está todo quieto. Lo que hace es
+         * ARMAR: cuando llegue la sacudida, ya no hay que dudar de ella.
+         */
+        val alertaExterna: Boolean = false,
         /** Caída libre seguida de impacto: el móvil se soltó y golpeó. */
         val caidaImpacto: Boolean = false,
         /** Ya se ha preguntado y la cuenta atrás ha terminado. */
@@ -132,9 +149,14 @@ object Cascada {
            mide a la persona: andar pasa de 3 m/s² sin esfuerzo, y ahí una
            sacudida sola no es evidencia de nada. Se pide algo más — que se oiga
            el derrumbe, o que otro móvil lo confirme. */
+        /* Y aquí es donde entra la alerta de Google, sin desplazar a nadie: si
+           una red sísmica ha dicho que viene un terremoto y acto seguido el móvil
+           se sacude, esa sacudida es el terremoto. No hace falta que además se
+           oiga el derrumbe. Es la corroboración que hasta ahora solo podía darnos
+           otro móvil de la malla, y llega de fuera y antes. */
         val creible = when (p.regimen) {
             Postura.Regimen.EN_REPOSO -> true
-            else -> p.corroborada || (p.sacudida && p.estruendo)
+            else -> p.corroborada || p.alertaExterna || (p.sacudida && p.estruendo)
         }
         if (!creible) return Decision(Accion.NADA, Quien.NADIE,
             "sacudida con el móvil encima y sin confirmar: no basta")
@@ -230,7 +252,30 @@ object Cascada {
                     preguntado = true, pasosDespues = 0, quietoMs = 90_000L)),
             Triple("sin contador de pasos y sin contestar", Accion.BALIZA,
                 Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true,
-                    preguntado = true, pasosDespues = -1, quietoMs = 300_000L))
+                    preguntado = true, pasosDespues = -1, quietoMs = 300_000L)),
+
+            /* ---- la alerta de Google, que se SUMA y no sustituye ----
+               Los tres casos que definen su comportamiento, y el primero es el
+               que más importa: la alerta llega antes de que sacuda, así que sola
+               no puede abrir nada. Si abriera, preguntaría «¿estás bien?» a una
+               persona a la que todavía no le ha pasado nada, se gastaría la
+               pregunta y la cuenta atrás se cerraría justo cuando empieza el
+               terremoto. */
+            Triple("alerta de Google y aún no ha sacudido", Accion.NADA,
+                Pruebas(regimen = Regimen.ENCIMA, alertaExterna = true)),
+            /* Y en cuanto sacude, esa sacudida ya no se discute: hasta ahora, con
+               el móvil encima, hacía falta además oír el derrumbe. */
+            Triple("alerta de Google y luego sacude, con el móvil encima", Accion.PREGUNTAR,
+                Pruebas(regimen = Regimen.ENCIMA, alertaExterna = true, sacudida = true)),
+            Triple("alerta de Google, sacudió y nadie contestó", Accion.BALIZA,
+                Pruebas(regimen = Regimen.ENCIMA, alertaExterna = true, sacudida = true,
+                    preguntado = true, pasosDespues = 0, quietoMs = 90_000L)),
+            /* La contraprueba, que es la mitad del trabajo: sin la alerta, una
+               sacudida sola con el móvil encima sigue sin bastar. Si esto se
+               pusiera en verde, es que `alertaExterna` se habría quedado dada por
+               buena para todo el mundo. */
+            Triple("sacudida con el móvil encima y sin nada más", Accion.NADA,
+                Pruebas(regimen = Regimen.ENCIMA, sacudida = true))
         )
         val partes = ArrayList<String>()
         var todo = true

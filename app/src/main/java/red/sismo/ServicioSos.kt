@@ -1481,6 +1481,16 @@ class ServicioSos : Service() {
             ok
         } catch (_: Exception) { false }
 
+        /* El sismógrafo, contra una mesa real y contra un terremoto real. Es el
+           único detector que no se puede comprobar usándolo —haría falta un
+           terremoto—, y sus dos fallos son mudos: ni un falso negativo ni un
+           umbral mal escalado se ven desde fuera. Se anota siempre. */
+        val sismoOk = try {
+            val (ok, txt) = sismo.autotest()
+            anotar("sismógrafo · $txt")
+            ok
+        } catch (_: Exception) { false }
+
         /* Y qué se sabe de la postura, que es de lo que depende todo lo demás.
            No es un aprobado o un suspenso: hay móviles sin contador de pasos, y
            lo que importa es que se vea cuál es este. */
@@ -1495,6 +1505,7 @@ class ServicioSos : Service() {
         if (!oidoOk) fallan.add("el oído")
         if (!sondaOk) fallan.add("la sonda")
         if (!cascadaOk) fallan.add("la cascada de decisión")
+        if (!sismoOk) fallan.add("el sismógrafo")
         anotar(
             if (fallan.isEmpty()) "Todo funciona: la malla, el oído, la sonda y la cascada responden bien."
             else "Algo no va bien en " + fallan.joinToString(" y ") +

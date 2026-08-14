@@ -1093,6 +1093,85 @@ los rótulos son **Balizas oídas** y **Reenvíos**.
   «192.168.101.27 (con».
 - La cuadrícula de respuesta **sigue sin revisarse** en pantalla.
 
+## El sismógrafo medía justo al revés de lo que tenía que oír
+
+Salió de una queja de campo —«en reposo, si lo levanto de golpe se activa, y
+reacciona a que mueva un poco la mesa con el teclado»— y detrás había un fallo
+de física que llevaba desde el port de la web.
+
+El detector medía `| |a| − media |`: el **módulo** del vector aceleración menos
+su media lenta. Y el módulo casi no cambia con la aceleración horizontal, porque
+entra en cuadratura con la gravedad:
+
+| empujón de 1 m/s² | desviación del módulo |
+|---|---|
+| horizontal | **0,05** |
+| vertical | **1,00** |
+
+Veinte veces más lo vertical. Y resulta que **la mano levanta en vertical**, el
+portazo y el teclado llegan por la mesa en vertical, y **lo que tira los
+edificios es horizontal** — son ondas S. Medido en `fx sounds/sismo.py`:
+
+| señal | pico de la media rápida |
+|---|---|
+| levantar el móvil de golpe | **2,39** |
+| terremoto MMI V | **0,21** |
+
+Once veces más el falso que el bueno. Y con el umbral en 0,8 **el terremoto no
+disparaba nunca, ni bajándolo**: la app tenía a la vez un falso positivo que
+molestaba y un falso negativo que no se podía ver.
+
+### Lo que se cambió
+
+**1. Se mide la componente horizontal.** Se resta el vector gravedad —el mismo
+que ya se filtraba para el giro, así que no cuesta nada— y se toma solo lo
+perpendicular. Con eso todo lo que llega por la mesa da CERO:
+
+| señal | ciclo de trabajo (8 semillas) |
+|---|---|
+| teclear, portazo, martillazos, camión | 0,00 |
+| lavadora centrifugando a 11 Hz | 0,00-0,01 |
+| **terremoto MMI V** | **0,16-0,37** |
+| terremoto MMI VI | 0,58-0,93 |
+| terremoto MMI VII | 0,88-1,00 |
+
+**2. Ciclo de trabajo en vez de muestras seguidas.** El contador viejo subía de
+uno en uno y bajaba de cuatro en cuatro, y pedía 36 seguidas. Se diseñó contra el
+correr —picos con calma en medio—, pero **un terremoto oscila y también baja del
+umbral en cada semiciclo**: un MMI V no daba más de trece muestras seguidas, así
+que con el castigo de cuatro por hueco el contador no llegaba nunca. La regla que
+evitaba un falso garantizaba un mudo.
+
+**3. Los umbrales cambian de escala, y por eso cambian de clave.** 0,25 en reposo
+y 2,5 encima, contra 0,8 y 6,0. No son comparables: están medidos sobre otra
+magnitud. Las claves pasan a `op_umbral_h` y `op_umbral_reposo_h` porque heredar
+un valor de la escala vieja dejaría el detector sordo **en silencio**.
+
+**4. Y ya tiene autotest**, que no tenía. Es el detector donde más caro sale no
+tenerlo: no se puede comprobar usándolo —haría falta un terremoto— y sus dos
+fallos son mudos. Corre en COMPROBAR TODO y se anota siempre. Salida real en el
+A10s:
+
+```
+autotest sismógrafo · teclear en la mesa → no OK | martillazos en la mesa → no OK |
+levantarlo de golpe → no OK | lavadora centrifugando → no OK | camión pasando → no OK |
+TERREMOTO MMI V → dispara OK | MMI VI → dispara OK | MMI VII → dispara OK
+```
+
+### Lo que se probó y NO vale
+
+**Contar los cruces por cero** para separar un tirón de un terremoto. Con una
+realización del ruido parecía perfecto —5 cruces contra 8-12—; con ocho semillas,
+levantar da 3-10 y los terremotos 5-16. **Se solapan enteros.** Estuve a punto de
+fijar un umbral sobre una tirada de dados, y la única razón por la que no pasó es
+que se comprobó con más de una semilla. Queda escrito para que nadie lo reintente.
+
+### Lo que sigue sin estar medido
+
+Todo esto es banco sintético. **Un móvil real en una mesa real con alguien
+tecleando al lado sigue sin medirse**, y es la prueba de §5 que lleva pendiente
+desde el principio: una noche entera contando los falsos por hora.
+
 ## Trampas de esta sesión, para no volver a pisarlas
 
 - **Los comentarios XML de Android no admiten `--` dentro.** Nada de separadores

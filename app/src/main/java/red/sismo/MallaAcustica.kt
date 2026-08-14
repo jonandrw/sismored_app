@@ -45,6 +45,8 @@ class MallaAcustica(
     private val onLlamada: () -> Unit = {},
     /** Alguien de arriba ha pedido silencio en la zona. */
     private val onSilencio: () -> Unit = {},
+    /** Otro móvil ha repartido una alerta sísmica entrante por la malla. */
+    private val onAlertaSismica: () -> Unit = {},
     private val onRegistro: (String) -> Unit = {}
 ) {
 
@@ -83,7 +85,31 @@ class MallaAcustica(
          *  una ventana de escucha con margen; si hace falta más, se repite. */
         const val SILENCIO_ORDEN_MS = 300_000L
 
-        val TONOS = HOP_TONE + doubleArrayOf(LLAMADA, SILENCIO)
+        /* Un séptimo tono: ALERTA SÍSMICA ENTRANTE. Lo emite el móvil que ha
+           recibido la alerta de Google —o el que ha oído a otro emitirla— y no es
+           una baliza de nadie: es «viene un terremoto, tomad medidas».
+
+           Tiene que ser un código propio y no un salto, porque el que lo oiga
+           NO debe encender la alarma de víctima. Si viajara como baliza, cada
+           móvil que la recibiera se creería que hay alguien enterrado al lado y
+           la red se llenaría de alarmas de gente que está perfectamente. Lo que
+           hace quien la oye es lo mismo que hizo el primero: avisar, armarse y
+           reemitir.
+
+           Y va a 16,4 kHz, por debajo de los saltos y no por encima del silencio,
+           que es donde tocaría por orden. El motivo es físico: 19,2 kHz —el
+           siguiente hueco hacia arriba— está en el límite de lo que reproduce un
+           altavoz de móvil y de lo que capta su micrófono, y este es justo el
+           mensaje que más lejos tiene que llegar. Entre MARK y el primer salto
+           hay 800 Hz de sitio y ahí cabe con la misma separación que todos los
+           demás. El número de código lo da el orden del array, no la frecuencia. */
+        const val ALERTA = 16400.0
+        const val CODIGO_ALERTA = 7
+        /** Cuánto vale una alerta entrante: el tiempo en que puede llegar la
+         *  sacudida después del aviso, con margen de sobra. */
+        const val ALERTA_VALE_MS = 300_000L
+
+        val TONOS = HOP_TONE + doubleArrayOf(LLAMADA, SILENCIO, ALERTA)
 
         private const val BURST_ON = 0.25       // s de tono
         private const val BURST_OFF = 0.15      // s de silencio
@@ -506,6 +532,21 @@ class MallaAcustica(
             if (puedeEmitir()) {
                 val jitter = 600L + (Math.random() * 1500).toLong()
                 h.postDelayed({ emitirUna(CODIGO_SILENCIO) }, jitter)
+            }
+            return
+        }
+        /* La alerta sísmica entrante. No es una baliza y no puede tratarse como
+           un salto: quien la oye avisa, se arma y la reemite una vez, pero no
+           enciende ninguna alarma de víctima. Va antes que nada porque un código
+           que no sea un salto NUNCA puede caer en el reparto de abajo —`porSalto`
+           tiene cuatro huecos y esto es el siete—. */
+        if (hop == CODIGO_ALERTA) {
+            reg("ALERTA SÍSMICA recibida por la malla · viene un terremoto")
+            corrob.clear(); olvidarCadencia()
+            h.post { onAlertaSismica() }
+            if (puedeEmitir()) {
+                val jitter = 500L + (Math.random() * 1500).toLong()
+                h.postDelayed({ emitirUna(CODIGO_ALERTA) }, jitter)
             }
             return
         }
