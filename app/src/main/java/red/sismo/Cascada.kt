@@ -71,6 +71,16 @@ object Cascada {
     const val INMOVIL_MS = 120_000L
 
     /**
+     * Cuánto tiene que llevar sin tocarse para que valga la pena la sirena.
+     *
+     * Veinte minutos. Es bastante más que un rato sin mirar el móvil —comer,
+     * ducharse, una reunión— y bastante menos que una noche. Lo que se está
+     * decidiendo no es «está dormida» con certeza, que no se puede saber: es si
+     * merece la pena el coste de una sirena. Con el móvil recién usado, no.
+     */
+    const val DORMIDA_MS = 20 * 60_000L
+
+    /**
      * Todo lo medido en un instante. `pasosDespues = -1` significa **no se sabe**
      * —hay móviles sin contador—, y eso nunca puede leerse como «no ha andado»:
      * un dato que no existe no es un dato que valga cero.
@@ -111,6 +121,15 @@ object Cascada {
         val pasosDespues: Int = -1,
         /** Alguien ha desbloqueado la pantalla DESPUÉS del suceso. */
         val interaccion: Boolean = false,
+        /**
+         * Cuánto hace que alguien tocó este móvil, en ms. −1 = no se sabe.
+         *
+         * Es lo que separa «en reposo» de «dormida», que no son lo mismo y se
+         * estaban confundiendo. Un móvil apoyado en una mesa con su dueño
+         * delante está en reposo igual que uno en una mesilla a las tres de la
+         * mañana, y a uno hay que despertarlo con una sirena y al otro no.
+         */
+        val msDesdeInteraccion: Long = -1L,
         /** Milisegundos que lleva el móvil sin que el acelerómetro note nada. */
         val quietoMs: Long = 0L,
         /** El oído ha detectado voz o golpes junto al móvil. */
@@ -167,9 +186,22 @@ object Cascada {
            es el caso en el que de verdad hace falta. Si lo lleva encima está
            despierta, así que se pregunta sin ruido. */
         if (!p.preguntado && !p.contestado) {
-            return if (p.regimen == Postura.Regimen.EN_REPOSO)
+            /* La sirena automática existe para UNA cosa: alguien dormido en un
+               quinto piso que no ha sentido nada. Estaba puesta con «el móvil
+               está en reposo», y eso metía en el mismo saco la mesilla de noche
+               a las tres de la mañana y la mesa del salón con su dueño delante
+               mirando el teléfono. En el segundo caso la sirena no despierta a
+               nadie: sobresalta, y una alarma que sobresalta sin motivo es una
+               alarma que se acaba apagando para siempre.
+
+               El dato que los separa ya se medía y no se usaba aquí: cuánto hace
+               que alguien tocó el móvil. Si lo has usado hace un rato estás
+               despierto, y basta con preguntar sin ruido. */
+            val puedeEstarDormida = p.regimen == Postura.Regimen.EN_REPOSO &&
+                (p.msDesdeInteraccion < 0L || p.msDesdeInteraccion > DORMIDA_MS)
+            return if (puedeEstarDormida)
                 Decision(Accion.AVISAR, Quien.NADIE,
-                    "terremoto con el móvil en reposo: puede estar dormida")
+                    "terremoto y el móvil lleva horas sin tocarse: puede estar dormida")
             else
                 Decision(Accion.PREGUNTAR, Quien.NADIE,
                     "terremoto confirmado: pregunto si está bien")
@@ -222,6 +254,17 @@ object Cascada {
             Triple("andando con el móvil en el bolsillo", Accion.NADA,
                 Pruebas(regimen = Regimen.ENCIMA, sacudida = true, pasosDespues = 40)),
             Triple("terremoto y está dormida en un 5º", Accion.AVISAR,
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true,
+                    msDesdeInteraccion = 6 * 3600_000L)),
+            /* El caso de campo que trajo esto: el móvil en la mesa, con su dueño
+               delante mirándolo, y la sirena saltando a la vez que la pregunta.
+               «En reposo» y «dormida» no son lo mismo. */
+            Triple("terremoto con el móvil en la mesa y tú delante", Accion.PREGUNTAR,
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true,
+                    msDesdeInteraccion = 30_000L)),
+            /* Y sin dato de interacción se avisa igual: no saber no puede
+               costarle la sirena a quien duerme. */
+            Triple("terremoto sin saber cuándo lo tocó", Accion.AVISAR,
                 Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true)),
             Triple("terremoto y lo lleva encima", Accion.PREGUNTAR,
                 Pruebas(regimen = Regimen.ENCIMA, sacudida = true, estruendo = true)),

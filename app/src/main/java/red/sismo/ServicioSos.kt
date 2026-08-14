@@ -1016,6 +1016,12 @@ class ServicioSos : Service() {
                móvil hace una hora no dice nada de ahora. */
             interaccion = p != null && sucesoDesde > 0 &&
                 p.ultimaInteraccion > sucesoDesde,
+            /* Y cuánto hace de la última vez, que es lo que decide si la sirena
+               tiene sentido. −1 si no se sabe: no saber no puede costarle la
+               sirena a quien duerme. */
+            msDesdeInteraccion = p?.ultimaInteraccion?.let {
+                if (it > 0L) System.currentTimeMillis() - it else -1L
+            } ?: -1L,
             quietoMs = quieto,
             /* Golpes o voz junto al móvil en el último minuto. La voz no se
                enciende nunca contra grabaciones humanas reales —comprobado
@@ -1975,7 +1981,7 @@ class ServicioSos : Service() {
                         sismo.umbral = nuevo
                         umbralActivo = nuevo
                         enReposoAhora = enReposo
-                        anotar("Móvil %s: vigilo a %.1f m/s²".format(
+                        anotar("Móvil %s: vigilo a %.2f m/s²".format(
                             if (enReposo) "en reposo" else "encima de ti", nuevo))
                     }
                     calmaMedida = sismo.calmaMedida

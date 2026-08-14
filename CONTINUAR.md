@@ -1172,6 +1172,29 @@ Todo esto es banco sintético. **Un móvil real en una mesa real con alguien
 tecleando al lado sigue sin medirse**, y es la prueba de §5 que lleva pendiente
 desde el principio: una noche entera contando los falsos por hora.
 
+## «En reposo» y «dormida» no son lo mismo
+
+Otra de campo, y de las buenas: «apenas sale el letrero de pregunta, se dispara
+la baliza». No era la baliza — era la **sirena**, que en AVISAR suena a la vez
+que la pregunta. El registro lo decía tal cual: `TERREMOTO · te despierto y te
+pregunto si estás bien`.
+
+Y la regla estaba mal puesta. La sirena automática existe para **una sola cosa**:
+alguien dormido en un quinto piso que no ha sentido nada. Pero la condición era
+«el móvil está en reposo», y eso mete en el mismo saco la mesilla de noche a las
+tres de la mañana y la mesa del salón con su dueño delante mirando el teléfono.
+En el segundo caso la sirena no despierta a nadie: sobresalta. Y una alarma que
+sobresalta sin motivo es una alarma que se acaba apagando para siempre — que es
+el riesgo que más veces se ha escrito en este documento.
+
+El dato que los separa ya se medía y no se usaba aquí: **cuánto hace que alguien
+tocó el móvil**. Menos de veinte minutos, estás despierto y basta con preguntar
+sin ruido. Más, o no se sabe, sirena. Y «no se sabe» va al lado de la sirena a
+propósito: no saber no puede costarle el aviso a quien duerme.
+
+Tres casos nuevos en el autotest, y el de campo escrito con esas palabras:
+«terremoto con el móvil en la mesa y tú delante → PREGUNTAR».
+
 ## Trampas de esta sesión, para no volver a pisarlas
 
 - **Los comentarios XML de Android no admiten `--` dentro.** Nada de separadores
