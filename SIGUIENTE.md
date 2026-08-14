@@ -103,9 +103,27 @@ Lo que hay que decidir antes de escribirlo:
 - Es **otro permiso sensible**, y sumado al de accesibilidad complica la revisión
   de Google Play. En F-Droid y GitHub Releases no es problema. Encaja con la
   decisión de ruta de publicación (ver más abajo).
-- **Nunca puede encender la baliza de víctima.** Es un aviso que se propaga, no
-  una emergencia propia: suena, avisa y reemite por la malla. Confundir las dos
-  cosas llenaría la red de balizas de gente que está perfectamente.
+- **Sí puede acabar encendiendo la baliza, pero no al recibirla — DECISIÓN DEL
+  AUTOR, y corrige lo que decía aquí antes.** El motivo es de tiempos, y es lo
+  que hace valiosa esta alerta: **llega segundos ANTES de que sacuda**. En el
+  instante en que Google confirma, el acelerómetro del móvil todavía no ha visto
+  nada; preguntar «¿estás bien?» ahí sería gastar la pregunta justo antes del
+  terremoto, con la persona contestando que sí porque aún no ha pasado nada.
+
+  El orden correcto es **armar, no disparar**:
+
+  1. Al recibirla: suena, avisa y **reemite por la malla** a los que no tienen
+     internet. Esa es la parte que Google no puede hacer y SismoRed sí.
+  2. **Arma la vigilancia** unos minutos: umbral al mínimo y `temblando` dado por
+     bueno sin esperar al acelerómetro. Un terremoto confirmado por una red
+     sísmica nacional es mejor evidencia que el acelerómetro de un móvil — es una
+     corroboración externa, la primera que tendría el sistema.
+  3. Cuando llega la sacudida, la cascada **ya tiene la corroboración hecha**:
+     pregunta al momento y, si nadie contesta, **baliza**.
+
+  Así la baliza se enciende en quien no contesta y no en quien está bien, que era
+  el miedo que había escrito aquí y sigue siendo válido. Lo que cambia es que ya
+  no hace falta elegir entre las dos cosas.
 - Hay que reconocer la notificación por paquete y contenido, y **no leer ninguna
   otra**. Eso se escribe en Acerca de con las mismas palabras.
 
