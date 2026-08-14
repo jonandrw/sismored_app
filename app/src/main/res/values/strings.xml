@@ -487,7 +487,7 @@ Se guarda solo en este móvil y no sale de aquí. Si algo no te cuadra, este es 
     <string name="rot_ficha_wifi">FICHA COMPLETA POR WI-FI</string>
     <string name="sub_ficha_wifi">De quien esté en la misma red que tú. Aquí sí caben las alergias y el contacto.</string>
 
-    <string name="b_abajo">APAGAR RASTREO Y BUSCAR HACIA ABAJO</string>
+    <string name="b_abajo">APAGAR RASTREO Y ESCUCHAR</string>
     <string name="paso_encima_t">Ya estás encima</string>
     <string name="paso_encima">El rastreo ya ha hecho su trabajo. Apágalo y pasa al sonido.</string>
 </resources>
