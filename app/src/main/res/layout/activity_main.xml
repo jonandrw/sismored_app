@@ -1241,7 +1241,11 @@
                              se usan en la misma situacion: cuando el equipo pide
                              silencio para escuchar con sus microfonos de
                              contacto, esto calla a todos los moviles que lo
-                             oigan. La baliza de radio sigue: no suena. -->
+                             oigan. La baliza sigue, por radio Y por sonido: los
+                             tonos de la malla van a 16-18,8 kHz y eso no le tapa
+                             nada a un geófono, que trabaja en la banda baja.
+                             Callarla no daba silencio a nadie y dejaba mudo al
+                             que está debajo. -->
                         <Button
                             android:id="@+id/b_silencio_zona"
                             style="@style/Boton.Ancho"

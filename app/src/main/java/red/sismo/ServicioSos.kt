@@ -445,12 +445,27 @@ class ServicioSos : Service() {
                deja lo que no molesta: la baliza de radio sigue, porque no suena y
                es lo único que atraviesa el escombro. Callarse entero sería
                desaparecer justo cuando te están buscando. */
+            /* Callarse quiere decir dejar de tapar lo que el equipo escucha, y lo
+               que escuchan son geófonos y micrófonos de contacto en la BANDA
+               BAJA. Ahí es donde estorba la sirena, que son 2-4 kHz.
+
+               La malla emite a 16-18,8 kHz. Eso no le tapa nada a un geófono: no
+               está ni cerca de su banda. Pararla no le daba silencio a nadie y en
+               cambio dejaba mudo el único canal acústico del que está debajo,
+               justo mientras lo buscan. Aquí se paraba, y era un error — el más
+               caro posible, porque se pagaba en el móvil de la víctima.
+
+               Así que la malla NO se toca. Se calla lo que hace ruido audible:
+               sirena, vibración y la sonda, que además barre con tonos que sí
+               entran en la banda de trabajo del equipo. */
             onSilencio = {
                 try { sirena.stop() } catch (_: Exception) {}
                 try { vibrador?.cancel() } catch (_: Exception) {}
                 try { sonda?.pararTodo(); barridoOn = false } catch (_: Exception) {}
-                try { malla?.pararEmision() } catch (_: Exception) {}
-                anotar("SILENCIO pedido por quien busca: me callo 5 minutos. La baliza de radio sigue.")
+                anotar(
+                    "SILENCIO pedido por quien busca: me callo 5 minutos. " +
+                    "La baliza sigue, por radio y por sonido: no es lo que tapa a un geófono."
+                )
             },
             onRegistro = { m -> anotar(m) }
         )

@@ -605,9 +605,17 @@ Buscar. Comprobado en los dos sentidos entre el Redmi (192.168.101.22) y el A10s
 
 Un sexto código en la malla, `CODIGO_SILENCIO` a **18,8 kHz**. Lo emite quien
 busca —botón PEDIR SILENCIO EN LA ZONA, debajo de LLAMAR HACIA ABAJO— y todo
-móvil que lo oiga se calla cinco minutos: sirena, vibración, sonda y emisión
-acústica. **La baliza de radio sigue**, porque no hace ruido y es lo único que
-atraviesa el escombro; callarse entero sería desaparecer justo cuando te buscan.
+móvil que lo oiga se calla cinco minutos: sirena, vibración y sonda. **La baliza
+sigue, por radio Y por sonido.**
+
+> **Corregido tras una prueba de campo, y era el error más caro posible.** Aquí
+> `onSilencio` llamaba también a `malla.pararEmision()`, o sea que la orden
+> callaba la baliza acústica del que está debajo. No cuadra con el propio motivo
+> de la función: se pide silencio porque el equipo escucha con geófonos y
+> micrófonos de contacto **en la banda baja**, y ahí es donde estorba la sirena
+> (2-4 kHz). La malla emite a **16-18,8 kHz**: no le tapa nada a un geófono.
+> Pararla no le daba silencio a nadie y dejaba mudo el único canal acústico de la
+> víctima justo mientras la buscan. Ahora no se toca.
 
 Existe porque los equipos de rescate escuchan con micrófonos de contacto y
 geófonos en la banda baja y piden silencio absoluto en el sitio. Una sirena tapa
