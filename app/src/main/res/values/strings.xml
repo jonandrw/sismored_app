@@ -505,7 +505,7 @@ Es la única forma de comprobar el tramo que no se puede ensayar de otra manera.
     <string name="b_ver_ficha">VER MI FICHA</string>
     <string name="d_ver_ficha">Tal y como la verá quien te encuentre.</string>
     <string name="alerta_google_titulo">SismoRed · alerta sísmica</string>
-    <string name="b_alerta_google">REPETIR LA ALERTA DE GOOGLE</string>
+    <string name="b_alerta_google">ALERTA DE GOOGLE</string>
     <string name="d_alerta_google">Reparte por sonido la alerta que solo llega a algunos.</string>
     <string name="d_alerta_google_aviso">La alerta sísmica de Google llega segundos antes de que sacuda, pero solo a los móviles con internet y con la función activada: en un salón de clases no le llegó al 80 %.
 

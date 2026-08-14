@@ -45,17 +45,17 @@ eso no se nota usándola — solo lo cazó el autotest.
 
 ---
 
-## 2. Confirmar el rescate, en los dos móviles
+## 2. ~~Confirmar el rescate~~ — HECHA
 
-Hoy la ficha se abre sola cuando se oye la llamada del que busca, pero **no hay
-forma de decir que ya te encontraron**. Falta:
+**ME HAN ENCONTRADO** en la ficha de la víctima —dos toques, el primero pregunta
+y el segundo apaga, y se desarma solo a los diez segundos— y **RESCATADO** en el
+del rescatista, que solo deja de llamar. La baliza de la víctima la apaga la
+víctima; nunca alguien de fuera. Que aparezca la ficha sigue sin cancelar nada.
 
-- En el móvil de la víctima: **ME HAN ENCONTRADO** en la propia pantalla de la
-  ficha.
-- En el del rescatista: **RESCATADO**, que además deje de llamar.
-- Solo eso apaga la baliza. Que aparezca la ficha **no** puede cancelar nada: si
-  el rescatista se equivoca de hueco y el móvil deja de emitir, se pierde a la
-  persona.
+Y de paso **VER MI FICHA**, para poder mirar esa pantalla sin que pase de verdad.
+
+**Falta probarlo entre los dos móviles**, que es lo único que no se puede
+comprobar con uno.
 
 ---
 
@@ -98,7 +98,16 @@ Cómo se detecta: la alerta llega como **notificación** de los servicios de
 Google. No hay API pública, así que hace falta un `NotificationListenerService`
 con el permiso de **acceso a notificaciones**.
 
-Lo que hay que decidir antes de escribirlo:
+**Estado: HECHO.** `AlertaGoogle` es el `NotificationListenerService`, el código
+7 de la malla a 16,4 kHz reparte la alerta, y `alertaExterna` entra en la cascada
+como una prueba más. Seis casos en el autotest, tres que debe reconocer y tres
+que no —incluido el resumen de después del terremoto, que es el que se colaría—.
+
+**Falta lo único que no se puede simular: una alerta de Google de verdad.** No
+hay forma de provocarla. Lo que sí se puede probar ya es el reparto entre los dos
+móviles, y el simulacro completo para la otra mitad de la cadena.
+
+Lo que se decidió antes de escribirlo:
 
 - Es **otro permiso sensible**, y sumado al de accesibilidad complica la revisión
   de Google Play. En F-Droid y GitHub Releases no es problema. Encaja con la
