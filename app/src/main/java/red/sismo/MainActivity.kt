@@ -869,6 +869,10 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.b_silencio_zona).setOnClickListener {
             arrancarServicio(ServicioSos.ACCION_SILENCIO_ZONA)
         }
+        findViewById<Button>(R.id.b_rescatado).setOnClickListener {
+            arrancarServicio(ServicioSos.ACCION_RESCATE_HECHO)
+            anotar("Rescatado: dejo de llamar hacia abajo.")
+        }
         findViewById<Button>(R.id.b_llamar).setOnClickListener {
             arrancarServicio(ServicioSos.ACCION_LLAMAR)
         }
@@ -1129,6 +1133,29 @@ class MainActivity : AppCompatActivity() {
         }
         opcion(R.id.op_simulacro, R.drawable.ic_alerta, R.string.b_probar_pregunta,
             R.string.d_simulacro) { arrancarServicio(ServicioSos.ACCION_PROBAR_PREGUNTA) }
+        /* Esa pantalla se abre sola, sobre el bloqueo y con el brillo al máximo,
+           en el peor momento de la vida de alguien — y hasta ahora no había forma
+           de verla sin que pasara de verdad. Un grupo sanguíneo mal escrito no se
+           descubre en un terremoto. */
+        opcion(R.id.op_ver_ficha, R.drawable.ic_ficha, R.string.b_ver_ficha,
+            R.string.d_ver_ficha) { arrancarServicio(ServicioSos.ACCION_VER_FICHA) }
+        /* El simulacro que llega hasta el final. Va con confirmación porque
+           enciende la baliza y la malla de verdad: cualquier móvil con SismoRed
+           al alcance va a oírlo y va a reaccionar. Y tiene que ser de verdad,
+           porque el tramo que nunca se ha visto funcionar fuera del autotest es
+           justo ese. */
+        opcion(R.id.op_simulacro_total, R.drawable.ic_baliza, R.string.b_simulacro_total,
+            R.string.d_simulacro_total) {
+            AlertDialog.Builder(this)
+                .setTitle(R.string.b_simulacro_total)
+                .setMessage(R.string.d_simulacro_total_aviso)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.b_simulacro_empezar) { _, _ ->
+                    arrancarServicio(ServicioSos.ACCION_SIMULACRO_TOTAL)
+                    ir(R.id.v_registro)
+                }
+                .show()
+        }
         /* Comprueba la app entera sin altavoz, sin micrófono y sin segundo móvil:
            se le inyectan señales conocidas a cada pieza. */
         opcion(R.id.op_autotest, R.drawable.ic_diag, R.string.autotest,

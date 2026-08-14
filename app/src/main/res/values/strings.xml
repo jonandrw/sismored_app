@@ -490,4 +490,18 @@ Se guarda solo en este móvil y no sale de aquí. Si algo no te cuadra, este es 
     <string name="b_abajo">APAGAR RASTREO Y ESCUCHAR</string>
     <string name="paso_encima_t">Ya estás encima</string>
     <string name="paso_encima">El rastreo ya ha hecho su trabajo. Apágalo y pasa al sonido.</string>
+    <string name="b_simulacro_total">SIMULACRO COMPLETO</string>
+    <string name="d_simulacro_total">Ensaya la cadena entera hasta la baliza.</string>
+    <string name="d_simulacro_total_aviso">Esto no es solo la pantalla: me creo una sacudida y dejo correr la decisión entera.
+
+Te voy a preguntar si estás bien. Si no contestas en un minuto, se enciende la baliza DE VERDAD — sonará, emitirá por radio y avisará por sonido a cualquier móvil con SismoRed que haya cerca.
+
+Es la única forma de comprobar el tramo que no se puede ensayar de otra manera. Puedes cortarlo en cualquier momento con DETENER.</string>
+    <string name="b_simulacro_empezar">EMPEZAR EL SIMULACRO</string>
+    <string name="ff_encontrado">ME HAN ENCONTRADO</string>
+    <string name="ff_encontrado_confirmar">TOCA OTRA VEZ PARA APAGAR LA BALIZA</string>
+    <string name="ff_encontrado_aviso">Solo esto apaga la baliza. El móvil se queda escuchando y repitiendo lo de los demás.</string>
+    <string name="b_rescatado">RESCATADO · DEJAR DE LLAMAR</string>
+    <string name="b_ver_ficha">VER MI FICHA</string>
+    <string name="d_ver_ficha">Tal y como la verá quien te encuentre.</string>
 </resources>

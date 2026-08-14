@@ -1,10 +1,12 @@
 package red.sismo
 
 import android.app.Activity
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.view.WindowManager
+import android.widget.Button
 import android.widget.TextView
 
 /**
@@ -64,7 +66,44 @@ class FichaActivity : Activity() {
         campo(R.id.ff_med, f.medicacion.trim())
         campo(R.id.ff_contacto, f.contacto.trim())
 
-        // se cierra tocando: quien la ha leído ya no la necesita
-        findViewById<View>(android.R.id.content).setOnClickListener { finish() }
+        /* ---------- ME HAN ENCONTRADO ----------
+           Lo único que apaga la baliza. Dos toques: el primero pregunta, el
+           segundo apaga. No es desconfianza del usuario, es que el coste de los
+           dos errores no se parece en nada — pulsarlo sin querer bajo un
+           escombro deja a alguien sin baliza, y tener que darle dos veces no le
+           cuesta nada a quien ya está rescatado. */
+        val boton = findViewById<Button>(R.id.ff_encontrado)
+        val pie = findViewById<TextView>(R.id.ff_pie)
+        var armado = false
+        boton.setOnClickListener {
+            if (!armado) {
+                armado = true
+                boton.setText(R.string.ff_encontrado_confirmar)
+                boton.setTextColor(getColor(R.color.rd))
+                pie.setText(R.string.ff_encontrado_aviso)
+                /* Si no lo confirma en diez segundos, vuelve atrás solo: un botón
+                   que se queda armado es un botón que se pulsa por accidente
+                   media hora después. */
+                boton.postDelayed({
+                    if (armado) {
+                        armado = false
+                        boton.setText(R.string.ff_encontrado)
+                        boton.setTextColor(getColor(R.color.gr))
+                        pie.setText(R.string.ff_cerrar)
+                    }
+                }, 10_000L)
+                return@setOnClickListener
+            }
+            try {
+                startService(Intent(this, ServicioSos::class.java)
+                    .setAction(ServicioSos.ACCION_RESCATADO))
+            } catch (_: Exception) {}
+            finish()
+        }
+
+        /* Cerrar tocando sigue existiendo, pero ya NO en toda la pantalla: con un
+           botón que apaga la baliza debajo, un toque perdido no puede ser
+           ambiguo. Se cierra tocando la ficha, no el botón. */
+        findViewById<View>(R.id.ff_pie).setOnClickListener { finish() }
     }
 }

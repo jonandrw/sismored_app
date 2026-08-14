@@ -1257,6 +1257,22 @@
                             app:iconGravity="textStart"
                             app:iconTint="@color/gr" />
 
+                        <!-- Ya la he sacado. Es el otro lado de ME HAN ENCONTRADO,
+                             y aquí solo apaga la llamada: la baliza de la víctima
+                             la apaga la víctima desde su propia ficha, nunca
+                             desde aquí. Si el rescatista pudiera apagar balizas
+                             ajenas, equivocarse de hueco costaría una persona. -->
+                        <Button
+                            android:id="@+id/b_rescatado"
+                            style="@style/Boton.Ancho"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="@string/b_rescatado"
+                            app:icon="@drawable/ic_casco"
+                            app:iconGravity="textStart"
+                            app:iconTint="@color/gr" />
+
                         <!-- Debajo del botón de llamar iba todo seguido y sin
                              separar: primero el interfono, luego una lista sin
                              rótulo que cuando está vacía es una frase gris
@@ -1449,6 +1465,8 @@
 
                     <include android:id="@+id/op_simulacro" layout="@layout/opcion_fila" />
 
+                    <include android:id="@+id/op_ver_ficha" layout="@layout/opcion_fila" />
+                    <include android:id="@+id/op_simulacro_total" layout="@layout/opcion_fila" />
                     <include android:id="@+id/op_autotest" layout="@layout/opcion_fila" />
 
                     <!-- Y al final, separada de todo lo demás: la que apaga la

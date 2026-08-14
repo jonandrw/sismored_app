@@ -282,6 +282,57 @@ class ServicioSos : Service() {
          *  conteste. */
         const val ACCION_PROBAR_PREGUNTA = "red.sismo.PROBAR_PREGUNTA"
 
+        /**
+         * El simulacro que SÍ escala hasta la baliza.
+         *
+         * El de arriba solo saca la pantalla y por diseño no puede escalar: no
+         * inyecta ninguna prueba, así que cuando vence la cuenta atrás la cascada
+         * mira qué evidencia hay, no encuentra nada y decide NADA. Está bien
+         * así — si escalara sin pruebas estaría probando un camino que en la
+         * realidad no se recorre.
+         *
+         * Pero eso dejaba **la cadena entera sin poder ensayarse**: «preguntó,
+         * nadie contestó → BALIZA» solo se veía con un terremoto de verdad, y por
+         * eso lleva meses en la lista de pruebas pendientes. Este mete la
+         * sacudida en el suceso, que es la única prueba que falta, y deja correr
+         * todo lo demás sin trucar nada más: la misma pregunta, la misma cuenta
+         * atrás y la misma decisión.
+         *
+         * Enciende la baliza y la malla **de verdad**, porque si no, no se estaría
+         * probando nada. Por eso se pide confirmación antes.
+         */
+        const val ACCION_SIMULACRO_TOTAL = "red.sismo.SIMULACRO_TOTAL"
+
+        /**
+         * «Ya me encontraron», dicho por la persona que estaba pidiendo ayuda.
+         *
+         * **Es lo único que apaga la baliza.** Hasta ahora la ficha se abría sola
+         * al oír la llamada del que busca y no había forma de decir que el
+         * rescate había terminado: el móvil seguía gritando con alguien ya
+         * delante, gastando batería y ocupando la malla.
+         *
+         * Y la regla que va con ello, que importa más que la función: **que
+         * aparezca la ficha no puede cancelar nada**. Si el rescatista se
+         * equivoca de hueco, oye la llamada, se abre la ficha y el móvil deja de
+         * emitir por eso, se pierde a la persona. Hace falta que alguien lo diga
+         * a propósito.
+         */
+        const val ACCION_RESCATADO = "red.sismo.RESCATADO"
+
+        /** «Ya la he sacado», dicho por quien buscaba: deja de llamar. */
+        const val ACCION_RESCATE_HECHO = "red.sismo.RESCATE_HECHO"
+
+        /**
+         * Ver la ficha tal y como la va a ver quien te encuentre.
+         *
+         * No es un adorno de diagnóstico: esa pantalla se abre sola, sobre el
+         * bloqueo y con el brillo al máximo, en el peor momento de la vida de
+         * alguien — y hasta ahora **no había forma de verla sin que pasara de
+         * verdad**. Una ficha con el grupo sanguíneo mal escrito no se descubre
+         * en un terremoto.
+         */
+        const val ACCION_VER_FICHA = "red.sismo.VER_FICHA"
+
         /** Manda un datagrama de prueba por la Wi-Fi. No enseña la ficha real ni
          *  enciende ninguna alarma: sirve para que dos personas comprueben que
          *  se ven en la red antes de necesitarlo. */
@@ -647,6 +698,10 @@ class ServicioSos : Service() {
                 anotar("Simulacro: esta es la pantalla que sale sola tras un terremoto.")
                 preguntar(false, "simulacro")
             }
+            ACCION_SIMULACRO_TOTAL -> simulacroCompleto()
+            ACCION_RESCATADO -> rescatado()
+            ACCION_RESCATE_HECHO -> rescateHecho()
+            ACCION_VER_FICHA -> mostrarFichaSola(previa = true)
             ACCION_DIAGNOSTICO -> comprobarTodo()
         }
         // ya estamos en primer plano: aquí sí se puede grabar. Si el usuario apagó
@@ -841,8 +896,15 @@ class ServicioSos : Service() {
      * plano está limitado, y esto tiene que salir sí o sí — es lo único que le
      * dice a quien te encuentra tu grupo sanguíneo.
      */
-    private fun mostrarFichaSola() {
-        if (Ficha(this).vacia()) return          // sin ficha no hay nada que enseñar
+    private fun mostrarFichaSola(previa: Boolean = false) {
+        /* En el camino real, sin ficha no hay nada que enseñar y abrir una
+           pantalla en blanco encima del bloqueo solo estorba al que rescata.
+           Pero en la vista previa la ficha vacía es exactamente el dato que hace
+           falta ver: así es como te van a encontrar si no la rellenas. */
+        if (Ficha(this).vacia()) {
+            if (!previa) return
+            anotar("Tu ficha está VACÍA: esto es lo que verá quien te encuentre.")
+        }
         val i = Intent(this, FichaActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
         val pi = PendingIntent.getActivity(this, 9, i,
@@ -1092,6 +1154,73 @@ class ServicioSos : Service() {
            contesta no va a apagarla, y diez minutos de sirena son una mordida
            seria a la batería que aquí no compra nada. */
         rescate()
+    }
+
+    /**
+     * El simulacro que llega hasta el final.
+     *
+     * Se inyecta UNA sola cosa —la sacudida, con el móvil en reposo— y a partir
+     * de ahí no se toca nada: la misma cascada, la misma pregunta, la misma
+     * cuenta atrás y la misma decisión. Si nadie contesta en [PREGUNTA_MS], sale
+     * BALIZA y se enciende de verdad.
+     *
+     * Que sea de verdad es el punto. Un simulacro que no encienda la baliza no
+     * prueba lo único que hacía falta probar, que es justo el tramo que nunca se
+     * ha visto funcionar fuera del autotest.
+     */
+    private fun simulacroCompleto() {
+        if (enAlarma || enRescate) { anotar("Ya hay una alarma en marcha: el simulacro no hace nada."); return }
+        anotar("SIMULACRO COMPLETO · me creo una sacudida y dejo correr la cascada entera. " +
+               "Si no contestas, la baliza se enciende DE VERDAD.")
+        if (sucesoDesde == 0L) {
+            sucesoDesde = System.currentTimeMillis()
+            pasosAlSuceso = postura?.pasos ?: -1L
+            try { postura?.vigilarLuz(true) } catch (_: Exception) {}
+            try { ubicacion?.refrescar() } catch (_: Exception) {}
+        }
+        /* Las dos únicas cosas que se dan por puestas, y son las que un
+           terremoto pondría: que el móvil estaba en reposo y que ha temblado.
+           Todo lo demás —los pasos, la interacción, el silencio— se mide igual
+           que siempre, que es lo que hace que esto sea un ensayo y no una
+           maqueta. */
+        sucesoRegimen = Postura.Regimen.EN_REPOSO
+        sucesoSacudida = true
+        evaluar("simulacro completo")
+    }
+
+    /**
+     * Lo ha dicho la persona que pedía ayuda: ya la han encontrado.
+     *
+     * Apaga la baliza entera —sirena, radio, malla, ficha por Wi-Fi— y cierra el
+     * suceso, pero **deja el móvil escuchando y retransmitiendo**. Quien acaba
+     * de ser rescatado tiene un teléfono con batería en medio de una zona sin
+     * red, y eso es exactamente el nodo que hace falta ahí: la misma decisión
+     * que se toma con quien contesta que está bien.
+     */
+    private fun rescatado() {
+        if (!enAlarma && !enRescate) { anotar("No había ninguna baliza encendida."); return }
+        anotar("TE HAN ENCONTRADO · apago la baliza. Este móvil se queda de repetidor para los demás.")
+        parar()
+        repetidor = true
+        contestoBien = System.currentTimeMillis()
+        if (!mallaEscuchando) { mallaApagadaAMano = false; arrancarMalla() }
+        try { actualizarNotificacion() } catch (_: Exception) {}
+    }
+
+    /**
+     * Lo ha dicho quien buscaba: ya la ha sacado.
+     *
+     * Deja de llamar hacia abajo, que es lo que hay que parar — la llamada hace
+     * ruido a propósito y pide a los móviles enterrados que emitan más seguido,
+     * y las dos cosas sobran cuando ya no se busca a nadie ahí.
+     */
+    private fun rescateHecho() {
+        anotar("RESCATADO · dejo de llamar hacia abajo.")
+        try { sirena.stop() } catch (_: Exception) {}
+        try { malla?.relayMs = MallaAcustica.RELAY_MS } catch (_: Exception) {}
+        try { malla?.pararEmision() } catch (_: Exception) {}
+        try { if (!enAlarma && !enRescate) radio?.parar() } catch (_: Exception) {}
+        try { actualizarNotificacion() } catch (_: Exception) {}
     }
 
     /** El suceso se ha resuelto: se limpia para poder ver el siguiente. */

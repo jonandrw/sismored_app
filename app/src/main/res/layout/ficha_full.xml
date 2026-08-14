@@ -150,7 +150,34 @@
             app:autoSizeMinTextSize="14sp" />
     </LinearLayout>
 
+    <!-- ME HAN ENCONTRADO.
+
+         Es lo único que apaga la baliza, y va aquí porque esta es la pantalla
+         que se abre sola cuando el rescate ya está encima: quien la está viendo
+         es la persona atrapada, con alguien delante.
+
+         Que la ficha aparezca NO puede cancelar nada por sí sola. Si el
+         rescatista se equivoca de hueco y el móvil deja de emitir por haber
+         mostrado una pantalla, se pierde a la persona. Hace falta que alguien lo
+         diga a propósito, y por eso hay dos toques: el botón primero pregunta y
+         solo el segundo apaga. Dos toques grandes y sin diálogo — quien está
+         debajo puede estar herido y a oscuras, y un cuadro con dos botones
+         pequeños ahí no lo pulsa nadie. -->
+    <Button
+        android:id="@+id/ff_encontrado"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:background="@drawable/fila_op"
+        android:fontFamily="@font/montserrat_bold"
+        android:letterSpacing="0.06"
+        android:minHeight="64dp"
+        android:text="@string/ff_encontrado"
+        android:textColor="@color/gr"
+        android:textSize="16sp" />
+
     <TextView
+        android:id="@+id/ff_pie"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center"
