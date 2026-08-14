@@ -51,16 +51,21 @@ class Opciones(ctx: Context) {
      * existiendo por lo mismo de siempre: andar y correr sacuden un bolsillo más
      * que un terremoto sacude una mesa, y ahí no hay forma de afinar.
      *
-     * **2,5 m/s² horizontales**, no los 6,0 de antes. El cambio no es una
-     * decisión nueva sino la misma en la escala nueva: al medir solo la
-     * componente perpendicular a la gravedad, andar da menos que antes —parte de
-     * la pisada era vertical— así que el listón equivalente baja. Clave nueva
-     * (`op_umbral_h`) por el mismo motivo que en el de reposo: heredar un 6,0 de
-     * la escala vieja sería quedarse sordo sin que nadie lo note.
+     * **6,0 m/s² horizontales.** Aquí no hace falta afinar y afinar sale caro:
+     * con el móvil encima de alguien, andar y correr producen más aceleración
+     * horizontal que un terremoto, así que el listón alto es el que evita
+     * llenarle el bolsillo de falsas alarmas. Lo que de verdad protege el caso
+     * fino no es este número sino la puerta de la mano
+     * (`Sismografo.hayMano`), que se entera en ochenta milisegundos de que
+     * alguien ha cogido el teléfono.
+     *
+     * Clave nueva (`op_umbral_h`) por el mismo motivo que en el de reposo: la
+     * escala cambió al medir solo lo perpendicular a la gravedad, y heredar un
+     * valor de la escala vieja dejaría el detector mal puesto sin que se note.
      */
     var umbral: Double
-        get() = p.getFloat("op_umbral_h", 2.5f).toDouble().coerceIn(0.3, 6.0)
-        set(v) = p.edit().putFloat("op_umbral_h", v.coerceIn(0.3, 6.0).toFloat()).apply()
+        get() = p.getFloat("op_umbral_h", 6.0f).toDouble().coerceIn(0.3, 9.0)
+        set(v) = p.edit().putFloat("op_umbral_h", v.coerceIn(0.3, 9.0).toFloat()).apply()
 
     /**
      * El usuario ha apagado SismoRed del todo, a mano.

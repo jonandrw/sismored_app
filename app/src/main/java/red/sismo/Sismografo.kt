@@ -60,9 +60,9 @@ class Sismografo(
 
     /** El umbral que se aplica AHORA, en m/s² de aceleración HORIZONTAL. Lo
      *  elige el servicio según la postura: con el móvil encima manda el
-     *  conservador (2,5), en reposo el fino (0,25). En [Opciones.umbralReposo]
+     *  conservador (6,0), en reposo el fino (0,25). En [Opciones.umbralReposo]
      *  está por qué estos números no se pueden comparar con los de antes. */
-    var umbral = 2.5
+    var umbral = 6.0
     var armado = false
 
     /**
@@ -107,6 +107,18 @@ class Sismografo(
        filtro es lento a propósito: lo que interesa es hacia dónde apunta el
        móvil, no la sacudida. */
     private var gx = 0.0; private var gy = 0.0; private var gz = 0.0
+
+    /* La MISMA gravedad, pero filtrada rápido (α = 0,25, unos 80 ms a 50 Hz).
+       Existe por un problema de tiempos: el filtro lento tarda un segundo en
+       enterarse y las direcciones se guardan cada 500 ms, así que cuando alguien
+       levanta el móvil `giroGrados` todavía marca lo de antes — y el disparo cae
+       dentro de ese hueco. El discriminador estaba bien y llegaba tarde.
+
+       El ángulo entre la rápida y la lenta salta en cuanto una mano toca el
+       móvil, porque la rápida ya apunta al sitio nuevo y la lenta aún no. En una
+       mesa durante un terremoto las dos apuntan igual: el suelo se mueve, la
+       mesa no gira. */
+    private var fx = 0.0; private var fy = 0.0; private var fz = 0.0
     private val dirX = DoubleArray(30); private val dirY = DoubleArray(30); private val dirZ = DoubleArray(30)
     private var di = 0; private var dn = 0
     private var ultimaDir = 0L
@@ -129,6 +141,15 @@ class Sismografo(
     /** Qué parte de los últimos dos segundos ha estado por encima del umbral.
      *  Es lo que se compara con [CICLO_MIN], y se enseña en Diagnóstico. */
     @Volatile var cicloTrabajo = 0.0; private set
+
+    /** Grados entre la gravedad rápida y la lenta: sube en cuanto una mano toca
+     *  el móvil, y en una mesa se queda en décimas. Se ve en Diagnóstico. */
+    @Volatile var manoGrados = 0.0; private set
+    private var ultimaMano = 0L
+
+    /** ¿Ha habido una mano en los últimos segundos? Es lo que impide que
+     *  levantar el móvil dispare la alarma con el umbral fino puesto. */
+    val hayMano: Boolean get() = System.currentTimeMillis() - ultimaMano < MANO_VALE_MS
 
     /** Valor actual de sacudida, para pintarlo en la interfaz. */
     @Volatile var sacudida = 0.0
@@ -190,6 +211,28 @@ class Sismografo(
 
         /** Tamaño del anillo: dos segundos caben de sobra hasta 128 Hz. */
         private const val ANILLO = 256
+
+        /* ---------- la mano, medida deprisa ----------
+           Cuántos grados de desacuerdo entre la gravedad rápida y la lenta hacen
+           falta para decir «esto lo está sujetando alguien».
+
+           Ocho grados. Una sacudida horizontal de 1 m/s² inclina el vector
+           instantáneo atan(1/9,81) = 5,8°, y la gravedad rápida sigue esa
+           inclinación en parte — así que por debajo de ocho se confundiría un
+           terremoto fuerte con una mano. Por arriba no hay problema: coger un
+           móvil de una mesa lo gira decenas de grados, y no hay forma de
+           sujetarlo sin inclinarlo. En una mesa quieta esto se queda en décimas.
+
+           Es el mismo discriminador que `giroGrados`, que ya estaba y es el que
+           decide la postura; lo que cambia es el TIEMPO. El lento compara contra
+           quince segundos de historia con un filtro de un segundo, y por eso no
+           llega a tiempo de parar un disparo que ocurre medio segundo después de
+           levantar el móvil. Este llega en ochenta milisegundos. */
+        private const val MANO_GRADOS = 8.0
+
+        /** Cuánto dura la sospecha después del último desacuerdo. Cinco segundos:
+         *  lo que tarda alguien en coger el móvil, mirarlo y dejarlo. */
+        private const val MANO_VALE_MS = 5000L
     }
 
     fun arrancar() {
@@ -221,9 +264,18 @@ class Sismografo(
 
         /* Orientación: gravedad filtrada y ángulo contra los últimos 15 s. */
         val ax = e.values[0].toDouble(); val ay = e.values[1].toDouble(); val az = e.values[2].toDouble()
-        if (gx == 0.0 && gy == 0.0 && gz == 0.0) { gx = ax; gy = ay; gz = az }
+        if (gx == 0.0 && gy == 0.0 && gz == 0.0) { gx = ax; gy = ay; gz = az; fx = ax; fy = ay; fz = az }
         gx += (ax - gx) * 0.02; gy += (ay - gy) * 0.02; gz += (az - gz) * 0.02
+        fx += (ax - fx) * 0.25; fy += (ay - fy) * 0.25; fz += (az - fz) * 0.25
         val gn = sqrt(gx * gx + gy * gy + gz * gz)
+
+        /* ¿Hay una mano AHORA MISMO? El ángulo entre las dos gravedades. */
+        val fn = sqrt(fx * fx + fy * fy + fz * fz)
+        if (gn > 1e-3 && fn > 1e-3) {
+            val c = ((gx * fx + gy * fy + gz * fz) / (gn * fn)).coerceIn(-1.0, 1.0)
+            manoGrados = Math.toDegrees(kotlin.math.acos(c))
+            if (manoGrados > MANO_GRADOS) ultimaMano = System.currentTimeMillis()
+        }
         if (gn > 1e-3) {
             val ux = gx / gn; val uy = gy / gn; val uz = gz / gn
             val ahora = System.currentTimeMillis()
@@ -351,6 +403,17 @@ class Sismografo(
         /* Media ventana de muestras como mínimo: recién arrancado el anillo está
            casi vacío y tres muestras altas de tres darían un ciclo de 1,00. */
         if (armado && total > 20 && cicloTrabajo >= CICLO_MIN) {
+            /* Y la última puerta, que es la que faltaba: si hay una mano, esto no
+               es el suelo. Va AQUÍ y no en el servicio a propósito — el servicio
+               revisa la postura una vez por segundo, y levantar un móvil y que
+               dispare cabe entero dentro de ese segundo. Esta se entera en
+               ochenta milisegundos. */
+            if (hayMano) {
+                an = 0; ai = 0
+                Log.i("SismoRed", "sismografo: %.2f m/s2 pero hay una mano (%.0f°), no disparo"
+                    .format(sta, manoGrados))
+                return
+            }
             an = 0; ai = 0                       // el anillo se vacía tras disparar
             Log.i("SismoRed", "sismografo %.2f m/s2 horizontal · ciclo %.2f".format(sta, cicloTrabajo))
             alDisparar("sismógrafo %.2f m/s² · %d%% de dos segundos".format(sta, (cicloTrabajo * 100).toInt()))
@@ -410,12 +473,26 @@ class Sismografo(
                     kotlin.math.sin(6.283 * 14.0 * k / sr)
             }
         }
-        // tirón: levantarlo de golpe, todo por la vertical
+        /* Levantarlo: el tirón vertical y, sobre todo, la INCLINACIÓN. Nadie coge
+           un móvil de una mesa sin girarlo, y a partir de ahí la gravedad le
+           entra por otra cara. Modelarlo sin inclinar era modelar un ascensor,
+           no una mano — y fue lo que hizo que la primera versión de este autotest
+           diera por bueno un caso que en el móvil real fallaba. */
         if (tiron > 0.0) {
             val i0 = (4.0 * sr).toInt(); val largo = (0.18 * sr).toInt()
             for (k in 0 until largo) {
                 if (i0 + k < n) out[i0 + k][2] += tiron
                 if (i0 + largo + k < n) out[i0 + largo + k][2] -= tiron
+            }
+            // y se queda inclinado unos 35°, con el pulso encima
+            val ang = Math.toRadians(35.0)
+            for (j in (i0 + largo) until n) {
+                val t = (j - i0 - largo) / sr
+                val a = ang * min(t / 0.4, 1.0)
+                out[j][0] += 9.81 * kotlin.math.sin(a)
+                out[j][2] += 9.81 * (kotlin.math.cos(a) - 1.0)
+                out[j][0] += 0.25 * kotlin.math.sin(6.283 * 4.0 * t)   // pulso
+                out[j][1] += 0.18 * kotlin.math.sin(6.283 * 5.3 * t)
             }
         }
         for (i in 0 until n) for (e in 0..2) out[i][e] += rnd.nextGaussian() * 0.02
@@ -425,12 +502,20 @@ class Sismografo(
     /** Pasa una escena por la misma lógica de [onSensorChanged] y dice si dispara. */
     private fun correrEscena(datos: Array<DoubleArray>, umbralPrueba: Double): Boolean {
         var lgx = datos[0][0]; var lgy = datos[0][1]; var lgz = datos[0][2]
+        var rfx = lgx; var rfy = lgy; var rfz = lgz
         var s = 0.0
         val altos = BooleanArray(datos.size)
+        val mano = BooleanArray(datos.size)
         for (i in datos.indices) {
-            val (x, y, z) = Triple(datos[i][0], datos[i][1], datos[i][2])
+            val x = datos[i][0]; val y = datos[i][1]; val z = datos[i][2]
             lgx += (x - lgx) * 0.02; lgy += (y - lgy) * 0.02; lgz += (z - lgz) * 0.02
+            rfx += (x - rfx) * 0.25; rfy += (y - rfy) * 0.25; rfz += (z - rfz) * 0.25
             val g = sqrt(lgx * lgx + lgy * lgy + lgz * lgz)
+            val f = sqrt(rfx * rfx + rfy * rfy + rfz * rfz)
+            if (g > 1e-3 && f > 1e-3) {
+                val c = ((lgx * rfx + lgy * rfy + lgz * rfz) / (g * f)).coerceIn(-1.0, 1.0)
+                mano[i] = Math.toDegrees(kotlin.math.acos(c)) > MANO_GRADOS
+            }
             val h = if (g > 1e-3) {
                 val ux = lgx / g; val uy = lgy / g; val uz = lgz / g
                 val lx = x - lgx; val ly = y - lgy; val lz = z - lgz
@@ -441,12 +526,16 @@ class Sismografo(
             s += (hc - s) * (if (hc > s) 0.25 else 0.5)
             altos[i] = s > umbralPrueba
         }
-        // ventana de 2 s = 100 muestras a 50 Hz
+        // ventana de 2 s = 100 muestras a 50 Hz; la mano vale 5 s = 250 muestras
         val w = 100
+        val wm = 250
         for (i in w until datos.size) {
             var c = 0
             for (k in 0 until w) if (altos[i - k]) c++
-            if (c.toDouble() / w >= CICLO_MIN) return true
+            if (c.toDouble() / w < CICLO_MIN) continue
+            var conMano = false
+            for (k in 0 until minOf(wm, i)) if (mano[i - k]) { conMano = true; break }
+            if (!conMano) return true
         }
         return false
     }
@@ -465,6 +554,13 @@ class Sismografo(
             Triple("martillazos en la mesa", false,
                 escena(19, golpes = doubleArrayOf(4.0, 4.5, 5.1, 5.6), golpeAmp = 3.0)),
             Triple("levantarlo de golpe", false, escena(5, tiron = 3.0)),
+            Triple("cogerlo despacio para mirarlo", false, escena(41, tiron = 1.2)),
+            /* Y el que de verdad hacía falta: con el móvil ya en la mano,
+               moviéndose como se mueve una mano. Sin la puerta de la mano
+               este dispara — se comprobó quitándola. */
+            Triple("mirándolo con la mano en movimiento", false,
+                escena(47, tiron = 2.0, horizontal = 0.9, vertical = 0.5,
+                    frecs = doubleArrayOf(1.8, 3.2, 5.1), desde = 5.0, dura = 6.0)),
             Triple("lavadora centrifugando", false,
                 escena(13, horizontal = 0.25, vertical = 0.2,
                     frecs = doubleArrayOf(11.5), desde = 1.0, dura = 10.0)),

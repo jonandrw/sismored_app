@@ -333,6 +333,22 @@ class ServicioSos : Service() {
          */
         const val ACCION_VER_FICHA = "red.sismo.VER_FICHA"
 
+        /**
+         * Ha entrado una alerta sísmica de fuera: o la de Google por notificación
+         * ([AlertaGoogle]), o la de otro móvil por la malla.
+         *
+         * **Arma, no dispara.** Ver [Cascada.Pruebas.alertaExterna] para el
+         * porqué: la alerta llega segundos ANTES de que sacuda, así que en ese
+         * instante todavía no ha pasado nada y preguntar «¿estás bien?» sería
+         * gastar la pregunta justo antes del terremoto.
+         */
+        const val ACCION_ALERTA_EXTERNA = "red.sismo.ALERTA_EXTERNA"
+
+        /** Hasta cuándo vale una alerta externa. Volátil y estático porque lo
+         *  mira la cascada desde el hilo del sensor. */
+        @Volatile var alertaExternaHasta = 0L
+        val alertaExterna: Boolean get() = System.currentTimeMillis() < alertaExternaHasta
+
         /** Manda un datagrama de prueba por la Wi-Fi. No enseña la ficha real ni
          *  enciende ninguna alarma: sirve para que dos personas comprueben que
          *  se ven en la red antes de necesitarlo. */
@@ -509,6 +525,15 @@ class ServicioSos : Service() {
                Así que la malla NO se toca. Se calla lo que hace ruido audible:
                sirena, vibración y la sonda, que además barre con tonos que sí
                entran en la banda de trabajo del equipo. */
+            /* Otro móvil ha repartido una alerta sísmica por la malla. Entra
+               por el mismo sitio que la de Google y hace lo mismo: avisar y
+               armar. No enciende ninguna baliza. */
+            onAlertaSismica = {
+                try {
+                    startService(Intent(this, ServicioSos::class.java)
+                        .setAction(ACCION_ALERTA_EXTERNA).putExtra("malla", true))
+                } catch (_: Exception) {}
+            },
             onSilencio = {
                 try { sirena.stop() } catch (_: Exception) {}
                 try { vibrador?.cancel() } catch (_: Exception) {}
@@ -701,6 +726,7 @@ class ServicioSos : Service() {
             ACCION_SIMULACRO_TOTAL -> simulacroCompleto()
             ACCION_RESCATADO -> rescatado()
             ACCION_RESCATE_HECHO -> rescateHecho()
+            ACCION_ALERTA_EXTERNA -> alertaSismicaExterna(intent.getBooleanExtra("malla", false))
             ACCION_VER_FICHA -> mostrarFichaSola(previa = true)
             ACCION_DIAGNOSTICO -> comprobarTodo()
         }
@@ -978,6 +1004,10 @@ class ServicioSos : Service() {
             sacudida = sucesoSacudida || temblando,
             estruendo = sucesoEstruendo || estruendoAhora,
             corroborada = sucesoCorroborada || saltoEntrante > 0,
+            /* La alerta de fuera. Se suma a lo que mide el móvil, no lo
+               sustituye: sola no abre nada, pero mientras esté en pie una
+               sacudida ya no necesita que además se oiga el derrumbe. */
+            alertaExterna = alertaExterna,
             caidaImpacto = huboCaida,
             preguntado = preguntaVencida,
             contestado = haContestado,
@@ -1154,6 +1184,59 @@ class ServicioSos : Service() {
            contesta no va a apagarla, y diez minutos de sirena son una mordida
            seria a la batería que aquí no compra nada. */
         rescate()
+    }
+
+    /**
+     * Ha entrado una alerta sísmica de fuera. Arma el móvil; no lo dispara.
+     *
+     * Las tres cosas que hace, en orden de importancia:
+     *
+     *  1. **Repartirla por la malla**, si no viene ya de ahí. Es la razón de ser
+     *     de todo esto: en un salón de clases la alerta de Google no le llegó al
+     *     80 % de los móviles, porque hace falta internet y la función activada.
+     *     Los que no la reciben están al lado de alguien que sí.
+     *  2. **Avisar**, que es lo que sirve en los segundos que quedan. Suena y
+     *     destella, y no calla la sirena de nadie.
+     *  3. **Armar la vigilancia**: umbral al mínimo y `alertaExterna` en pie
+     *     durante [MallaAcustica.ALERTA_VALE_MS]. Cuando llegue la sacudida, la
+     *     cascada ya no tiene que dudar de ella.
+     *
+     * Lo que NO hace: encender la baliza. Ver [Cascada.Pruebas.alertaExterna].
+     */
+    private fun alertaSismicaExterna(porLaMalla: Boolean) {
+        val ahora = System.currentTimeMillis()
+        /* Anti-eco: la malla reemite y podría volver a entrar por donde salió.
+           Diez segundos bastan para que la vuelta muera sola. */
+        if (ahora < alertaExternaHasta - MallaAcustica.ALERTA_VALE_MS + 10_000L) return
+        alertaExternaHasta = ahora + MallaAcustica.ALERTA_VALE_MS
+
+        anotar(
+            if (porLaMalla) "ALERTA SÍSMICA por la malla · viene un terremoto. Protégete."
+            else "ALERTA SÍSMICA de Google · viene un terremoto. Protégete."
+        )
+        /* Y se reparte, que es lo único que Google no puede hacer: los móviles
+           sin internet de alrededor no la han recibido. Si vino por la malla, la
+           propia malla ya se encarga de reemitirla una vez. */
+        if (!porLaMalla) try { malla?.emitirUna(MallaAcustica.CODIGO_ALERTA) } catch (_: Exception) {}
+        try { destello("alerta sísmica") } catch (_: Exception) {}
+        /* Tres pulsos, no el SOS: esto es «viene un terremoto», no «hay alguien
+           enterrado». Confundir los dos avisos en la mano es confundirlos en la
+           cabeza. */
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                vibrador?.vibrate(VibrationEffect.createWaveform(
+                    longArrayOf(0, 400, 200, 400, 200, 400), -1))
+            else @Suppress("DEPRECATION")
+                vibrador?.vibrate(longArrayOf(0, 400, 200, 400, 200, 400), -1)
+        } catch (_: Exception) {}
+        /* La vigilancia al mínimo mientras dure la ventana: si el terremoto llega
+           de verdad, que no se pierda el primer segundo discutiendo el umbral. */
+        try {
+            sismo.armado = true
+            sismo.umbral = opciones.umbralReposo
+            umbralActivo = sismo.umbral
+        } catch (_: Exception) {}
+        try { actualizarNotificacion() } catch (_: Exception) {}
     }
 
     /**
@@ -1617,6 +1700,16 @@ class ServicioSos : Service() {
         val sismoOk = try {
             val (ok, txt) = sismo.autotest()
             anotar("sismógrafo · $txt")
+            ok
+        } catch (_: Exception) { false }
+
+        /* El filtro de la alerta de Google. Se comprueba SIEMPRE, tenga o no el
+           permiso: lo que se está probando no es si llega la notificación, es
+           que el filtro no se cuela con una noticia ni con el resumen de después
+           del terremoto — y eso se puede comprobar sin permiso ninguno. */
+        val alertaOk = try {
+            val (ok, txt) = AlertaGoogle.autotest()
+            anotar("alerta de Google · $txt")
             ok
         } catch (_: Exception) { false }
 

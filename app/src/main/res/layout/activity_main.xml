@@ -1465,6 +1465,7 @@
 
                     <include android:id="@+id/op_simulacro" layout="@layout/opcion_fila" />
 
+                    <include android:id="@+id/op_alerta_google" layout="@layout/opcion_fila" />
                     <include android:id="@+id/op_ver_ficha" layout="@layout/opcion_fila" />
                     <include android:id="@+id/op_simulacro_total" layout="@layout/opcion_fila" />
                     <include android:id="@+id/op_autotest" layout="@layout/opcion_fila" />

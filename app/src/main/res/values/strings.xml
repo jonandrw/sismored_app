@@ -504,4 +504,13 @@ Es la única forma de comprobar el tramo que no se puede ensayar de otra manera.
     <string name="b_rescatado">RESCATADO · DEJAR DE LLAMAR</string>
     <string name="b_ver_ficha">VER MI FICHA</string>
     <string name="d_ver_ficha">Tal y como la verá quien te encuentre.</string>
+    <string name="alerta_google_titulo">SismoRed · alerta sísmica</string>
+    <string name="b_alerta_google">REPETIR LA ALERTA DE GOOGLE</string>
+    <string name="d_alerta_google">Reparte por sonido la alerta que solo llega a algunos.</string>
+    <string name="d_alerta_google_aviso">La alerta sísmica de Google llega segundos antes de que sacuda, pero solo a los móviles con internet y con la función activada: en un salón de clases no le llegó al 80 %.
+
+Si la activas, SismoRed la oye y la reparte por sonido a los móviles de alrededor que no la han recibido.
+
+Para leerla hace falta el permiso de acceso a notificaciones, que Android da entero. SismoRed se sale de cualquier notificación que no venga de los servicios de Google antes de mirar su contenido, y no guarda ni envía nada de ninguna. La app funciona entera sin este permiso.</string>
+    <string name="b_alerta_google_activar">ABRIR LOS AJUSTES</string>
 </resources>

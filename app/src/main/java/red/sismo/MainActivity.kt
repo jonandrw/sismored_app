@@ -1133,6 +1133,27 @@ class MainActivity : AppCompatActivity() {
         }
         opcion(R.id.op_simulacro, R.drawable.ic_alerta, R.string.b_probar_pregunta,
             R.string.d_simulacro) { arrancarServicio(ServicioSos.ACCION_PROBAR_PREGUNTA) }
+        /* La alerta de Google. Va aquí y NO en la bienvenida a propósito: es el
+           permiso más grande que pide la app —Android da el acceso a
+           notificaciones entero, no por aplicación— y la app funciona completa
+           sin él. Quien lo active tiene que hacerlo leyendo qué hace, no
+           pulsando «siguiente» cinco veces. */
+        opcion(R.id.op_alerta_google, R.drawable.ic_alerta, R.string.b_alerta_google,
+            R.string.d_alerta_google) {
+            AlertDialog.Builder(this)
+                .setTitle(R.string.b_alerta_google)
+                .setMessage(R.string.d_alerta_google_aviso)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.b_alerta_google_activar) { _, _ ->
+                    try {
+                        startActivity(Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"))
+                    } catch (_: Exception) {
+                        anotar("Este móvil no deja abrir esos ajustes desde la app: " +
+                               "Ajustes → Notificaciones → Acceso a notificaciones.")
+                    }
+                }
+                .show()
+        }
         /* Esa pantalla se abre sola, sobre el bloqueo y con el brillo al máximo,
            en el peor momento de la vida de alguien — y hasta ahora no había forma
            de verla sin que pasara de verdad. Un grupo sanguíneo mal escrito no se

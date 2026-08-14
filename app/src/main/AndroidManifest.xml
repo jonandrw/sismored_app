@@ -160,5 +160,24 @@
                 android:resource="@xml/accesibilidad" />
         </service>
 
+        <!-- Oír la alerta sísmica de Google. No hay API pública para leerla, así
+             que el único camino es la notificación.
+
+             Es el permiso más grande que pide la app y por eso NO se pide en la
+             bienvenida ni se enciende solo: está apagado hasta que alguien lo
+             active a mano en Ajustes, y la app funciona entera sin él. Lo que
+             hace la clase está acotado a una sola línea de código —si el paquete
+             no es el de los servicios de Google, se sale antes de mirar nada— y
+             escrito con esas mismas palabras en Acerca de. -->
+        <service
+            android:name=".AlertaGoogle"
+            android:exported="true"
+            android:label="@string/alerta_google_titulo"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
     </application>
 </manifest>
