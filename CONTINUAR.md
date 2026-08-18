@@ -1195,6 +1195,42 @@ propósito: no saber no puede costarle el aviso a quien duerme.
 Tres casos nuevos en el autotest, y el de campo escrito con esas palabras:
 «terremoto con el móvil en la mesa y tú delante → PREGUNTAR».
 
+## La alarma con el móvil en la mano no venía del sismógrafo
+
+El fallo que echó la app del Redmi, cazado con el registro delante y no con un
+banco sintético. La secuencia, tal cual:
+
+```
+10:06:49  sismografo: 2.05 m/s2 pero hay una mano (8°), no disparo
+10:06:49  sismografo: 3.06 m/s2 pero hay una mano (35°), no disparo
+          ... nueve veces seguidas
+10:07:12  cascada(estruendo por micrófono) -> PREGUNTAR · terremoto confirmado
+10:08:12  cascada(nadie ha contestado) -> BALIZA/PERSONA_PROBABLE
+```
+
+**La puerta de la mano funcionaba.** Bloqueó nueve disparos seguidos. Lo que
+disparó fue el micrófono, y la cascada lo dio por terremoto confirmado — cuando
+un estruendo sin sacudida tiene que dar NADA, y está escrito así en el paso 1.
+
+Para llegar ahí, `sacudida` tenía que ser cierta. Y lo era, por una puerta
+trasera: `Sismografo.ultimoTemblor`. Es la bandera blanda de «aquí se mueve el
+suelo», usa **medio umbral, sin ciclo de trabajo y sin mirar si hay una mano**, y
+de ella sale `ServicioSos.temblando`, que la cascada lee como `sacudida`.
+
+Con el móvil en la mano esa bandera está levantada de continuo. Así que **mano +
+cualquier ruido por el micrófono = alarma completa**, sin que el sismógrafo
+llegara a disparar ni una vez.
+
+La lección, que ya ha salido tres veces esta sesión: **proteger el disparo no
+basta si otra cosa cuenta la misma historia por otro camino**. La bandera decía
+«se mueve el suelo» y una mano invalida esa frase exactamente igual que invalida
+el disparo. Ahora lleva la misma puerta.
+
+Y la regresión comprueba las dos direcciones, que es lo que faltó la primera vez:
+con mano no puede levantarse, y en un terremoto de verdad **tiene que**
+levantarse — si no, la malla perdería el atajo que le deja creerse una alerta
+ajena a la primera.
+
 ## Trampas de esta sesión, para no volver a pisarlas
 
 - **Los comentarios XML de Android no admiten `--` dentro.** Nada de separadores

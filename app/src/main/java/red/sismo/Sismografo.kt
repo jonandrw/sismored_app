@@ -181,6 +181,12 @@ class Sismografo(
      * malla para creerse una alerta ajena a la primera en vez de esperar a oírla
      * dos veces, porque durante un terremoto los segundos de la corroboración son
      * justo los que no hay.
+     *
+     * **Blando no quiere decir sin puerta.** De aquí sale `ServicioSos.temblando`,
+     * y la cascada lo lee como `sacudida` — o sea que esto no es un indicador,
+     * es una prueba con todas las consecuencias. Se le pasó por alto la puerta de
+     * la mano y por ahí se coló una alarma entera con el móvil en la mano y un
+     * ruido cualquiera por el micrófono. Ver la nota donde se escribe.
      */
     @Volatile var ultimoTemblor = 0L
         private set
@@ -401,7 +407,26 @@ class Sismografo(
         sta += (devc - sta) * (if (devc > sta) 0.25 else 0.5)
         sacudida = sta
         // medio umbral: el suelo se mueve, aunque todavía no sea para disparar
-        if (sta > u * 0.5) ultimoTemblor = System.currentTimeMillis()
+        /* Y aquí faltaba la puerta de la mano, que es por donde se colaba TODO.
+           MEDIDO en el Redmi, con el registro delante:
+
+             10:06:49  sismografo: 3.06 m/s2 pero hay una mano (35°), no disparo
+             ... nueve veces seguidas, la puerta funcionando
+             10:07:12  cascada(estruendo por micrófono) -> PREGUNTAR
+             10:08:12  cascada(nadie ha contestado) -> BALIZA
+
+           El disparo estaba bien protegido; esta bandera no. `ultimoTemblor`
+           dice «aquí se mueve el suelo» con MEDIO umbral, sin ciclo de trabajo y
+           —hasta ahora— sin mirar si hay una mano. Con el móvil en la mano se
+           ponía a verdadero de continuo, y de ahí sale `ServicioSos.temblando`,
+           que la cascada lee como `sacudida`. Con eso, un estruendo cualquiera
+           por el micrófono ya tenía su «sacudida» al lado y salía «terremoto
+           confirmado». Mano más un ruido igual a alarma.
+
+           La bandera dice «se mueve EL SUELO». Una mano invalida esa frase
+           exactamente igual que invalida el disparo, así que lleva la misma
+           puerta. */
+        if (!hayMano && sta > u * 0.5) ultimoTemblor = System.currentTimeMillis()
         historia[hi] = sta.toFloat(); hi = (hi + 1) % historia.size
 
         /* La calma se mide SOLO cuando no está pasando nada: si se dejara correr
@@ -566,12 +591,17 @@ class Sismografo(
     }
 
     /** Pasa una escena por la misma lógica de [onSensorChanged] y dice si dispara. */
-    private fun correrEscena(datos: Array<DoubleArray>, umbralPrueba: Double): Boolean {
+    private fun correrEscena(datos: Array<DoubleArray>, umbralPrueba: Double): Boolean =
+        correrEscenaDetalle(datos, umbralPrueba).first
+
+    /** @return (dispara, se-habría-levantado-la-bandera-de-tiembla) */
+    private fun correrEscenaDetalle(datos: Array<DoubleArray>, umbralPrueba: Double): Pair<Boolean, Boolean> {
         var lgx = datos[0][0]; var lgy = datos[0][1]; var lgz = datos[0][2]
         var rfx = lgx; var rfy = lgy; var rfz = lgz
         var s = 0.0
         val altos = BooleanArray(datos.size)
         val mano = BooleanArray(datos.size)
+        var temblo = false
         for (i in datos.indices) {
             val x = datos[i][0]; val y = datos[i][1]; val z = datos[i][2]
             lgx += (x - lgx) * 0.02; lgy += (y - lgy) * 0.02; lgz += (z - lgz) * 0.02
@@ -591,6 +621,12 @@ class Sismografo(
             val hc = min(h, umbralPrueba * 3)
             s += (hc - s) * (if (hc > s) 0.25 else 0.5)
             altos[i] = s > umbralPrueba
+            /* La bandera blanda, con la MISMA puerta que el disparo. Sin ella
+               entraba en la cascada como `sacudida` y bastaba un ruido por el
+               micrófono para tener una alarma con el móvil en la mano. */
+            var conMano0 = false
+            for (k in 0 until minOf(250, i)) if (mano[i - k]) { conMano0 = true; break }
+            if (!conMano0 && s > umbralPrueba * 0.5) temblo = true
         }
         // ventana de 2 s = 100 muestras a 50 Hz; la mano vale 5 s = 250 muestras
         val w = 100
@@ -601,9 +637,9 @@ class Sismografo(
             if (c.toDouble() / w < CICLO_MIN) continue
             var conMano = false
             for (k in 0 until minOf(wm, i)) if (mano[i - k]) { conMano = true; break }
-            if (!conMano) return true
+            if (!conMano) return true to temblo
         }
-        return false
+        return false to temblo
     }
 
     /**
@@ -645,6 +681,32 @@ class Sismografo(
             if (!ok) todo = false
             partes.add("$nombre → ${if (dispara) "dispara" else "no"}" + if (ok) " OK" else " FALLÓ")
         }
+        /* Y la regresión del fallo de campo, que no era el disparo sino la
+           bandera blanda: con el móvil en la mano, `ultimoTemblor` se levantaba
+           igual, entraba en la cascada como `sacudida`, y con un ruido cualquiera
+           por el micrófono salía «terremoto confirmado» y acababa en BALIZA.
+
+           Se comprueba las dos direcciones: con mano no puede levantarse, y en
+           un terremoto de verdad tiene que levantarse — que si no, la malla
+           perdería el atajo que le deja creerse una alerta ajena a la primera. */
+        val (_, tembloConMano) = correrEscenaDetalle(
+            escena(47, tiron = 2.0, horizontal = 0.9, vertical = 0.5,
+                frecs = doubleArrayOf(1.8, 3.2, 5.1), desde = 5.0, dura = 6.0), u)
+        if (tembloConMano) {
+            todo = false
+            partes.add("con el móvil en la mano dice que TIEMBLA · FALLÓ")
+        } else {
+            partes.add("con el móvil en la mano no dice que tiembla OK")
+        }
+        val (_, tembloTerremoto) = correrEscenaDetalle(
+            escena(11, horizontal = 0.7, vertical = 0.42), u)
+        if (!tembloTerremoto) {
+            todo = false
+            partes.add("en un terremoto NO dice que tiembla · FALLÓ")
+        } else {
+            partes.add("en un terremoto dice que tiembla OK")
+        }
+
         val txt = partes.joinToString(" | ")
         Log.i("SismoRed", "autotest sismógrafo · $txt")
         return todo to txt
