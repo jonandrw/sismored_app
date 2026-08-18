@@ -380,7 +380,9 @@
         <item name="android:layout_height">wrap_content</item>
         <item name="android:layout_marginTop">16dp</item>
         <!-- Sin guiones de corte: ver la nota de `paso.xml`. -->
-        <item name="android:breakStrategy">simple</item>
+        <item name="android:breakStrategy">high_quality</item>
+        <item name="android:hyphenationFrequency">none</item>
+        <item name="android:justificationMode">inter_word</item>
         <item name="android:hyphenationFrequency">none</item>
         <item name="android:lineSpacingMultiplier">1.65</item>
         <item name="android:textColor">@color/dim</item>

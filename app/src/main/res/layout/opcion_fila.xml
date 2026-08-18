@@ -64,8 +64,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:breakStrategy="simple"
+            android:breakStrategy="high_quality"
             android:hyphenationFrequency="none"
+            android:justificationMode="inter_word"
             android:lineSpacingMultiplier="1.3"
             android:textColor="@color/dim"
             android:textSize="11.5sp" />

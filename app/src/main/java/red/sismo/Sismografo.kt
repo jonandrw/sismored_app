@@ -151,6 +151,16 @@ class Sismografo(
      *  levantar el móvil dispare la alarma con el umbral fino puesto. */
     val hayMano: Boolean get() = System.currentTimeMillis() - ultimaMano < MANO_VALE_MS
 
+    /**
+     * El umbral que se aplica de verdad: el elegido, o el suelo de ruido de esta
+     * mesa multiplicado por [VECES_CALMA], lo que sea mayor.
+     *
+     * Se enseña en Diagnóstico junto a la calma para que se pueda ver por qué el
+     * móvil vigila al número que vigila. Si aquí sale bastante más que el umbral
+     * elegido, es que ese sitio vibra y el teléfono lo ha aprendido.
+     */
+    val umbralReal: Double get() = maxOf(umbral, calmaMedida * VECES_CALMA)
+
     /** Valor actual de sacudida, para pintarlo en la interfaz. */
     @Volatile var sacudida = 0.0
         private set
@@ -233,6 +243,27 @@ class Sismografo(
         /** Cuánto dura la sospecha después del último desacuerdo. Cinco segundos:
          *  lo que tarda alguien en coger el móvil, mirarlo y dejarlo. */
         private const val MANO_VALE_MS = 5000L
+
+        /**
+         * Cuántas veces la calma medida hay que superar, además del umbral.
+         *
+         * **Esto es lo que faltaba, y explica los falsos que echaron la app del
+         * móvil.** `calmaMedida` lleva desde el principio midiendo cuánto vibra
+         * la superficie donde está el teléfono —el percentil 98 de la calma
+         * real—, con un comentario que dice que sirve para convertir «elige un
+         * umbral en m/s²» en «déjalo en la mesilla y él aprende». Y luego el
+         * disparo no la miraba: comparaba contra un número fijo.
+         *
+         * En una mesa tranquila da igual, porque la calma es diez veces menor
+         * que el umbral. En una mesa que vibra —un ventilador, una nevera al
+         * lado, una calle con camiones, un edificio de madera— la calma sube por
+         * encima del umbral fijo y entonces **el detector está disparando contra
+         * su propio suelo de ruido**, sin parar y sin que nada haya pasado.
+         *
+         * Cuatro veces. La calma es un percentil 98: superarla cuatro veces es
+         * pedir doce decibelios sobre lo que esa mesa hace en su peor rato.
+         */
+        private const val VECES_CALMA = 4.0
     }
 
     fun arrancar() {
@@ -342,18 +373,19 @@ class Sismografo(
         if (devTotal > 0.6) ultimoMovimiento = System.currentTimeMillis()
 
         // 3) media rápida con recorte y bajada más rápida que la subida
-        val devc = min(dev, umbral * 3)
+        val u = umbralReal
+        val devc = min(dev, u * 3)
         sta += (devc - sta) * (if (devc > sta) 0.25 else 0.5)
         sacudida = sta
         // medio umbral: el suelo se mueve, aunque todavía no sea para disparar
-        if (sta > umbral * 0.5) ultimoTemblor = System.currentTimeMillis()
+        if (sta > u * 0.5) ultimoTemblor = System.currentTimeMillis()
         historia[hi] = sta.toFloat(); hi = (hi + 1) % historia.size
 
         /* La calma se mide SOLO cuando no está pasando nada: si se dejara correr
            durante un evento, aprendería que el terremoto es normal. Y se guarda
            un percentil alto, no la media: lo que hay que superar no es el ruido
            típico de la mesa, es su peor rato. */
-        if (sta < umbral * 0.5) {
+        if (sta < u * 0.5) {
             calma[ci] = sta; ci = (ci + 1) % calma.size
             if (cn < calma.size) cn++
             if (cn >= 64 && ci % 32 == 0) {
@@ -388,7 +420,7 @@ class Sismografo(
            le llega ni de lejos. */
         val ahoraMs = System.currentTimeMillis()
         anilloT[ai] = ahoraMs
-        anilloAlto[ai] = sta > umbral
+        anilloAlto[ai] = sta > u
         ai = (ai + 1) % ANILLO
         if (an < ANILLO) an++
         var total = 0; var altos = 0
@@ -415,8 +447,10 @@ class Sismografo(
                 return
             }
             an = 0; ai = 0                       // el anillo se vacía tras disparar
-            Log.i("SismoRed", "sismografo %.2f m/s2 horizontal · ciclo %.2f".format(sta, cicloTrabajo))
-            alDisparar("sismógrafo %.2f m/s² · %d%% de dos segundos".format(sta, (cicloTrabajo * 100).toInt()))
+            Log.i("SismoRed", "sismografo %.2f m/s2 horizontal · ciclo %.2f · umbral real %.2f (calma %.3f)"
+                .format(sta, cicloTrabajo, u, calmaMedida))
+            alDisparar("sismógrafo %.2f m/s² sobre %.2f · %d%% de dos segundos"
+                .format(sta, u, (cicloTrabajo * 100).toInt()))
         }
     }
 

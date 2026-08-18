@@ -521,6 +521,15 @@ class MainActivity : AppCompatActivity() {
             getColor(if (apaga) R.color.tx else R.color.ctl))
     }
 
+    /** ¿Nos ha dado Android el acceso a notificaciones? Se lee del ajuste del
+     *  sistema, que es la única fuente de verdad: el usuario puede quitarlo
+     *  desde Ajustes sin que la app se entere. */
+    private fun alertaGoogleActiva(): Boolean = try {
+        android.provider.Settings.Secure.getString(
+            contentResolver, "enabled_notification_listeners"
+        )?.contains(packageName) == true
+    } catch (_: Exception) { false }
+
     private fun casilla(id: Int, icono: Int, nombre: Int, que: Int, alPulsar: () -> Unit) {
         val c = findViewById<View>(id)
         c.findViewById<ImageView>(R.id.cs_icono).setImageResource(icono)
@@ -1144,6 +1153,16 @@ class MainActivity : AppCompatActivity() {
                 .setTitle(R.string.b_alerta_google)
                 .setMessage(R.string.d_alerta_google_aviso)
                 .setNegativeButton(android.R.string.cancel, null)
+                /* Probarla simulada. Hace falta porque **no hay forma de
+                   provocar una alerta de Google de verdad**: no se puede pedir
+                   un terremoto para ver si el camino funciona. Esto mete la
+                   alerta por el mismo sitio por el que entraría la real, así que
+                   prueba todo menos la notificación: el reparto por la malla, el
+                   armado del sismógrafo y el aviso. */
+                .setNeutralButton(R.string.b_alerta_google_probar) { _, _ ->
+                    arrancarServicio(ServicioSos.ACCION_ALERTA_EXTERNA)
+                    ir(R.id.v_registro)
+                }
                 .setPositiveButton(R.string.b_alerta_google_activar) { _, _ ->
                     try {
                         startActivity(Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"))
@@ -1154,6 +1173,14 @@ class MainActivity : AppCompatActivity() {
                 }
                 .show()
         }
+        /* Y la fila dice si el permiso está puesto o no. Sin esto, activarlo y
+           no activarlo se ven exactamente igual — que es justo lo que pasó: la
+           alerta no llegaba y no había forma de saber que el permiso nunca se
+           había concedido. Android lo da desde sus Ajustes y puede quitarlo por
+           su cuenta, así que se relee cada vez que se entra. */
+        vista(R.id.op_alerta_google).findViewById<TextView>(R.id.of_desc).text =
+            if (alertaGoogleActiva()) getString(R.string.d_alerta_google_on)
+            else getString(R.string.d_alerta_google_off)
         /* Esa pantalla se abre sola, sobre el bloqueo y con el brillo al máximo,
            en el peor momento de la vida de alguien — y hasta ahora no había forma
            de verla sin que pasara de verdad. Un grupo sanguíneo mal escrito no se
@@ -1414,12 +1441,18 @@ class MainActivity : AppCompatActivity() {
             ServicioSos.armado -> {
                 val u = ServicioSos.umbralActivo
                 val calma = ServicioSos.calmaMedida
+                /* Los cuatro números que deciden, a la vista. Sin esto, cuando
+                   la app dispara sola no hay forma de saber por qué, y calibrar
+                   se convierte en adivinar — que es exactamente lo que pasó. */
+                val ur = ServicioSos.umbralReal
                 sub.text = if (u > 0)
-                    "%s · dispara a %.1f m/s² · giro %.0f°%s".format(
+                    "%s · dispara a %.2f%s · ahora %.0f%% · mano %.0f°%s".format(
                         if (ServicioSos.enReposoAhora) "En reposo, vigilancia fina" else "Lo llevas encima",
-                        u,
-                        ServicioSos.giroGrados,
-                        if (calma > 0) " · aquí se mueve %.2f".format(calma) else ""
+                        if (ur > 0) ur else u,
+                        if (ur > u + 0.01) " (subido por el ruido de aquí)" else "",
+                        ServicioSos.cicloTrabajo * 100,
+                        ServicioSos.manoGrados,
+                        if (calma > 0) " · aquí se mueve %.3f".format(calma) else ""
                     )
                 else getString(R.string.sub_vigilando)
             }

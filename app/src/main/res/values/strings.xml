@@ -513,4 +513,7 @@ Si la activas, SismoRed la oye y la reparte por sonido a los móviles de alreded
 
 Para leerla hace falta el permiso de acceso a notificaciones, que Android da entero. SismoRed se sale de cualquier notificación que no venga de los servicios de Google antes de mirar su contenido, y no guarda ni envía nada de ninguna. La app funciona entera sin este permiso.</string>
     <string name="b_alerta_google_activar">ABRIR LOS AJUSTES</string>
+    <string name="b_alerta_google_probar">PROBAR SIMULADA</string>
+    <string name="d_alerta_google_on">Activa. Oye la alerta de Google y la reparte por sonido.</string>
+    <string name="d_alerta_google_off">Sin activar: hoy no puede oírla. Toca para ver cómo.</string>
 </resources>

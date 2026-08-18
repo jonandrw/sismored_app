@@ -116,6 +116,13 @@ class ServicioSos : Service() {
         @Volatile var calmaMedida = 0.0
         /** Cuánto ha girado el móvil. Es lo que distingue una mano de una mesa. */
         @Volatile var giroGrados = 0.0
+        /** El umbral que se aplica de verdad, ya subido por el ruido del sitio. */
+        @Volatile var umbralReal = 0.0
+        /** Grados de desacuerdo entre la gravedad rápida y la lenta: si esto
+         *  sube, hay una mano encima. */
+        @Volatile var manoGrados = 0.0
+        /** Qué parte de los últimos dos segundos va por encima del umbral. */
+        @Volatile var cicloTrabajo = 0.0
         /** Cuándo se contestó ESTOY BIEN por última vez. Se pinta durante unos
          *  minutos: pulsar algo y que no pase nada visible es indistinguible de
          *  que el botón no funcione, y eso hace imposible diagnosticarlo. */
@@ -1986,6 +1993,9 @@ class ServicioSos : Service() {
                     }
                     calmaMedida = sismo.calmaMedida
                     giroGrados = sismo.giroGrados
+                    umbralReal = sismo.umbralReal
+                    manoGrados = sismo.manoGrados
+                    cicloTrabajo = sismo.cicloTrabajo
                     Log.i("SismoRed", "postura %s · giro %.1f° · quieto %d s · calma %.2f · umbral %.1f".format(
                         if (enReposo) "EN_REPOSO" else "ENCIMA", sismo.giroGrados, quieto / 1000,
                         sismo.calmaMedida, nuevo))

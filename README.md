@@ -1,4 +1,4 @@
-# SismoRed
+ # SismoRed
 
 Una app de terremotos que funciona **sin internet, sin cuenta y sin servidor**. Hace
 sonar una sirena con la pantalla bloqueada y el móvil en silencio, propaga la alerta de
