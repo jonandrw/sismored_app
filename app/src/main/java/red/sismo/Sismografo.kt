@@ -159,7 +159,14 @@ class Sismografo(
      * móvil vigila al número que vigila. Si aquí sale bastante más que el umbral
      * elegido, es que ese sitio vibra y el teléfono lo ha aprendido.
      */
-    val umbralReal: Double get() = maxOf(umbral, calmaMedida * VECES_CALMA)
+    val umbralReal: Double
+        get() = maxOf(umbral, calmaMedida * VECES_CALMA)
+            .coerceAtMost(umbral * TOPE_ADAPTATIVO)
+
+    /** El sitio hace tanto ruido que el umbral se ha ido al tope: en fino ya no
+     *  se puede vigilar aquí, y hay que decirlo en vez de fingir que sí. */
+    val sitioDemasiadoRuidoso: Boolean
+        get() = calmaMedida * VECES_CALMA > umbral * TOPE_ADAPTATIVO
 
     /** Valor actual de sacudida, para pintarlo en la interfaz. */
     @Volatile var sacudida = 0.0
@@ -264,6 +271,22 @@ class Sismografo(
          * pedir doce decibelios sobre lo que esa mesa hace en su peor rato.
          */
         private const val VECES_CALMA = 4.0
+
+        /** Por encima de esto ya no es «el sitio», es alguien moviendo el móvil:
+         *  no entra en la medida de la calma. Fijo a propósito — ver la nota de
+         *  la realimentación donde se usa. */
+        private const val CALMA_TECHO = 3.0
+
+        /**
+         * Hasta dónde puede subir el umbral por sí solo.
+         *
+         * Diez veces el elegido. La adaptación existe para no disparar contra el
+         * ruido del sitio, no para acabar sordo: si un móvil está encima de una
+         * lavadora, lo honesto es que deje de vigilar en fino y se diga, no que
+         * suba el listón hasta que no oiga ni un terremoto. Al llegar al tope se
+         * anota, para que se pueda leer en vez de adivinarlo.
+         */
+        private const val TOPE_ADAPTATIVO = 10.0
     }
 
     fun arrancar() {
@@ -385,7 +408,16 @@ class Sismografo(
            durante un evento, aprendería que el terremoto es normal. Y se guarda
            un percentil alto, no la media: lo que hay que superar no es el ruido
            típico de la mesa, es su peor rato. */
-        if (sta < u * 0.5) {
+        /* Y se mide SIN MIRAR EL UMBRAL, que es donde estuvo el error la
+           primera vez que se conectó esto: si el umbral sube con la calma y la
+           calma se mide comparándola con el umbral, los dos se empujan hacia
+           arriba y el detector acaba sordo sin que nadie lo note — el mismo
+           fallo mudo de siempre, pero esta vez con realimentación.
+
+           El criterio es físico y fijo: se mide cuando NO hay una mano encima y
+           la aceleración cabe dentro de lo que puede ser un sitio, no un
+           terremoto. Eso no depende de ningún ajuste. */
+        if (!hayMano && dev < CALMA_TECHO) {
             calma[ci] = sta; ci = (ci + 1) % calma.size
             if (cn < calma.size) cn++
             if (cn >= 64 && ci % 32 == 0) {

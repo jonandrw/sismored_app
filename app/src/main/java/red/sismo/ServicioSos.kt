@@ -1996,9 +1996,12 @@ class ServicioSos : Service() {
                     umbralReal = sismo.umbralReal
                     manoGrados = sismo.manoGrados
                     cicloTrabajo = sismo.cicloTrabajo
-                    Log.i("SismoRed", "postura %s · giro %.1f° · quieto %d s · calma %.2f · umbral %.1f".format(
-                        if (enReposo) "EN_REPOSO" else "ENCIMA", sismo.giroGrados, quieto / 1000,
-                        sismo.calmaMedida, nuevo))
+                    Log.i("SismoRed", "postura %s · giro %.1f° · mano %.1f° · quieto %d s · calma %.3f · umbral %.2f → real %.2f · ciclo %.0f%%%s".format(
+                        if (enReposo) "EN_REPOSO" else "ENCIMA",
+                        sismo.giroGrados, sismo.manoGrados, quieto / 1000,
+                        sismo.calmaMedida, nuevo, sismo.umbralReal,
+                        sismo.cicloTrabajo * 100,
+                        if (sismo.sitioDemasiadoRuidoso) " · SITIO MUY RUIDOSO" else ""))
                 } catch (_: Exception) {}
                 val sonando = System.currentTimeMillis() - alarmaDesde
                 val quieto = sonando > ESCALA_QUIETO_MS && sismo.quietoDesdeHace() > ESCALA_SIN_MOVER_MS
