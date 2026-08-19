@@ -257,6 +257,11 @@ class Sismografo(
          *  lo que tarda alguien en coger el móvil, mirarlo y dejarlo. */
         private const val MANO_VALE_MS = 5000L
 
+        /** Hacia atrás: cuánto se borra de «aquí tiembla» cuando aparece una
+         *  mano. Dos segundos cubren de sobra el arranque de un agarre, y son
+         *  muy poco comparados con los segundos que dura una sacudida real. */
+        private const val RETRO_MANO_MS = 2000L
+
         /**
          * Cuántas veces la calma medida hay que superar, además del umbral.
          *
@@ -334,7 +339,32 @@ class Sismografo(
         if (gn > 1e-3 && fn > 1e-3) {
             val c = ((gx * fx + gy * fy + gz * fz) / (gn * fn)).coerceIn(-1.0, 1.0)
             manoGrados = Math.toDegrees(kotlin.math.acos(c))
-            if (manoGrados > MANO_GRADOS) ultimaMano = System.currentTimeMillis()
+            if (manoGrados > MANO_GRADOS) {
+                ultimaMano = System.currentTimeMillis()
+                /* Y se BORRA hacia atrás la bandera de «tiembla» que se haya
+                   colado en el arranque del agarre.
+
+                   MEDIDO en el Redmi, y es una carrera de dos décimas:
+
+                     20:45:41.931  0.74 m/s2 pero hay una mano (5°)
+                     20:45:42.287  0.75 m/s2 pero hay una mano (50°)
+                     20:45:42.520  MICRÓFONO: ESTRUENDO / DERRUMBE 90%
+                     20:45:42.524  cascada -> AVISAR · sirena
+
+                   La aceleración del agarre llega ANTES de que el giro sea
+                   medible: en la primera muestra la mano marca 5°, por debajo
+                   del corte, así que `ultimoTemblor` se puso. Y esa bandera dura
+                   un minuto, tiempo de sobra para que cualquier ruido por el
+                   micrófono la encuentre esperando y salga «terremoto
+                   confirmado».
+
+                   No se puede adivinar el futuro en la muestra 1, pero sí
+                   corregir en la muestra 15: cuando aparece la mano, lo que se
+                   creyó un temblor justo antes era el principio de esa mano. */
+                if (ultimoTemblor > 0L && ultimaMano - ultimoTemblor < RETRO_MANO_MS) {
+                    ultimoTemblor = 0L
+                }
+            }
         }
         if (gn > 1e-3) {
             val ux = gx / gn; val uy = gy / gn; val uz = gz / gn

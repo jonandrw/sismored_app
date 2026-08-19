@@ -1026,9 +1026,19 @@ class ServicioSos : Service() {
             /* Y cuánto hace de la última vez, que es lo que decide si la sirena
                tiene sentido. −1 si no se sabe: no saber no puede costarle la
                sirena a quien duerme. */
-            msDesdeInteraccion = p?.ultimaInteraccion?.let {
-                if (it > 0L) System.currentTimeMillis() - it else -1L
-            } ?: -1L,
+            /* «Cuánto hace que alguien tocó el móvil» tiene que incluir
+               tocarlo, no solo desbloquearlo. En el fallo de campo la app dijo
+               «lleva horas sin tocarse: puede estar dormida» y sonó la sirena
+               con el teléfono literalmente en la mano, porque `ultimaInteraccion`
+               solo cuenta desbloqueos de pantalla. El movimiento también es
+               alguien: `quietoDesdeHace()` se pone a cero con cualquier empujón
+               de más de 0,6 m/s². */
+            msDesdeInteraccion = minOf(
+                p?.ultimaInteraccion?.let {
+                    if (it > 0L) System.currentTimeMillis() - it else Long.MAX_VALUE
+                } ?: Long.MAX_VALUE,
+                quieto
+            ).let { if (it == Long.MAX_VALUE) -1L else it },
             quietoMs = quieto,
             /* Golpes o voz junto al móvil en el último minuto. La voz no se
                enciende nunca contra grabaciones humanas reales —comprobado
