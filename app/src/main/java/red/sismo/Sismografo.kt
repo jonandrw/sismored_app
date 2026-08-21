@@ -218,13 +218,17 @@ class Sismografo(
        SENSOR_DELAY_GAME da 50 Hz en unos y 100 en otros, y un contador de
        muestras fijo significaría media ventana en la mitad de los teléfonos. */
     private val anilloT = LongArray(ANILLO)
-    private val anilloAlto = BooleanArray(ANILLO)
+    private val anilloSta = DoubleArray(ANILLO)
     private var ai = 0
     private var an = 0
 
     /** Qué parte de los últimos dos segundos ha estado por encima del umbral.
      *  Es lo que se compara con [CICLO_MIN], y se enseña en Diagnóstico. */
     @Volatile var cicloTrabajo = 0.0; private set
+
+    /** La última sacudida fue lo bastante grande como para no confundirse con
+     *  una mano. Ver [CICLO_FUERTE]. */
+    @Volatile var ultimaFuerte = 0L; private set
 
     /** Grados entre la gravedad rápida y la lenta: sube en cuanto una mano toca
      *  el móvil, y en una mesa se queda en décimas. Se ve en Diagnóstico. */
@@ -315,6 +319,26 @@ class Sismografo(
            0,15 coge los ocho MMI V y deja quince veces de margen contra lo peor
            que produce una mesa. */
         private const val CICLO_MIN = 0.15
+
+        /**
+         * El ciclo a partir del cual la sacudida ya NO se confunde con una mano.
+         *
+         * MEDIDO, y es el resultado más incómodo del banco: al nivel de un MMI V
+         * —el que «lo nota todo el mundo»— un empujón en la mesa y un terremoto
+         * dan lo mismo. Segundos seguidos con el ciclo por encima del corte:
+         *
+         *     empujón en la mesa   1,74 s      MMI V   1,98 s / 0,62 s
+         *     levantar el móvil    2,58 s      MMI VI  5,96 s
+         *
+         * No hay umbral que los separe, y eso no es un fallo de ajuste: es el
+         * límite del sensor. Lo que sí se distingue es un MMI VI hacia arriba,
+         * que sostiene el ciclo por encima de 0,45 largo rato.
+         *
+         * Así que el detector deja de fingir que puede: por encima de esto va
+         * solo, y por debajo pide una segunda opinión — otro móvil de la malla,
+         * la alerta de Google o el oído. Ver [Cascada.decidir].
+         */
+        const val CICLO_FUERTE = 0.45
 
         /** Tamaño del anillo: dos segundos caben de sobra hasta 128 Hz. */
         private const val ANILLO = 256
@@ -599,7 +623,15 @@ class Sismografo(
            El criterio es físico y fijo: se mide cuando NO hay una mano encima y
            la aceleración cabe dentro de lo que puede ser un sitio, no un
            terremoto. Eso no depende de ningún ajuste. */
-        if (!hayMano && dev < CALMA_TECHO) {
+        /* Con DOS condiciones, y la segunda es la que faltaba. La de la mano
+           sola no basta: en campo movieron el móvil SIN girarlo —`mano 0,0°`— y
+           el empujón entero entró en la medida de la calma, que pasó de 0,052 a
+           0,565 y se llevó el umbral a 2,26. La calma se comió el suceso.
+
+           El listón de referencia es el CONFIGURADO, nunca `umbralReal`: si se
+           comparase contra el adaptativo, calma y umbral se empujarían el uno al
+           otro hacia arriba hasta dejar el detector sordo. */
+        if (!hayMano && dev < CALMA_TECHO && sta < umbral * 0.5) {
             calma[ci] = sta; ci = (ci + 1) % calma.size
             if (cn < calma.size) cn++
             if (cn >= 64 && ci % 32 == 0) {
@@ -634,7 +666,12 @@ class Sismografo(
            le llega ni de lejos. */
         val ahoraMs = System.currentTimeMillis()
         anilloT[ai] = ahoraMs
-        anilloAlto[ai] = sta > u
+        /* Se guarda el VALOR, no «estaba alto». MEDIDO en campo: al subir el
+           umbral de 0,25 a 2,26 de golpe, el anillo seguía lleno de «altos»
+           calculados contra 0,25 y el ciclo salió del 29 % con la sacudida en
+           0,15 — muy por debajo del umbral. Un historial de booleanos solo vale
+           si el listón no se mueve, y aquí se mueve por diseño. */
+        anilloSta[ai] = sta
         ai = (ai + 1) % ANILLO
         if (an < ANILLO) an++
         var total = 0; var altos = 0
@@ -642,7 +679,7 @@ class Sismografo(
             val j = (ai - 1 - k + ANILLO) % ANILLO
             if (ahoraMs - anilloT[j] > VENTANA_MS) break
             total++
-            if (anilloAlto[j]) altos++
+            if (anilloSta[j] > u) altos++
         }
         cicloTrabajo = if (total > 0) altos.toDouble() / total else 0.0
 
@@ -660,6 +697,7 @@ class Sismografo(
                     .format(sta, manoGrados))
                 return
             }
+            if (cicloTrabajo >= CICLO_FUERTE) ultimaFuerte = System.currentTimeMillis()
             an = 0; ai = 0                       // el anillo se vacía tras disparar
             Log.i("SismoRed", "sismografo %.2f m/s2 horizontal · ciclo %.2f · umbral real %.2f (calma %.3f)"
                 .format(sta, cicloTrabajo, u, calmaMedida))

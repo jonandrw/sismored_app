@@ -430,6 +430,7 @@ class ServicioSos : Service() {
        no se borra hasta cerrar el caso. Lo contrario es preguntar y luego olvidar
        por qué se preguntaba. */
     private var sucesoSacudida = false
+    private var sucesoFuerte = false
     private var sucesoEstruendo = false
     private var sucesoCorroborada = false
     private var sucesoRegimen = Postura.Regimen.DESCONOCIDO
@@ -1007,6 +1008,7 @@ class ServicioSos : Service() {
         val estruendoAhora = System.currentTimeMillis() - ultimoEstruendo < 60_000L
         if (sucesoDesde > 0L) {
             if (temblando) sucesoSacudida = true
+            if (System.currentTimeMillis() - sismo.ultimaFuerte < 60_000L) sucesoFuerte = true
             if (estruendoAhora) sucesoEstruendo = true
             if (saltoEntrante > 0) sucesoCorroborada = true
         }
@@ -1014,6 +1016,10 @@ class ServicioSos : Service() {
             regimen = if (sucesoDesde > 0L) sucesoRegimen
                       else p?.regimenRecordado(quieto, sismo.giroGrados) ?: Postura.Regimen.DESCONOCIDO,
             sacudida = sucesoSacudida || temblando,
+            /* Y si fue lo bastante grande como para no confundirse con una mano.
+               Se acumula igual que el resto de la evidencia del suceso. */
+            sacudidaFuerte = sucesoFuerte ||
+                System.currentTimeMillis() - sismo.ultimaFuerte < 60_000L,
             estruendo = sucesoEstruendo || estruendoAhora,
             corroborada = sucesoCorroborada || saltoEntrante > 0,
             /* La alerta de fuera. Se suma a lo que mide el móvil, no lo
@@ -1352,7 +1358,7 @@ class ServicioSos : Service() {
     /** El suceso se ha resuelto: se limpia para poder ver el siguiente. */
     private fun cerrarSuceso() {
         sucesoDesde = 0L
-        sucesoSacudida = false; sucesoEstruendo = false; sucesoCorroborada = false
+        sucesoSacudida = false; sucesoFuerte = false; sucesoEstruendo = false; sucesoCorroborada = false
         sucesoRegimen = Postura.Regimen.DESCONOCIDO
         pasosAlSuceso = -1L
         preguntaVencida = false

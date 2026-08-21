@@ -89,6 +89,20 @@ object Cascada {
         val regimen: Postura.Regimen = Postura.Regimen.DESCONOCIDO,
         /** El sismógrafo de ESTE móvil ha notado el suelo moverse. */
         val sacudida: Boolean = false,
+        /**
+         * La sacudida fue lo bastante grande como para no poder confundirse con
+         * una mano moviendo el teléfono.
+         *
+         * MEDIDO, y es el resultado más incómodo de todo el banco: al nivel de
+         * un MMI V —el que «lo nota todo el mundo»— empujar el móvil en una mesa
+         * y un terremoto de verdad **dan lo mismo**. No hay umbral que los
+         * separe; es el límite del acelerómetro de un teléfono, no un ajuste mal
+         * puesto. Ver `Sismografo.CICLO_FUERTE`.
+         *
+         * De ahí sale la regla de abajo, que es la única honesta: por encima de
+         * ese nivel el móvil va solo, y por debajo pide una segunda opinión.
+         */
+        val sacudidaFuerte: Boolean = false,
         /** El micrófono ha oído un estruendo. */
         val estruendo: Boolean = false,
         /** Otro móvil de la malla dice lo mismo. Es la corroboración que a Google
@@ -173,10 +187,31 @@ object Cascada {
            se sacude, esa sacudida es el terremoto. No hace falta que además se
            oiga el derrumbe. Es la corroboración que hasta ahora solo podía darnos
            otro móvil de la malla, y llega de fuera y antes. */
-        val creible = when (p.regimen) {
-            Postura.Regimen.EN_REPOSO -> true
+        /* Una sacudida floja y SOLA no basta, ni siquiera en reposo.
+        
+           Esto es lo que cambió tras la prueba de campo en la que bastó mover el
+           móvil por la mesa para llegar a la cuenta atrás. La medida dice que a
+           nivel MMI V un empujón y un terremoto son el mismo número, así que
+           creerse el acelerómetro a solas es prometer algo que el sensor no
+           puede dar — y el precio de esa promesa ya se pagó: la app se
+           desinstala.
+        
+           Lo que se pierde, y hay que decirlo: un MMI V aislado, con ningún otro
+           móvil cerca y sin alerta de Google, ya no pregunta — se anota y se
+           arma. Lo que se gana es que deje de preguntar cada vez que alguien
+           mueve la mesa, que es lo que la estaba matando. Y no es un parche
+           resignado: un terremoto de verdad sacude MUCHOS móviles a la vez, así
+           que la corroboración que se pide es justo la que un terremoto trae y
+           un empujón no. Es la razón de ser de la malla. */
+        val hayOtraOpinion = p.corroborada || p.alertaExterna || p.estruendo
+        val creible = when {
+            p.sacudidaFuerte -> true
+            p.regimen == Postura.Regimen.EN_REPOSO -> hayOtraOpinion
             else -> p.corroborada || p.alertaExterna || (p.sacudida && p.estruendo)
         }
+        if (!creible && p.regimen == Postura.Regimen.EN_REPOSO)
+            return Decision(Accion.NADA, Quien.NADIE,
+                "sacudida floja y sin nadie que la confirme: a este nivel no se distingue de una mano")
         if (!creible) return Decision(Accion.NADA, Quien.NADIE,
             "sacudida con el móvil encima y sin confirmar: no basta")
 
@@ -253,19 +288,33 @@ object Cascada {
                 Pruebas(regimen = Regimen.EN_REPOSO, estruendo = true)),
             Triple("andando con el móvil en el bolsillo", Accion.NADA,
                 Pruebas(regimen = Regimen.ENCIMA, sacudida = true, pasosDespues = 40)),
+            /* El caso de campo que trajo la regla: mover el móvil por la mesa
+               daba lo mismo que un MMI V, y llegaba a la cuenta atrás. */
+            Triple("mueven el móvil en la mesa, nada más", Accion.NADA,
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true)),
+            /* Y las tres formas de tener una segunda opinión. */
+            Triple("sacudida floja pero otro móvil lo confirma", Accion.AVISAR,
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, corroborada = true,
+                    msDesdeInteraccion = 6 * 3600_000L)),
+            Triple("sacudida floja con alerta de Google", Accion.AVISAR,
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, alertaExterna = true,
+                    msDesdeInteraccion = 6 * 3600_000L)),
+            Triple("sacudida FUERTE, va sola", Accion.AVISAR,
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true,
+                    msDesdeInteraccion = 6 * 3600_000L)),
             Triple("terremoto y está dormida en un 5º", Accion.AVISAR,
-                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true,
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true,
                     msDesdeInteraccion = 6 * 3600_000L)),
             /* El caso de campo que trajo esto: el móvil en la mesa, con su dueño
                delante mirándolo, y la sirena saltando a la vez que la pregunta.
                «En reposo» y «dormida» no son lo mismo. */
             Triple("terremoto con el móvil en la mesa y tú delante", Accion.PREGUNTAR,
-                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true,
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true,
                     msDesdeInteraccion = 30_000L)),
             /* Y sin dato de interacción se avisa igual: no saber no puede
                costarle la sirena a quien duerme. */
             Triple("terremoto sin saber cuándo lo tocó", Accion.AVISAR,
-                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true)),
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true)),
             Triple("terremoto y lo lleva encima", Accion.PREGUNTAR,
                 Pruebas(regimen = Regimen.ENCIMA, sacudida = true, estruendo = true)),
             Triple("alerta de otro móvil de la malla", Accion.PREGUNTAR,
@@ -274,10 +323,10 @@ object Cascada {
                 Pruebas(regimen = Regimen.ENCIMA, sacudida = true, estruendo = true,
                     preguntado = true, pasosDespues = 40)),
             Triple("contesta que está bien", Accion.NADA,
-                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true,
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true,
                     preguntado = true, contestado = true)),
             Triple("dormida, no contesta y no anda", Accion.BALIZA,
-                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true,
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true,
                     preguntado = true, pasosDespues = 0, quietoMs = 300_000L)),
             Triple("derrumbe y el móvil sale despedido", Accion.BALIZA,
                 Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, estruendo = true,
@@ -294,7 +343,7 @@ object Cascada {
                 Pruebas(regimen = Regimen.ENCIMA, sacudida = true, estruendo = true,
                     preguntado = true, pasosDespues = 0, quietoMs = 90_000L)),
             Triple("sin contador de pasos y sin contestar", Accion.BALIZA,
-                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true,
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true,
                     preguntado = true, pasosDespues = -1, quietoMs = 300_000L)),
 
             /* ---- la alerta de Google, que se SUMA y no sustituye ----
