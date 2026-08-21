@@ -1055,7 +1055,19 @@ class ServicioSos : Service() {
                enciende nunca contra grabaciones humanas reales —comprobado
                contra las 21 del banco—, así que quien de verdad manda aquí es el
                de golpes, y ese todavía no se ha medido contra audio real. */
-            vozOGolpesCerca = oyeCuando.let { c ->
+            /* Y con el móvil en la mano esto NO cuenta. De campo: viendo un
+               vídeo, el micrófono llamó «GRITO DE AUXILIO 85 %» a 706 Hz
+               sostenidos del propio vídeo, y eso subió la decisión de PREGUNTAR
+               a AUXILIO — baliza completa con sirena, saltándose el escalón
+               silencioso.
+            
+               La frase que esta prueba sostiene es «se oye a alguien JUNTO AL
+               MÓVIL», y el móvil de alguien enterrado no está en una mano ni
+               reproduciendo nada. Si lo estás sujetando, lo que oye el micrófono
+               eres tú o tu teléfono, no una persona bajo un escombro. */
+            vozOGolpesCerca = !sismo.hayMano &&
+                sismo.quietoAntes > 20_000L &&
+                oyeCuando.let { c ->
                 val ahora = System.currentTimeMillis()
                 val iG = Escucha.CLAVES.indexOf("golpes")
                 val iV = Escucha.CLAVES.indexOf("grito")

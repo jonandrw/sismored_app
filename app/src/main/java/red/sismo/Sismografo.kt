@@ -239,6 +239,26 @@ class Sismografo(
      *  levantar el móvil dispare la alarma con el umbral fino puesto. */
     val hayMano: Boolean get() = System.currentTimeMillis() - ultimaMano < MANO_VALE_MS
 
+    /* Cuánto llevaba quieto el móvil hace unos segundos.
+    
+       Es el dato que separa TODOS los casos de campo vistos hasta ahora, y
+       estaba medido sin usarse:
+    
+           en la mesa, sin tocar    quieto 32-250 s
+           en la mano, siempre      quieto 0-5 s
+    
+       Un móvil en una mano nunca está quieto, aunque lo sujetes sin moverlo:
+       hay pulso. Y tiene que mirarse HACIA ATRÁS, no ahora, porque un terremoto
+       de verdad también pone el reloj de quietud a cero — es el mismo error que
+       ya se documentó con el régimen de la postura, y por eso allí se guarda el
+       de ANTES del suceso. */
+    private val quietoRing = LongArray(64)
+    private var qi = 0
+    private var qUltimo = 0L
+
+    /** Lo que marcaba el reloj de quietud hace unos 3 s. */
+    val quietoAntes: Long get() = quietoRing[(qi + 1) % quietoRing.size]
+
     /**
      * El umbral que se aplica de verdad: el elegido, o el suelo de ruido de esta
      * mesa multiplicado por [VECES_CALMA], lo que sea mayor.
@@ -337,8 +357,15 @@ class Sismografo(
          * Así que el detector deja de fingir que puede: por encima de esto va
          * solo, y por debajo pide una segunda opinión — otro móvil de la malla,
          * la alerta de Google o el oído. Ver [Cascada.decidir].
+         *
+         * **0,85, y estuvo en 0,45 por un error mío de lectura.** Saqué el corte
+         * de la tabla de DURACIÓN cuando la que manda es la de CICLO, y esa
+         * decía que levantar el móvil da 0,50-0,73. O sea que puse el listón por
+         * debajo de lo que hace una mano, y en campo bastó sujetar el teléfono
+         * viendo un vídeo para llegar a 0,62 y que pasara por «sacudida fuerte».
+         * Solo un MMI VI o mayor sostiene 0,85.
          */
-        const val CICLO_FUERTE = 0.45
+        const val CICLO_FUERTE = 0.85
 
         /** Tamaño del anillo: dos segundos caben de sobra hasta 128 Hz. */
         private const val ANILLO = 256
@@ -364,6 +391,15 @@ class Sismografo(
         /** Cuánto dura la sospecha después del último desacuerdo. Cinco segundos:
          *  lo que tarda alguien en coger el móvil, mirarlo y dejarlo. */
         private const val MANO_VALE_MS = 5000L
+
+        /** Cuánto tiene que llevar quieto para fiarse del umbral fino. Veinte
+         *  segundos: en campo, un móvil en una mano nunca pasó de cinco, y uno
+         *  en una mesa daba de treinta a doscientos cincuenta. */
+        private const val QUIETO_ANTES_MS = 20_000L
+
+        /** Por encima de esto el umbral ya es el conservador y la puerta de
+         *  quietud no aplica. */
+        private const val umbralFinoMax = 1.0
 
         /** Hacia atrás: cuánto se borra de «aquí tiembla» cuando aparece una
          *  mano. Dos segundos cubren de sobra el arranque de un agarre, y son
@@ -527,6 +563,11 @@ class Sismografo(
             if (dt in 2.0..100.0) srMedido += (1000.0 / dt - srMedido) * 0.01
         }
         tUltimaMuestra = ahoraNs
+        if (ahoraNs - qUltimo > 50L) {
+            qUltimo = ahoraNs
+            quietoRing[qi] = ahoraNs - ultimoMovimiento
+            qi = (qi + 1) % quietoRing.size
+        }
         paLx.ajustar(srMedido); paLy.ajustar(srMedido); paLz.ajustar(srMedido)
 
         val dev = if (gn > 1e-3) {
@@ -691,6 +732,17 @@ class Sismografo(
                revisa la postura una vez por segundo, y levantar un móvil y que
                dispare cabe entero dentro de ese segundo. Esta se entera en
                ochenta milisegundos. */
+            /* Y la puerta que de verdad funciona: con el umbral FINO, el móvil
+               tiene que haber estado quieto de verdad antes de esto. Se mira el
+               reloj de hace tres segundos porque la propia sacudida lo pone a
+               cero. Con el umbral conservador no se aplica: ahí ya se asume que
+               lo llevas encima. */
+            if (umbral <= umbralFinoMax && quietoAntes < QUIETO_ANTES_MS) {
+                an = 0; ai = 0
+                Log.i("SismoRed", "sismografo: %.2f m/s2 pero no estaba quieto (%d s), no disparo"
+                    .format(sta, quietoAntes / 1000))
+                return
+            }
             if (hayMano) {
                 an = 0; ai = 0
                 Log.i("SismoRed", "sismografo: %.2f m/s2 pero hay una mano (%.0f°), no disparo"
