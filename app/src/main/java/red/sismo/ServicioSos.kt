@@ -284,6 +284,9 @@ class ServicioSos : Service() {
            una mesa y mirar el móvil; hay que medirlo con gente, no decidirlo
            aquí. */
         private const val PREGUNTA_MS = 60_000L
+        /** Cuánto tiene que pasar para volver a preguntar. Ver la nota de
+         *  [preguntar]: sin esto la app interroga sola en bucle. */
+        private const val PREGUNTA_REPOSO_MS = 300_000L
         /** Simulacro: enseña «¿ESTÁS BIEN?» sin que haya pasado nada. No puede
          *  escalar — sin sacudida la cascada se queda en NADA aunque no se
          *  conteste. */
@@ -412,6 +415,8 @@ class ServicioSos : Service() {
     /** Ha pulsado ESTOY BIEN. Mata la cascada de este suceso entero. */
     private var haContestado = false
     private var preguntaTarea: Runnable? = null
+    /** Cuándo se preguntó por última vez, para no encadenar preguntas. */
+    private var ultimaPregunta = 0L
 
     /* ---------- la evidencia del suceso, que NO caduca ----------
        Se vio en una prueba de campo y es el fallo más grave que ha tenido la
@@ -1092,7 +1097,22 @@ class ServicioSos : Service() {
      * existe una sirena que se enciende sola.
      */
     private fun preguntar(conRuido: Boolean, motivo: String) {
-        if (preguntaHasta > System.currentTimeMillis()) return      // ya está preguntada
+        val ahoraP = System.currentTimeMillis()
+        if (preguntaHasta > ahoraP) return                          // ya está preguntada
+        /* Y no se vuelve a preguntar en un rato. De campo: «se disparaba más de
+           una vez la pregunta». Pasa porque la cascada se reevalúa con cada
+           prueba nueva, y si entre medias el caso se cierra —basta con que
+           alguien toque el móvil, que eso cuenta como señal de vida— la
+           siguiente vibración vuelve a abrirlo y a preguntar. Encadenado, eso
+           es una app que interroga sola cada minuto.
+        
+           Cinco minutos. Si de verdad hay un terremoto con réplicas, la primera
+           pregunta ya resolvió el caso: o contestaste, o se encendió la baliza. */
+        if (ahoraP - ultimaPregunta < PREGUNTA_REPOSO_MS) {
+            anotar("ya te pregunté hace poco: no vuelvo a preguntar todavía")
+            return
+        }
+        ultimaPregunta = ahoraP
         preguntaHasta = System.currentTimeMillis() + PREGUNTA_MS
         anotar(if (conRuido) "TERREMOTO · te despierto y te pregunto si estás bien"
                else "TERREMOTO · ¿estás bien? Tienes ${PREGUNTA_MS / 1000} s para contestar")

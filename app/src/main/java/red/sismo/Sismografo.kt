@@ -6,8 +6,11 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.util.Log
+import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.hypot
+import kotlin.math.sin
 import kotlin.math.min
 import kotlin.math.sqrt
 
@@ -127,6 +130,87 @@ class Sismografo(
     private var sta = 0.0
     private var caidaLibre = 0
     private var ultimoMovimiento = System.currentTimeMillis()
+
+    /* ---------- el paso-banda de 0,5 a 8 Hz ----------
+       Un terremoto destructivo oscila entre medio hercio y ocho, que es también
+       donde resuenan los edificios. Todo lo que vibra en una casa está por
+       encima —una lavadora centrifuga a 11 Hz, el teclado resuena a 25— y los
+       cambios de postura están por debajo de medio.
+
+       Hasta ahora se separaba por DIRECCIÓN (solo lo horizontal) y por DURACIÓN
+       (el ciclo de trabajo), que son dos buenos sustitutos pero no lo mismo:
+       nada impedía que una vibración de 11 Hz con la mesa un poco inclinada
+       metiera componente horizontal sostenida. Ahora se separa además por
+       FRECUENCIA, que es la magnitud en la que las dos cosas de verdad se
+       distinguen.
+
+       MEDIDO en `fx sounds/sismo.py`, sobre el pico de la media rápida:
+
+       | señal                  | sin filtro | con filtro | efecto |
+       |---                     |---         |---         |---     |
+       | terremoto MMI V        | 0,410      | 0,380      | ×0,92  |
+       | terremoto MMI VI       | 0,659      | 0,647      | ×0,98  |
+       | lavadora a 11,5 Hz     | 0,228      | 0,090      | ×0,39  |
+       | teclear en la mesa     | 0,069      | 0,032      | ×0,47  |
+       | levantar el móvil      | 0,642      | 0,404      | ×0,63  |
+
+       Al terremoto no lo toca y al ruido lo parte por la mitad: la distancia
+       entre un MMI V y una lavadora pasa de 1,8 veces a 4,2. */
+    private val paLx = Banda(); private val paLy = Banda(); private val paLz = Banda()
+
+    /** Cada cuánto llegan las muestras, medido — no supuesto. La tasa la decide
+     *  el móvil y los coeficientes del filtro dependen de ella. */
+    private var srMedido = 50.0
+    private var tUltimaMuestra = 0L
+
+    /**
+     * Paso-banda de dos biquads en cascada: un paso-alto y un paso-bajo, ambos
+     * Butterworth de 2.º orden (Q = 0,707).
+     *
+     * Se recalcula solo cuando la tasa de muestreo cambia de verdad: un filtro
+     * con los coeficientes de 50 Hz corriendo a 100 no filtra la banda que dice
+     * filtrar, y eso es otra vez un fallo mudo.
+     */
+    private class Banda {
+        private var b0h = 0.0; private var b1h = 0.0; private var b2h = 0.0
+        private var a1h = 0.0; private var a2h = 0.0
+        private var b0l = 0.0; private var b1l = 0.0; private var b2l = 0.0
+        private var a1l = 0.0; private var a2l = 0.0
+        private var xh1 = 0.0; private var xh2 = 0.0; private var yh1 = 0.0; private var yh2 = 0.0
+        private var xl1 = 0.0; private var xl2 = 0.0; private var yl1 = 0.0; private var yl2 = 0.0
+        private var srPuesto = 0.0
+
+        fun ajustar(sr: Double) {
+            if (abs(sr - srPuesto) < srPuesto * 0.05) return
+            srPuesto = sr
+            val q = 0.70710678
+            // paso-alto en BANDA_BAJA
+            var w = 2.0 * PI * BANDA_BAJA / sr
+            var c = cos(w); var s = sin(w); var al = s / (2 * q)
+            var a0 = 1 + al
+            b0h = ((1 + c) / 2) / a0; b1h = (-(1 + c)) / a0; b2h = ((1 + c) / 2) / a0
+            a1h = (-2 * c) / a0; a2h = (1 - al) / a0
+            // paso-bajo en BANDA_ALTA
+            w = 2.0 * PI * BANDA_ALTA / sr
+            c = cos(w); s = sin(w); al = s / (2 * q)
+            a0 = 1 + al
+            b0l = ((1 - c) / 2) / a0; b1l = (1 - c) / a0; b2l = ((1 - c) / 2) / a0
+            a1l = (-2 * c) / a0; a2l = (1 - al) / a0
+        }
+
+        fun filtrar(x: Double): Double {
+            val yh = b0h * x + b1h * xh1 + b2h * xh2 - a1h * yh1 - a2h * yh2
+            xh2 = xh1; xh1 = x; yh2 = yh1; yh1 = yh
+            val yl = b0l * yh + b1l * xl1 + b2l * xl2 - a1l * yl1 - a2l * yl2
+            xl2 = xl1; xl1 = yh; yl2 = yl1; yl1 = yl
+            return yl
+        }
+
+        fun reiniciar() {
+            xh1 = 0.0; xh2 = 0.0; yh1 = 0.0; yh2 = 0.0
+            xl1 = 0.0; xl2 = 0.0; yl1 = 0.0; yl2 = 0.0
+        }
+    }
 
     /* El anillo de los últimos dos segundos: cuándo se tomó cada muestra y si
        estaba por encima del umbral. Se cuenta por tiempo y no por número de
@@ -281,6 +365,12 @@ class Sismografo(
          * Cuatro veces. La calma es un percentil 98: superarla cuatro veces es
          * pedir doce decibelios sobre lo que esa mesa hace en su peor rato.
          */
+        /** La banda donde vive un terremoto destructivo, y donde resuenan los
+         *  edificios. Por encima está todo lo que vibra en una casa; por debajo,
+         *  los cambios de postura. */
+        private const val BANDA_BAJA = 0.5
+        private const val BANDA_ALTA = 8.0
+
         private const val VECES_CALMA = 4.0
 
         /** Por encima de esto ya no es «el sitio», es alguien moviendo el móvil:
@@ -314,6 +404,7 @@ class Sismografo(
     fun reiniciar() {
         lta = 9.81; sta = 0.0; caidaLibre = 0
         ai = 0; an = 0; cicloTrabajo = 0.0
+        paLx.reiniciar(); paLy.reiniciar(); paLz.reiniciar()
         historia.fill(0f)
         ultimoMovimiento = System.currentTimeMillis()
     }
@@ -404,9 +495,25 @@ class Sismografo(
            para el giro— y de lo que queda se toma solo la parte perpendicular a
            él. Con eso, todo lo que llega por la mesa da CERO y el terremoto se
            ve entero. */
+        /* La tasa real, medida: los coeficientes del filtro dependen de ella y
+           el móvil la elige por su cuenta. */
+        val ahoraNs = System.currentTimeMillis()
+        if (tUltimaMuestra > 0L) {
+            val dt = (ahoraNs - tUltimaMuestra).toDouble()
+            if (dt in 2.0..100.0) srMedido += (1000.0 / dt - srMedido) * 0.01
+        }
+        tUltimaMuestra = ahoraNs
+        paLx.ajustar(srMedido); paLy.ajustar(srMedido); paLz.ajustar(srMedido)
+
         val dev = if (gn > 1e-3) {
             val ux = gx / gn; val uy = gy / gn; val uz = gz / gn
-            val lx = ax - gx; val ly = ay - gy; val lz = az - gz
+            /* El paso-banda va ANTES de proyectar, sobre los tres ejes del
+               móvil: filtrar la magnitud —que siempre es positiva— no filtra
+               nada, porque una señal rectificada tiene su energía en otra banda
+               que la original. */
+            val lx = paLx.filtrar(ax - gx)
+            val ly = paLy.filtrar(ay - gy)
+            val lz = paLz.filtrar(az - gz)
             val vert = lx * ux + ly * uy + lz * uz          // lo que va con la gravedad
             hypot(hypot(lx - vert * ux, ly - vert * uy), lz - vert * uz)
         } else 0.0
@@ -456,7 +563,27 @@ class Sismografo(
            La bandera dice «se mueve EL SUELO». Una mano invalida esa frase
            exactamente igual que invalida el disparo, así que lleva la misma
            puerta. */
-        if (!hayMano && sta > u * 0.5) ultimoTemblor = System.currentTimeMillis()
+        /* Y AQUÍ estaba la asimetría que quedaba, que es de las peores del
+           proyecto: el disparo real exige el 15 % de dos segundos por encima del
+           umbral, y esta bandera se conformaba con UNA muestra por encima de
+           MEDIO umbral. Con el umbral fino en 0,25, un pico de 0,13 —un camión
+           que pasa, un portazo lejano— la encendía... y luego dura un minuto
+           entero.
+
+           La cascada no la lee como un indicador: la lee como `sacudida`, con
+           todas las consecuencias. O sea que un pico de 0,13 dejaba armada
+           «aquí ha temblado» durante sesenta segundos, y cualquier ruido que el
+           micrófono llamara derrumbe en ese minuto salía como «terremoto
+           confirmado». Eso es exactamente lo de «en reposo, sin tocarlo, se
+           metió en emergencia».
+
+           Ahora es una versión BLANDA del disparo, no otra cosa distinta: mismo
+           tipo de prueba, listón más bajo. Sigue sirviendo para lo que existe
+           —que la malla se crea una alerta ajena a la primera— porque un
+           terremoto de verdad llega a esto en menos de un segundo. */
+        if (!hayMano && sta > u * 0.6 && cicloTrabajo >= CICLO_MIN * 0.5) {
+            ultimoTemblor = System.currentTimeMillis()
+        }
         historia[hi] = sta.toFloat(); hi = (hi + 1) % historia.size
 
         /* La calma se mide SOLO cuando no está pasando nada: si se dejara correr
