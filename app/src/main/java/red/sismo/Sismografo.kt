@@ -260,6 +260,29 @@ class Sismografo(
     val quietoAntes: Long get() = quietoRing[(qi + 1) % quietoRing.size]
 
     /**
+     * ¿Me puedo creer que lo que se mueve es EL SUELO?
+     *
+     * **Una sola puerta para los dos caminos, y existe por un error que cometí
+     * tres veces seguidas.** El detector tiene dos salidas —el disparo, que
+     * lanza la alarma, y `ultimoTemblor`, la bandera blanda que la cascada lee
+     * como `sacudida`— y cada vez que endurecí una me olvidé de la otra:
+     *
+     *   1.ª vez: puse la puerta de la mano en el disparo, no en la bandera.
+     *            Resultado: móvil en la mano + un ruido = alarma.
+     *   2.ª vez: la borré hacia atrás en la bandera, pero seguía con su propio
+     *            juego de condiciones.
+     *   3.ª vez: puse la puerta de quietud en el disparo, no en la bandera.
+     *            Resultado, medido: «cascada(estruendo por micrófono) ->
+     *            PREGUNTAR · terremoto confirmado» sin que el sismógrafo hubiera
+     *            disparado ni una vez.
+     *
+     * Dos caminos con condiciones paralelas garantizan que algún día se separen.
+     * Ahora los dos preguntan aquí, y endurecer esto los endurece a los dos.
+     */
+    private val sueloDeFiar: Boolean
+        get() = !hayMano && (umbral > umbralFinoMax || quietoAntes >= QUIETO_ANTES_MS)
+
+    /**
      * El umbral que se aplica de verdad: el elegido, o el suelo de ruido de esta
      * mesa multiplicado por [VECES_CALMA], lo que sea mayor.
      *
@@ -646,7 +669,7 @@ class Sismografo(
            tipo de prueba, listón más bajo. Sigue sirviendo para lo que existe
            —que la malla se crea una alerta ajena a la primera— porque un
            terremoto de verdad llega a esto en menos de un segundo. */
-        if (!hayMano && sta > u * 0.6 && cicloTrabajo >= CICLO_MIN * 0.5) {
+        if (sueloDeFiar && sta > u * 0.6 && cicloTrabajo >= CICLO_MIN * 0.5) {
             ultimoTemblor = System.currentTimeMillis()
         }
         historia[hi] = sta.toFloat(); hi = (hi + 1) % historia.size
@@ -737,7 +760,7 @@ class Sismografo(
                reloj de hace tres segundos porque la propia sacudida lo pone a
                cero. Con el umbral conservador no se aplica: ahí ya se asume que
                lo llevas encima. */
-            if (umbral <= umbralFinoMax && quietoAntes < QUIETO_ANTES_MS) {
+            if (!sueloDeFiar && !hayMano) {
                 an = 0; ai = 0
                 Log.i("SismoRed", "sismografo: %.2f m/s2 pero no estaba quieto (%d s), no disparo"
                     .format(sta, quietoAntes / 1000))
