@@ -22,7 +22,11 @@ import android.provider.Settings
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.LayoutInflater
+import android.view.MotionEvent
+import android.widget.ProgressBar
+import android.os.VibrationEffect
 import android.view.View
+import android.view.animation.AnimationUtils
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.Button
@@ -41,6 +45,9 @@ private const val PIDE_MICRO = 2
 private const val PIDE_RADIO = 3
 private const val PIDE_PASOS = 4
 private const val PIDE_UBI = 5
+
+/** Cuánto hay que mantener pulsado PÁNICO. Ver [MainActivity.montarPanico]. */
+private const val PANICO_MANTENER_MS = 2000L
 
 class MainActivity : AppCompatActivity() {
 
@@ -637,11 +644,89 @@ class MainActivity : AppCompatActivity() {
         cabecera(R.id.ch_como_resp, R.drawable.ic_casco, R.string.rot_como_resp)
     }
 
-    private fun montarInicio() {
-        // Ya no es un Button: es el bloque rojo con icono, título y subtítulo.
-        findViewById<View>(R.id.panico).setOnClickListener {
-            arrancarServicio(ServicioSos.ACCION_PANICO); pintar()
+    /**
+     * PÁNICO: mantener pulsado dos segundos.
+     *
+     * **No es una florituras de la maqueta, es seguridad.** Este control
+     * despierta a un barrio entero —sirena, linterna, baliza de radio y malla— y
+     * hasta ahora estaba a un toque de distancia, en la primera pantalla, con el
+     * móvil en el bolsillo. Dos segundos no le cuestan nada a quien de verdad lo
+     * necesita y quitan de en medio el roce accidental.
+     *
+     * Tres cosas hacen que se entienda sin leer nada:
+     *
+     *  - La barra se llena mientras se mantiene. «Mantén pulsado» sin barra es
+     *    una instrucción que no dice cuánto falta, y quien no ve avance suelta.
+     *  - El fondo sube de rojo mientras carga, así que la mano nota que está
+     *    pasando algo aunque no mire la barra.
+     *  - Al soltar antes de tiempo se vuelve atrás **de golpe**, no con una
+     *    animación bonita: soltar es cancelar, y tiene que verse como tal.
+     *
+     * Y si ya hay una alarma en marcha, un toque basta para nada: el botón que
+     * importa entonces es DETENER, que está justo debajo.
+     */
+    private fun montarPanico() {
+        val bloque = findViewById<View>(R.id.panico)
+        val carga = findViewById<ProgressBar>(R.id.panico_carga)
+        val sub = findViewById<TextView>(R.id.panico_sub)
+        var tarea: Runnable? = null
+        var desde = 0L
+
+        fun soltar(cancelado: Boolean) {
+            tarea?.let { bloque.removeCallbacks(it) }
+            tarea = null
+            desde = 0L
+            carga.progress = 0
+            carga.visibility = View.INVISIBLE
+            bloque.setBackgroundResource(R.drawable.panico_fondo)
+            if (cancelado) sub.setText(R.string.panico_mantener)
         }
+
+        bloque.setOnTouchListener { v, ev ->
+            when (ev.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    desde = System.currentTimeMillis()
+                    carga.visibility = View.VISIBLE
+                    bloque.setBackgroundResource(R.drawable.panico_armando)
+                    sub.setText(R.string.panico_soltando)
+                    val t = object : Runnable {
+                        override fun run() {
+                            val ido = System.currentTimeMillis() - desde
+                            carga.progress = ((ido * 100) / PANICO_MANTENER_MS).toInt().coerceIn(0, 100)
+                            if (ido >= PANICO_MANTENER_MS) {
+                                soltar(false)
+                                /* Un golpe corto al llegar: quien lo tiene en la
+                                   mano sabe que ha entrado sin mirar la pantalla. */
+                                try {
+                                    val vib = getSystemService(Vibrator::class.java)
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                                        vib?.vibrate(VibrationEffect.createOneShot(60, 255))
+                                    else @Suppress("DEPRECATION") vib?.vibrate(60)
+                                } catch (_: Exception) {}
+                                arrancarServicio(ServicioSos.ACCION_PANICO)
+                                pintar()
+                            } else {
+                                bloque.postDelayed(this, 40)
+                            }
+                        }
+                    }
+                    tarea = t
+                    bloque.post(t)
+                    v.isPressed = true
+                    true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    soltar(true)
+                    v.isPressed = false
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
+    private fun montarInicio() {
+        montarPanico()
         findViewById<Button>(R.id.parar).setOnClickListener {
             arrancarServicio(ServicioSos.ACCION_PARAR); pintar()
         }
@@ -1380,6 +1465,8 @@ class MainActivity : AppCompatActivity() {
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
 
+        pintarPildora(alarma, rescate)
+
         when (vista) {
             R.id.v_inicio -> pintarInicio(alarma, rescate)
             R.id.v_red -> pintarRed()
@@ -1412,6 +1499,42 @@ class MainActivity : AppCompatActivity() {
         try {
             startActivity(Intent(android.bluetooth.BluetoothAdapter.ACTION_REQUEST_ENABLE))
         } catch (_: Exception) {}
+    }
+
+    /**
+     * La píldora de estado de la cabecera, visible desde cualquier pantalla.
+     *
+     * Cuatro estados y ni uno más, porque una píldora que dice cinco cosas ya no
+     * se lee de un vistazo: **emitiendo** (rojo, algo está saliendo de este
+     * móvil), **rescate** (rojo, sigue emitiendo pero a pulsos), **vigilando**
+     * (verde) y **apagada** (gris). El rojo aquí obedece la regla de la paleta:
+     * solo aparece cuando este teléfono está mandando algo.
+     *
+     * El punto respira mientras haya algo vivo, y se queda quieto cuando no.
+     * Esa es la diferencia entre «vigilando» y «la app se ha colgado», que sin
+     * animación no se puede ver.
+     */
+    private fun pintarPildora(alarma: Boolean, rescate: Boolean) {
+        val punto = findViewById<View>(R.id.pe_punto) ?: return
+        val texto = findViewById<TextView>(R.id.pe_texto) ?: return
+        val (rotulo, color, vivo) = when {
+            alarma -> Triple("emitiendo", R.color.rd, true)
+            rescate -> Triple("rescate", R.color.rd, true)
+            ServicioSos.armado || ServicioSos.mallaEscuchando -> Triple("activo", R.color.gr, true)
+            else -> Triple("apagada", R.color.ctl, false)
+        }
+        if (!cambio(R.id.pe_texto, rotulo)) return
+        texto.text = rotulo
+        val c = getColor(color)
+        texto.setTextColor(c)
+        punto.background?.mutate()?.setTint(c)
+        if (vivo) {
+            if (punto.animation == null)
+                punto.startAnimation(AnimationUtils.loadAnimation(this, R.anim.respirar))
+        } else {
+            punto.clearAnimation()
+            punto.alpha = 1f
+        }
     }
 
     private fun pintarInicio(alarma: Boolean, rescate: Boolean) {

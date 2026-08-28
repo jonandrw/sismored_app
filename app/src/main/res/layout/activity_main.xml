@@ -52,6 +52,45 @@
                 android:scaleType="fitStart"
                 android:src="@drawable/logotipo" />
 
+            <!-- La píldora de estado, de la maqueta.
+
+                 Es lo único de la cabecera que informa, y sustituye a mirar la
+                 tarjeta de estado: de un vistazo, desde cualquier pantalla, dice
+                 si este móvil está vigilando, si está gritando o si está
+                 apagado. El punto respira porque un punto fijo no distingue
+                 «vigilando» de «la app se ha quedado colgada».
+
+                 El texto va en mono: es un rótulo de instrumento, no una frase. -->
+            <LinearLayout
+                android:id="@+id/pildora_estado"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="10dp"
+                android:background="@drawable/chip"
+                android:gravity="center_vertical"
+                android:paddingStart="11dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="7dp"
+                android:paddingBottom="7dp">
+
+                <View
+                    android:id="@+id/pe_punto"
+                    android:layout_width="6dp"
+                    android:layout_height="6dp"
+                    android:layout_marginEnd="7dp"
+                    android:background="@drawable/punto_estado" />
+
+                <TextView
+                    android:id="@+id/pe_texto"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/mono"
+                    android:letterSpacing="0.1"
+                    android:textAllCaps="true"
+                    android:textColor="@color/gr"
+                    android:textSize="10sp" />
+            </LinearLayout>
+
             <ImageButton
                 android:id="@+id/go_log"
                 android:layout_width="42dp"
@@ -135,41 +174,61 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
 
+                    <!-- PÁNICO.
+
+                         Dos cambios de la maqueta, y el segundo no es estético:
+
+                         1. Deja de ser un rectángulo rojo macizo. El rojo se
+                            reserva para lo que está emitiendo de verdad.
+                         2. **Se activa manteniéndolo pulsado dos segundos**, no
+                            con un toque. Es el control que despierta a un barrio
+                            entero y estaba a un roce de distancia dentro del
+                            bolsillo. Dos segundos no le cuestan nada a quien lo
+                            necesita y quitan de en medio el toque accidental.
+
+                         La barra de abajo se llena mientras se mantiene: sin
+                         ella, «mantén pulsado» es una instrucción que no dice
+                         cuánto falta. -->
                     <LinearLayout
                         android:id="@+id/panico"
                         android:layout_width="match_parent"
-                        android:layout_height="178dp"
-                        android:background="@color/rd"
+                        android:layout_height="190dp"
+                        android:background="@drawable/panico_fondo"
                         android:clickable="true"
                         android:focusable="true"
                         android:gravity="center"
                         android:orientation="vertical">
 
-                        <ImageView
-                            android:layout_width="30dp"
-                            android:layout_height="30dp"
-                            android:contentDescription="@null"
-                            android:src="@drawable/ic_alerta"
-                            android:tint="#FFFFFF" />
+                        <TextView
+                            android:id="@+id/panico_titulo"
+                            style="@style/Display"
+                            android:letterSpacing="-0.01"
+                            android:text="@string/panico"
+                            android:textColor="@color/rd"
+                            android:textSize="58sp" />
 
                         <TextView
+                            android:id="@+id/panico_sub"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="6dp"
-                            android:letterSpacing="0.147"
-                            android:text="@string/panico"
-                            android:textColor="#FFFFFF"
-                            android:textSize="34sp"
-                            android:textStyle="bold" />
+                            android:text="@string/panico_mantener"
+                            android:textColor="@color/lectura"
+                            android:textSize="14sp" />
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:letterSpacing="0.08"
-                            android:text="@string/panico_sub"
-                            android:textColor="#FFD9DA"
-                            android:textSize="10.5sp" />
+                        <!-- Cuánto falta. Se llena de 0 a 100 en los dos
+                             segundos y se vacía de golpe si se suelta antes. -->
+                        <ProgressBar
+                            android:id="@+id/panico_carga"
+                            style="?android:attr/progressBarStyleHorizontal"
+                            android:layout_width="150dp"
+                            android:layout_height="3dp"
+                            android:layout_marginTop="16dp"
+                            android:max="100"
+                            android:progress="0"
+                            android:progressTint="@color/rd"
+                            android:progressBackgroundTint="#3A171A"
+                            android:visibility="invisible" />
                     </LinearLayout>
 
                     <Button

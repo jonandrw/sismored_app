@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- El punto respira: 2,4 s de ida y vuelta, como en la maqueta. No es adorno.
+     Un punto fijo no distingue «vigilando» de «la app se ha quedado colgada», y
+     esa diferencia es justo la que hay que poder ver de un vistazo. -->
+<alpha xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="1200"
+    android:fromAlpha="0.35"
+    android:toAlpha="1.0"
+    android:repeatCount="infinite"
+    android:repeatMode="reverse" />

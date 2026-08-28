@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- El punto de la píldora de estado. Se le cambia el color por código: es el
+     único sitio de la cabecera que dice si este móvil está vivo. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <solid android:color="@color/gr" />
+</shape>

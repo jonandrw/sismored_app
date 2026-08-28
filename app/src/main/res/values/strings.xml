@@ -516,4 +516,6 @@ Para leerla hace falta el permiso de acceso a notificaciones, que Android da ent
     <string name="b_alerta_google_probar">PROBAR SIMULADA</string>
     <string name="d_alerta_google_on">Activa. Oye la alerta de Google y la reparte por sonido.</string>
     <string name="d_alerta_google_off">Sin activar: hoy no puede oírla. Toca para ver cómo.</string>
+    <string name="panico_mantener">Mantén pulsado 2 s</string>
+    <string name="panico_soltando">Suelta para cancelar</string>
 </resources>

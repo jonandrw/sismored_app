@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- El bloque de PÁNICO en reposo.
+
+     Deja de ser un rectángulo rojo macizo. La regla de la paleta es que el rojo
+     solo aparece cuando algo está EMITIENDO, y un botón en reposo no emite
+     nada: lo que hacía el rojo macizo era gastar el único color que la app
+     tiene para decir «esto está pasando de verdad».
+
+     Ahora el fondo es un rojo casi negro y la palabra va en rojo encima. Se ve
+     igual de rápido —es la única pieza cálida de una pantalla fría— y deja el
+     rojo saturado libre para la alarma real.
+
+     La esquina cortada de arriba a la derecha es el acento de la maqueta: la
+     lleva esta pieza y muy pocas más. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:startColor="#1C0E10"
+                android:endColor="#120A0B" />
+            <stroke android:width="1dp" android:color="#5A2124" />
+            <corners android:radius="8dp" />
+        </shape>
+    </item>
+    <!-- El corte: un cuadrado del color del fondo, girado 45°, asomando por la
+         esquina. Es la única forma de conseguir una esquina cortada con
+         drawables de sistema sin escribir una vista propia. -->
+    <item android:gravity="top|end" android:top="-22dp" android:end="-22dp"
+        android:width="44dp" android:height="44dp">
+        <rotate android:fromDegrees="45" android:toDegrees="45"
+            android:pivotX="50%" android:pivotY="50%">
+            <shape android:shape="rectangle">
+                <solid android:color="@color/bg" />
+            </shape>
+        </rotate>
+    </item>
+</layer-list>
