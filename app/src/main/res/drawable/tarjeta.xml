@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Tarjeta: fondo plano y una línea de 1 px. Sin radio, sin sombra, sin
-     degradado. Toda la jerarquía la hacen el color y el espacio. -->
+<!-- Panel. La superficie sobre la que va todo.
+
+     Seis píxeles de radio, no cero. El proyecto venía de esquinas rectas «sin
+     radio, sin sombra, sin degradado», y la maqueta las suaviza lo justo: 6 dp
+     es el radio que aparece cincuenta veces en ella, y a esa escala no se lee
+     como redondeo sino como panel mecanizado. Sigue sin haber sombra ni
+     degradado — la jerarquía la hacen el color y el espacio. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
     <solid android:color="@color/card" />
     <stroke android:width="1dp" android:color="@color/line" />
+    <corners android:radius="6dp" />
 </shape>

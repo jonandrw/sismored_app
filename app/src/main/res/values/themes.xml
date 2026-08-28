@@ -8,9 +8,12 @@
         <item name="android:textColor">@color/tx</item>
         <item name="colorPrimary">@color/rd</item>
         <item name="colorAccent">@color/gr</item>
-        <!-- Montserrat en todo, sin tener que repetirla control por control. -->
-        <item name="android:fontFamily">@font/montserrat</item>
-        <item name="fontFamily">@font/montserrat</item>
+        <!-- Barlow por defecto en todo, sin repetirla control por control.
+             Las otras dos familias no se heredan nunca: se piden a propósito,
+             porque cada una significa algo — Saira es «esto es un titular» y
+             mono es «esto es un dato medido». -->
+        <item name="android:fontFamily">@font/barlow</item>
+        <item name="fontFamily">@font/barlow</item>
         <!-- Bordes rectos: ningún radio distinto de 0, igual que en la PWA.
              Material redondea por defecto, así que hay que decírselo. -->
         <item name="materialButtonStyle">@style/Boton</item>
@@ -32,7 +35,7 @@
         <!-- 1 px sobre 13 px en la PWA. Medido, no elegido a ojo. -->
         <item name="android:letterSpacing">0.077</item>
         <item name="android:textSize">13sp</item>
-        <item name="android:fontFamily">@font/montserrat</item>
+        <item name="android:fontFamily">@font/barlow</item>
         <item name="android:textStyle">bold</item>
         <item name="elevation">0dp</item>
         <item name="android:stateListAnimator">@null</item>
@@ -130,7 +133,7 @@
         <item name="android:textSize">10.5sp</item>
         <item name="android:textStyle">bold</item>
         <item name="android:letterSpacing">0.14</item>
-        <item name="android:fontFamily">@font/montserrat</item>
+        <item name="android:fontFamily">@font/mono</item>
     </style>
 
     <!-- Etiqueta de dentro de tarjeta: dice qué es el número que viene debajo. -->
@@ -141,7 +144,7 @@
         <item name="android:textColor">@color/dim</item>
         <item name="android:textSize">10.5sp</item>
         <item name="android:letterSpacing">0.095</item>
-        <item name="android:fontFamily">@font/montserrat_semibold</item>
+        <item name="android:fontFamily">@font/mono</item>
     </style>
 
     <!-- La ficha a pantalla completa. Etiqueta pequena arriba, valor enorme
@@ -153,7 +156,7 @@
         <item name="android:textSize">11sp</item>
         <item name="android:letterSpacing">0.12</item>
         <item name="android:maxLines">1</item>
-        <item name="android:fontFamily">@font/montserrat_semibold</item>
+        <item name="android:fontFamily">@font/mono</item>
     </style>
 
     <style name="FfValor">
@@ -162,7 +165,7 @@
         <item name="android:breakStrategy">simple</item>
         <item name="android:hyphenationFrequency">none</item>
         <item name="android:textColor">@color/tx</item>
-        <item name="android:fontFamily">@font/montserrat_bold</item>
+        <item name="android:fontFamily">@font/saira</item>
         <item name="autoSizeTextType">uniform</item>
         <item name="autoSizeStepGranularity">1sp</item>
     </style>
@@ -184,7 +187,7 @@
         <item name="android:hyphenationFrequency">none</item>
         <item name="android:textColor">@color/tx</item>
         <item name="android:textSize">13sp</item>
-        <item name="android:fontFamily">@font/montserrat_bold</item>
+        <item name="android:fontFamily">@font/barlow</item>
     </style>
 
     <style name="AjusteCuerpo">
@@ -196,7 +199,7 @@
         <item name="android:lineSpacingMultiplier">1.45</item>
         <item name="android:textColor">@color/dim</item>
         <item name="android:textSize">12sp</item>
-        <item name="android:fontFamily">@font/montserrat</item>
+        <item name="android:fontFamily">@font/barlow</item>
     </style>
 
     <!-- El subtítulo de una sección: una frase en minúsculas debajo del rótulo en
@@ -211,7 +214,7 @@
         <item name="android:lineSpacingMultiplier">1.35</item>
         <item name="android:textColor">@color/dim</item>
         <item name="android:textSize">12.5sp</item>
-        <item name="android:fontFamily">@font/montserrat</item>
+        <item name="android:fontFamily">@font/barlow</item>
     </style>
 
     <!-- Campo de la ficha: línea abajo y nada más, como los inputs de la PWA. -->
@@ -226,7 +229,7 @@
         <item name="android:textColor">@color/tx</item>
         <item name="android:textColorHint">@color/ctl</item>
         <item name="android:textSize">15sp</item>
-        <item name="android:fontFamily">@font/montserrat</item>
+        <item name="android:fontFamily">@font/barlow</item>
     </style>
 
     <!-- Cifra grande de `stats3`, con su rótulo debajo. -->
@@ -236,7 +239,7 @@
         <item name="android:text">@string/guion</item>
         <item name="android:textColor">@color/tx</item>
         <item name="android:textSize">24sp</item>
-        <item name="android:fontFamily">@font/montserrat_bold</item>
+        <item name="android:fontFamily">@font/mono</item>
     </style>
 
     <style name="CifraRotulo">
@@ -244,7 +247,7 @@
         <item name="android:layout_height">wrap_content</item>
         <item name="android:textColor">@color/dim</item>
         <item name="android:textSize">10.5sp</item>
-        <item name="android:fontFamily">@font/montserrat</item>
+        <item name="android:fontFamily">@font/mono</item>
     </style>
 
     <!-- Botón secundario de la PWA (`.ghost`): borde de 1 px y fondo transparente. -->
@@ -264,7 +267,7 @@
         <item name="android:gravity">center</item>
         <item name="android:textColor">@color/ctl</item>
         <item name="android:textSize">13sp</item>
-        <item name="android:fontFamily">@font/montserrat_bold</item>
+        <item name="android:fontFamily">@font/mono</item>
     </style>
 
     <!-- Rótulo de dentro de una `row2`: dice qué es el control que viene debajo.
@@ -275,7 +278,7 @@
         <item name="android:layout_marginBottom">8dp</item>
         <item name="android:textColor">@color/dim</item>
         <item name="android:textSize">12.5sp</item>
-        <item name="android:fontFamily">@font/montserrat_semibold</item>
+        <item name="android:fontFamily">@font/barlow</item>
     </style>
 
     <!-- La salida de una herramienta: una consola.
@@ -310,7 +313,7 @@
         <item name="android:breakStrategy">simple</item>
         <item name="android:hyphenationFrequency">none</item>
         <item name="android:lineSpacingMultiplier">1.35</item>
-        <item name="android:fontFamily">@font/montserrat</item>
+        <item name="android:fontFamily">@font/barlow</item>
         <item name="android:textStyle">bold</item>
         <item name="android:textColor">@color/tx</item>
         <item name="android:textSize">15sp</item>
@@ -331,7 +334,7 @@
         <item name="android:layout_height">wrap_content</item>
         <item name="android:layout_marginTop">36dp</item>
         <item name="android:layout_marginBottom">7dp</item>
-        <item name="android:fontFamily">@font/montserrat_bold</item>
+        <item name="android:fontFamily">@font/mono</item>
         <item name="android:letterSpacing">0.10</item>
         <item name="android:textColor">@color/tx</item>
         <item name="android:textSize">14.5sp</item>
@@ -346,7 +349,7 @@
         <item name="android:breakStrategy">simple</item>
         <item name="android:hyphenationFrequency">none</item>
         <item name="android:lineSpacingMultiplier">1.4</item>
-        <item name="android:fontFamily">@font/montserrat</item>
+        <item name="android:fontFamily">@font/barlow</item>
         <item name="android:textColor">@color/dim</item>
         <item name="android:textSize">12.5sp</item>
     </style>
@@ -437,7 +440,7 @@
         <item name="autoSizeMaxTextSize">10.5sp</item>
         <item name="android:textSize">10.5sp</item>
         <item name="android:letterSpacing">0.029</item>
-        <item name="android:fontFamily">@font/montserrat_semibold</item>
+        <item name="android:fontFamily">@font/mono</item>
         <item name="android:duplicateParentState">true</item>
     </style>
 
@@ -449,4 +452,59 @@
         <item name="android:letterSpacing">0.15</item>
     </style>
 
+
+    <!-- ═══════════ los tres papeles de la maqueta ═══════════
+         Toda pieza de texto de la app es una de estas tres cosas, y elegir mal
+         la familia es lo que hacía que la interfaz pareciera una web oscura en
+         vez de un instrumento:
+
+           DISPLAY  Saira Condensed 700, versales, inclinada. Hereda la
+                    condensación y la inclinación del logotipo, así que un
+                    titular y la marca hablan con la misma voz. Nunca para
+                    texto corrido: condensada y en versales cansa a las tres
+                    líneas.
+           TEXTO    Barlow. Lo que se lee de corrido. Es el valor por defecto
+                    del tema, así que no hace falta pedirlo.
+           DATO     JetBrains Mono. Toda cifra que sale de un sensor. Con ancho
+                    fijo, un número que cambia dos veces por segundo no baila y
+                    dos lecturas seguidas se comparan a ojo.
+    -->
+
+    <!-- Titular grande. La cursiva la sintetiza Android inclinando el trazo:
+         Saira Condensed no trae itálica propia, igual que en la maqueta la
+         inclinaba el navegador. -->
+    <style name="Display">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:fontFamily">@font/saira</item>
+        <item name="android:textStyle">bold|italic</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:textColor">@color/tx</item>
+        <item name="android:textSize">30sp</item>
+        <item name="android:letterSpacing">-0.01</item>
+        <item name="android:lineSpacingMultiplier">0.98</item>
+    </style>
+
+    <!-- Cifra medida. Tabular por definición de la familia. -->
+    <style name="Dato">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:fontFamily">@font/mono</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/tx</item>
+        <item name="android:textSize">22sp</item>
+        <item name="android:letterSpacing">-0.01</item>
+    </style>
+
+    <!-- Rótulo de instrumento: versales pequeñas muy espaciadas. Es lo que
+         etiqueta una lectura, nunca lo que la dice. -->
+    <style name="RotuloInstr">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:fontFamily">@font/mono</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:textColor">@color/dim</item>
+        <item name="android:textSize">10.5sp</item>
+        <item name="android:letterSpacing">0.16</item>
+    </style>
 </resources>

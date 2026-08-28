@@ -43,7 +43,7 @@
         android:id="@+id/g_texto"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:fontFamily="@font/montserrat_bold"
+        android:fontFamily="@font/barlow"
         android:gravity="center"
         android:letterSpacing="0.082"
         android:lineSpacingMultiplier="1.35"

@@ -29,7 +29,7 @@
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_weight="1"
-        android:fontFamily="@font/montserrat_bold"
+        android:fontFamily="@font/barlow"
         android:gravity="center"
         android:textColor="@color/tx"
         android:textSize="19sp" />

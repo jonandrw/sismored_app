@@ -39,7 +39,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="8dp"
-        android:fontFamily="@font/montserrat_semibold"
+        android:fontFamily="@font/barlow"
         android:gravity="center"
         android:letterSpacing="0.02"
         android:maxLines="1"
@@ -55,7 +55,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="4dp"
-        android:fontFamily="@font/montserrat_bold"
+        android:fontFamily="@font/barlow"
         android:text="@string/cero_pct"
         android:textColor="@color/tx"
         android:textSize="15sp" />

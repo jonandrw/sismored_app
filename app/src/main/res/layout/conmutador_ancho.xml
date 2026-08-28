@@ -32,7 +32,7 @@
             android:id="@+id/cm_texto"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/montserrat_semibold"
+            android:fontFamily="@font/barlow"
             android:letterSpacing="0.04"
             android:textColor="@color/tx"
             android:textSize="13sp" />

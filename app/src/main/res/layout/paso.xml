@@ -30,7 +30,7 @@
         android:layout_width="26dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
-        android:fontFamily="@font/montserrat_bold"
+        android:fontFamily="@font/barlow"
         android:textColor="@color/tx"
         android:textSize="13sp" />
 
@@ -71,7 +71,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:breakStrategy="simple"
-            android:fontFamily="@font/montserrat_bold"
+            android:fontFamily="@font/barlow"
             android:hyphenationFrequency="none"
             android:lineSpacingMultiplier="1.25"
             android:textColor="@color/tx"

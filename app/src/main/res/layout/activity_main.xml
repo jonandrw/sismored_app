@@ -101,7 +101,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:fontFamily="@font/montserrat_bold"
+                android:fontFamily="@font/barlow"
                 android:gravity="center"
                 android:textColor="@color/tx"
                 android:textSize="15sp" />
@@ -275,7 +275,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:fontFamily="@font/montserrat_bold"
+                                    android:fontFamily="@font/barlow"
                                     android:text="@string/v_saltos_max"
                                     android:textColor="@color/tx"
                                     android:textSize="34sp" />
@@ -1731,7 +1731,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
-                android:fontFamily="@font/montserrat_bold"
+                android:fontFamily="@font/barlow"
                 android:text="@string/ob_titulo"
                 android:textColor="@color/tx"
                 android:textSize="24sp" />

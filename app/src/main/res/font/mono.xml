@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- JetBrains Mono: toda cifra que se MIDE.
+
+     La regla de la maqueta es literal: si es un número que sale de un sensor
+     —17,4 kHz, 3/4 saltos, 04:12, 0,25 m/s²— va en mono y tabular. Con ancho
+     fijo, un dato que cambia dos veces por segundo no baila, y dos lecturas
+     puestas una debajo de otra se comparan a ojo.
+
+     También los rótulos cortos en versales con espaciado, que en esta interfaz
+     hacen de etiqueta de instrumento. -->
+<font-family xmlns:android="http://schemas.android.com/apk/res/android">
+    <font android:fontStyle="normal" android:fontWeight="400" android:font="@font/mono_regular" />
+    <font android:fontStyle="normal" android:fontWeight="700" android:font="@font/mono_bold" />
+</font-family>

@@ -33,7 +33,7 @@
             android:id="@+id/pm_nombre"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/montserrat_semibold"
+            android:fontFamily="@font/barlow"
             android:textColor="@color/tx"
             android:textSize="14sp" />
 
@@ -52,7 +52,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
-        android:fontFamily="@font/montserrat_bold"
+        android:fontFamily="@font/barlow"
         android:letterSpacing="0.09"
         android:textColor="@color/gr"
         android:textSize="10.5sp" />

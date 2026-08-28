@@ -1,22 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- La paleta de SismoRed, la misma que en `SismoRed/ui.css`. Los dos frentes
-     tienen que verse como la misma cosa: quien instale la app después de haber
-     usado la web no debería notar que ha cambiado de programa. -->
+<!-- La paleta de SismoRed.
+
+     Rediseño completo: la app deja de parecerse a una web oscura y pasa a
+     parecerse a un INSTRUMENTO DE CAMPO. Dos reglas mandan sobre todo lo demás,
+     y las dos vienen de la maqueta:
+
+     1. **Rojo solo cuando algo está emitiendo.** Deja de ser un color de marca
+        repartido por la interfaz y pasa a ser información: si hay rojo en la
+        pantalla, este móvil está haciendo ruido o mandando algo. En reposo no
+        hay ni una pieza roja.
+     2. **En reposo la pantalla es negra de verdad.** El fondo baja de #0B0D0F a
+        #050708 para apagar píxel en OLED. No es estética: es la batería de
+        alguien que puede necesitarla doce horas más.
+
+     Los dos colores que NO cambian son el rojo de alarma y el verde de
+     verificado, porque son los que ya reconoce quien ha usado la app. -->
 <resources>
-    <color name="bg">#0B0D0F</color>
-    <color name="card">#14171A</color>
-    <color name="card2">#1A1D21</color>
-    <color name="line">#2A2F36</color>
-    <color name="ctl">#3A4048</color>
-    <color name="dim">#8A9099</color>
-    <color name="tx">#E5E7EB</color>
-    <color name="gr">#90CA50</color>
+    <!-- === superficies, de atrás hacia delante === -->
+    <color name="bg">#050708</color>
+    <color name="card">#0D1113</color>
+    <color name="card2">#16181F</color>
+    <color name="line">#1E252A</color>
+
+    <!-- Control apagado: un gris que se ve pero no compite con el dato. -->
+    <color name="ctl">#39424A</color>
+
+    <!-- === texto === -->
+    <!-- Etiqueta corta, de tres palabras. Para leer de corrido está `lectura`. -->
+    <color name="dim">#7C858D</color>
+    <color name="tx">#E8EBED</color>
+    <!-- Gris de LECTURA: el blanco de `tx` bajado lo justo para no deslumbrar en
+         una pantalla negra pero leerse de corrido. -->
+    <color name="lectura">#BCC3C9</color>
+
+    <!-- === estado === -->
+    <!-- Emitiendo. Nunca decorativo. -->
     <color name="rd">#E53035</color>
     <color name="rd_d">#A81F23</color>
-
-    <!-- Gris de LECTURA. `dim` (#8A9099) vale para una etiqueta de tres palabras
-         y es insuficiente para un texto largo: obliga a forzar la vista. Este es
-         el mismo blanco de `tx` bajado lo justo para que no deslumbre en una
-         pantalla negra pero se lea de corrido. -->
-    <color name="lectura">#C6CBD1</color>
+    <!-- Verificado, medido, comprobado. -->
+    <color name="gr">#90CA50</color>
+    <!-- Sin calibrar: ni bien ni mal, «esto todavía no se ha medido». Faltaba un
+         color para eso y se estaba usando el rojo, que decía otra cosa. -->
+    <color name="ambar">#F0A02A</color>
 </resources>

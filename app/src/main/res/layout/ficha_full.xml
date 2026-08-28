@@ -28,7 +28,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:fontFamily="@font/montserrat_bold"
+        android:fontFamily="@font/barlow"
         android:letterSpacing="0.14"
         android:text="@string/ff_titulo"
         android:textColor="@color/rd"
@@ -169,7 +169,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="14dp"
         android:background="@drawable/fila_op"
-        android:fontFamily="@font/montserrat_bold"
+        android:fontFamily="@font/barlow"
         android:letterSpacing="0.06"
         android:minHeight="64dp"
         android:text="@string/ff_encontrado"

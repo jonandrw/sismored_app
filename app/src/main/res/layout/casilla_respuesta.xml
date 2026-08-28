@@ -35,7 +35,7 @@
         android:id="@+id/cs_nombre"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:fontFamily="@font/montserrat_semibold"
+        android:fontFamily="@font/barlow"
         android:lineSpacingMultiplier="1.25"
         android:textColor="@color/tx"
         android:textSize="14.5sp" />
@@ -62,7 +62,7 @@
         android:id="@+id/cs_estado"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:fontFamily="@font/montserrat_bold"
+        android:fontFamily="@font/barlow"
         android:letterSpacing="0.133"
         android:text="@string/off"
         android:textColor="@color/ctl"

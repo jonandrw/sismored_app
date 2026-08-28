@@ -26,3 +26,4 @@ fx sounds/wav/
 # Sistema
 .DS_Store
 Thumbs.db
+.maqueta/

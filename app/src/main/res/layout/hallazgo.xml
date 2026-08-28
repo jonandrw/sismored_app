@@ -23,7 +23,7 @@
             android:id="@+id/hz_tendencia"
             android:layout_width="34dp"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/montserrat_bold"
+            android:fontFamily="@font/barlow"
             android:gravity="center"
             android:textColor="@color/gr"
             android:textSize="20sp" />
@@ -39,7 +39,7 @@
                 android:id="@+id/hz_titulo"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/montserrat_bold"
+                android:fontFamily="@font/barlow"
                 android:textColor="@color/tx"
                 android:textSize="15sp" />
 
@@ -56,7 +56,7 @@
             android:id="@+id/hz_dbm"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/montserrat_bold"
+            android:fontFamily="@font/barlow"
             android:textColor="@color/tx"
             android:textSize="17sp" />
     </LinearLayout>
