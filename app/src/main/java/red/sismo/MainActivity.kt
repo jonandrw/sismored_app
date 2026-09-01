@@ -68,6 +68,10 @@ private const val PIDE_UBI = 5
 /** Cuánto hay que mantener pulsado PÁNICO. Ver [MainActivity.montarPanico]. */
 private const val PANICO_MANTENER_MS = 2000L
 
+/** La única dirección de internet que conoce la app, y solo se abre si alguien
+ *  pulsa «Contribuir» en Acerca de. */
+private const val REPO_CONTRIBUIR = "https://github.com/jonandrw/sismored_app/blob/main/CONTRIBUIR.md"
+
 class MainActivity : AppCompatActivity() {
 
     private lateinit var op: Opciones
@@ -140,10 +144,25 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         op = Opciones(this)
 
+        /* La app deja de esconder las barras del sistema.
+           El rediseño las ocultaba para que la maqueta se viera igual que en el
+           lienzo, con su propia hora y su propio porcentaje de batería pintados
+           en la cabecera. Pero esos dos datos ya los da el sistema, y en una app
+           de emergencia son los que más falta hacen: cuánta batería te queda
+           mientras pides ayuda no puede depender de que la app se acuerde de
+           repintarlo. Tapar la barra escondía además el reloj real, el aviso de
+           que el micrófono está abierto y el propio indicador de servicio en
+           primer plano de SismoRed.
+           El contenido sigue dibujándose bajo las barras —de ahí el
+           `setDecorFitsSystemWindows(false)`— y el `padding` de arriba lo pone
+           el inset, para que la cabecera no quede debajo del reloj. */
         androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
-        androidx.core.view.WindowInsetsControllerCompat(window, window.decorView).let { controller ->
-            controller.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
-            controller.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(
+            findViewById(R.id.raiz)
+        ) { v, insets ->
+            val b = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            v.setPadding(0, b.top, 0, b.bottom)
+            insets
         }
 
         montarCabeceras()
@@ -161,6 +180,7 @@ class MainActivity : AppCompatActivity() {
         montarRespuesta()
         montarBusqueda()
         montarDiagnostico()
+        montarAcerca()
 
         for ((tab, _) in pestanas) findViewById<View>(tab).setOnClickListener { ir(tab) }
         ir(R.id.t_inicio)
@@ -516,7 +536,19 @@ class MainActivity : AppCompatActivity() {
                 else -> R.string.ob_listo
             }
         )
-        findViewById<View>(R.id.ob_saltar)?.visibility = if (ultimo) View.GONE else View.VISIBLE
+        findViewById<Button>(R.id.ob_saltar)?.let {
+            it.visibility = if (ultimo) View.GONE else View.VISIBLE
+            /* En los tres primeros pasos este botón salta la explicación y va a
+               los permisos, así que no puede seguir diciendo «entrar sin esto»:
+               decía que te metía en la app sin conceder nada, y hace lo
+               contrario. */
+            it.setText(R.string.ob_saltar_intro)
+        }
+        /* La bienvenida tapa la app entera. La cabecera y las pestañas se
+           colaban por encima: se veía la píldora de estado flotando sobre la
+           pantalla de permisos. */
+        findViewById<View>(R.id.barra)?.visibility = View.GONE
+        findViewById<View>(R.id.pestanas)?.visibility = View.GONE
         val rayas = listOf(R.id.ob_p1, R.id.ob_p2, R.id.ob_p3, R.id.ob_p4)
         for ((i, r) in rayas.withIndex()) {
             findViewById<View>(r)?.setBackgroundColor(
@@ -590,6 +622,8 @@ class MainActivity : AppCompatActivity() {
         prefs().edit().putBoolean("bienvenida_hecha", true).apply()
         enBienvenida = false
         findViewById<View>(R.id.v_onboard).visibility = View.GONE
+        // devolver la cabecera y las pestañas, que la bienvenida había tapado
+        ir(if (vista in subtitulos) R.id.t_inicio else vista)
         // el servicio puede necesitar volver a declararse ahora que hay micrófono
         if (hayMicro()) arrancarServicio(ServicioSos.ACCION_MALLA)
         /* Y lo primero después de los permisos es la ficha. Es el único dato que
@@ -1795,7 +1829,17 @@ class MainActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.chip_tool_detector)?.text = if (alarma) "ALARMA" else "ARMADO"
         findViewById<TextView>(R.id.chip_tool_malla)?.text = if (ServicioSos.mallaRx > 0) "${ServicioSos.mallaRx} NODOS" else "EN ESCUCHA"
         findViewById<TextView>(R.id.chip_tool_buscar)?.text = if (rastreador.hallazgos().isNotEmpty()) "${rastreador.hallazgos().size} SEÑAL" else "SIN SEÑAL"
-        findViewById<TextView>(R.id.chip_tool_baliza)?.text = if (alarma || rescate) "EMITIENDO" else "OFF"
+        /* El estado de la baliza lo dice la radio, no la alarma: se puede estar
+           en alarma con el bluetooth apagado, y entonces «EMITIENDO» es falso. */
+        findViewById<TextView>(R.id.chip_tool_baliza)?.let {
+            it.text = if (ServicioSos.radioEmitiendo) "EMITIENDO"
+                      else if (alarma || rescate) "SIN RADIO" else "EN REPOSO"
+            it.setTextColor(getColor(when {
+                ServicioSos.radioEmitiendo -> R.color.rd
+                alarma || rescate -> R.color.ambar
+                else -> R.color.dim
+            }))
+        }
         findViewById<TextView>(R.id.chip_tool_sonda)?.let {
             val calibrado = ServicioSos.ecoActivo || ServicioSos.barridoActivo
             it.text = if (calibrado) "CALIBRADO" else "SIN CALIBRAR"
@@ -2196,6 +2240,22 @@ class MainActivity : AppCompatActivity() {
     /** Pantalla 16. La versión sale del build, no de un literal. */
     private fun pintarAcerca() {
         findViewById<TextView>(R.id.acerca_version)?.text = "v${BuildConfig.VERSION_NAME}"
+    }
+
+    /** El repositorio del proyecto. Es la única dirección que conoce la app, y
+     *  solo se abre si alguien la pulsa a mano. */
+    private fun montarAcerca() {
+        findViewById<View>(R.id.acerca_contribuir)?.setOnClickListener {
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(REPO_CONTRIBUIR)))
+            } catch (_: Exception) {
+                /* Sin navegador o sin red no se puede abrir, y el sitio donde
+                   está el archivo sigue siendo un dato útil: se copia. */
+                (getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
+                    ?.setPrimaryClip(ClipData.newPlainText("SismoRed", REPO_CONTRIBUIR))
+                Toast.makeText(this, R.string.acerca_enlace_copiado, Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     private fun pintarEntorno() {

@@ -16,6 +16,7 @@
     <string name="t_red">Red</string>
     <string name="t_entorno">Entorno</string>
     <string name="t_registro">Registro</string>
+    <string name="t_ajustes">Ajustes</string>
     <string name="ayuda_entorno">Las cuatro se quedan en marcha hasta que las apagas, y ninguna arranca sola: mientras esperas, no gastan batería.
 
 El tono es uno y el altavoz es uno, así que <i>movimiento</i> y <i>respiración</i> no pueden estar encendidas a la vez: al encender una se apaga la otra. Y mientras suene cualquiera de las dos, la malla no oye a otros móviles.</string>
@@ -601,7 +602,9 @@ Para leerla hace falta el permiso de acceso a notificaciones, que Android da ent
     <string name="ob4_tit">Lo que hace falta\npara que funcione</string>
     <string name="ob4_txt">Cada uno se pide para una cosa concreta y la app sigue funcionando sin los que deniegues. Toca cualquiera para concederlo.</string>
 
+    <string name="acerca_enlace_copiado">No hay con qué abrirlo. La dirección se ha copiado al portapapeles.</string>
     <string name="ob_siguiente">SIGUIENTE</string>
+    <string name="ob_saltar_intro">Saltar a los permisos</string>
 
     <!-- === Sonda ===
          Un rótulo y una nota por herramienta. La nota dice siempre lo que la

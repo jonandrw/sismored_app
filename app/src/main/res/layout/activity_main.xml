@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/raiz"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/bg">
@@ -3036,10 +3037,16 @@
 
                         <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#161C21" />
 
+                        <!-- La única fila de las tres que lleva a algún sitio, y por eso
+                             es la única en rojo y la única con área de toque. Estaba
+                             pintada como enlace y no hacía nada. -->
                         <LinearLayout
+                            android:id="@+id/acerca_contribuir"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:background="?attr/selectableItemBackground"
                             android:gravity="center_vertical"
+                            android:minHeight="56dp"
                             android:padding="13dp">
                             <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="@font/barlow" android:text="Contribuir" android:textColor="#7C858D" android:textSize="15sp" />
                             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/mono" android:text="CONTRIBUIR.MD" android:textColor="#E53035" android:textSize="13sp" android:textStyle="bold" />
@@ -3166,7 +3173,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1">
                 <ImageView style="@style/PestanaIcono" android:contentDescription="@string/v_diagnostico" android:src="@drawable/ic_tab_ajustes" android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                <TextView style="@style/PestanaTexto" android:text="AJUSTES" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                <TextView style="@style/PestanaTexto" android:text="@string/t_ajustes" android:layout_width="wrap_content" android:layout_height="wrap_content" />
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>
