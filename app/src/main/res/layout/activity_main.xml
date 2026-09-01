@@ -288,29 +288,9 @@
                         </LinearLayout>
                     </LinearLayout>
 
-                    <LinearLayout
-                        android:id="@+id/btn_historial"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:background="@drawable/tarjeta"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:gravity="center"
-                        android:orientation="horizontal"
-                        android:padding="12dp">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:fontFamily="@font/saira"
-                            android:letterSpacing="0.04"
-                            android:text="HISTORIAL PERSISTENTE"
-                            android:textAllCaps="true"
-                            android:textColor="#BCC3C9"
-                            android:textSize="15sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
+<!-- El historico vivia aqui, en Inicio, que es el ultimo sitio donde
+                         alguien lo buscaria. Se ha movido dentro de la pestaña Registro,
+                         que es de lo que habla. -->
 
                     <!-- Rótulo HERRAMIENTAS -->
                     <TextView
@@ -1292,16 +1272,25 @@
                             android:textColor="#90CA50"
                             android:textSize="10sp" />
 
+                        <!-- 44sp fijos en una sola línea: «BÚSQUEDA PARADA» no cabía y
+                             se cortaba en «BÚSQUEDA PA…». El tamaño se ajusta ahora al
+                             rótulo más largo en vez de recortarlo, que en la pantalla
+                             que dice si te acercas o te alejas es la palabra entera lo
+                             que importa. -->
                         <TextView
                             android:id="@+id/hz_tendencia_rotulo"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="6dp"
+                            android:autoSizeMaxTextSize="44sp"
+                            android:autoSizeMinTextSize="22sp"
+                            android:autoSizeTextType="uniform"
+                            android:breakStrategy="simple"
                             android:fontFamily="@font/saira"
+                            android:hyphenationFrequency="none"
                             android:includeFontPadding="false"
                             android:letterSpacing="-0.02"
                             android:maxLines="1"
-                            android:singleLine="true"
                             android:text="TE ACERCAS"
                             android:textColor="#FFFFFF"
                             android:textSize="44sp"
@@ -2310,6 +2299,48 @@
                         android:textColor="@color/tx_sec"
                         android:textSize="19sp"
                         android:textStyle="bold" />
+
+                    <!-- El registro de arriba son las ultimas 50 lineas de esta
+                         sesion y se pierde al cerrar. Esto es lo que queda
+                         guardado en el movil. Los dos existian ya, pero en sitios
+                         distintos y sin que nada dijera en que se diferencian. -->
+                    <LinearLayout
+                        android:id="@+id/btn_historial"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:background="@drawable/tarjeta"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center_vertical"
+                        android:minHeight="56dp"
+                        android:orientation="vertical"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp"
+                        android:paddingTop="14dp"
+                        android:paddingBottom="14dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/saira"
+                            android:letterSpacing="0.04"
+                            android:text="@string/historial_ver"
+                            android:textAllCaps="true"
+                            android:textColor="@color/tx"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/historial_cuantos"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="3dp"
+                            android:fontFamily="@font/barlow"
+                            android:text="@string/historial_sub"
+                            android:textColor="@color/dim"
+                            android:textSize="13sp" />
+                    </LinearLayout>
                 </LinearLayout>
 
 

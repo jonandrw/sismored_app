@@ -58,8 +58,11 @@ class FichaLan(
         val nombre: String,
         val sangre: String,
         val edad: String,
+        /** Lo que llega en `med`: las alergias. Nombre de campo heredado. */
+        val alergias: String,
         val medicacion: String,
         val contacto: String,
+        val telefono: String,
         @Volatile var visto: Long
     )
 
@@ -292,8 +295,14 @@ class FichaLan(
         .put("nombre", f.nombre.trim())
         .put("sangre", f.sangre.trim().uppercase())
         .put("edad", f.edad.trim())
-        .put("med", f.medicacion.trim())
+        /* Aquí sí caben los dos por separado: esto va por UDP y no por los 31
+           bytes de la baliza. `med` mantiene el nombre que ya entienden los
+           móviles con la versión anterior y lleva las alergias, que es lo que
+           llevaba antes; la medicación viaja en su propio campo. */
+        .put("med", f.alergias.trim())
+        .put("medicacion", f.medicacion.trim())
         .put("contacto", f.contacto.trim())
+        .put("telefono", f.telefono.trim())
         /* La última posición conocida, si la hay y no está caducada. Va aquí y
            no en la baliza de radio porque en 31 bytes no cabe, y porque este
            canal ya lleva la ficha entera con la misma regla: solo con la alarma
@@ -384,7 +393,8 @@ class FichaLan(
         recibidas[ip] = Recibida(
             ip,
             j.optString("nombre"), j.optString("sangre"), j.optString("edad"),
-            j.optString("med"), j.optString("contacto"),
+            j.optString("med"), j.optString("medicacion"),
+            j.optString("contacto"), j.optString("telefono"),
             System.currentTimeMillis()
         )
         if (nueva) {
@@ -417,8 +427,10 @@ class FichaLan(
             if (r.nombre.isNotBlank()) l.add("Nombre:    ${r.nombre}")
             if (r.sangre.isNotBlank()) l.add("Grupo:     ${r.sangre}")
             if (r.edad.isNotBlank()) l.add("Edad:      ${r.edad} años")
-            if (r.medicacion.isNotBlank()) l.add("Avisos:    ${r.medicacion}")
+            if (r.alergias.isNotBlank()) l.add("Alergias:  ${r.alergias}")
+            if (r.medicacion.isNotBlank()) l.add("Medicación:${r.medicacion}")
             if (r.contacto.isNotBlank()) l.add("Contacto:  ${r.contacto}")
+            if (r.telefono.isNotBlank()) l.add("Teléfono:  ${r.telefono}")
             l.add("Por Wi-Fi desde ${r.ip}")
             l.add("")
         }

@@ -7,7 +7,9 @@ import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.LinearInterpolator
 import android.media.AudioManager
+import android.util.Log
 import androidx.core.content.res.ResourcesCompat
+import kotlinx.coroutines.withContext
 import android.Manifest
 import android.app.NotificationManager
 import android.content.BroadcastReceiver
@@ -65,8 +67,10 @@ private const val PIDE_RADIO = 3
 private const val PIDE_PASOS = 4
 private const val PIDE_UBI = 5
 
-/** Cuánto hay que mantener pulsado PÁNICO. Ver [MainActivity.montarPanico]. */
-private const val PANICO_MANTENER_MS = 2000L
+/** Cuánto hay que mantener pulsado PÁNICO. Ver [MainActivity.montarPanico].
+ *  Medio segundo: lo justo para que un roce en el bolsillo no lo dispare, sin
+ *  que sea una espera cuando lo estás pulsando a propósito. */
+private const val PANICO_MANTENER_MS = 500L
 
 /** La única dirección de internet que conoce la app, y solo se abre si alguien
  *  pulsa «Contribuir» en Acerca de. */
@@ -181,6 +185,7 @@ class MainActivity : AppCompatActivity() {
         montarBusqueda()
         montarDiagnostico()
         montarAcerca()
+        montarDockBusqueda()
 
         for ((tab, _) in pestanas) findViewById<View>(tab).setOnClickListener { ir(tab) }
         ir(R.id.t_inicio)
@@ -835,61 +840,27 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        val bloque = findViewById<View>(R.id.btn_parar_panico)
-        val carga = findViewById<ProgressBar>(R.id.parar_panico_carga)
-        val sub = findViewById<TextView>(R.id.parar_panico_sub)
-        var tarea: Runnable? = null
-        var desde = 0L
-
-        fun soltar(cancelado: Boolean) {
-            tarea?.let { bloque?.removeCallbacks(it) }
-            tarea = null
-            desde = 0L
-            carga?.progress = 0
-            carga?.visibility = View.INVISIBLE
-            if (cancelado) sub?.text = "MANTENER 3 S"
+        /* PARAR es instantáneo. Pedía mantener tres segundos, y eso está al
+           revés de lo que hace falta: encender la alarma tiene que costar —de
+           ahí el medio segundo de PÁNICO—, pero apagarla no. Quien la para es
+           quien ya está mirando la pantalla y sabe que fue un falso positivo, o
+           el equipo de rescate al que le acabas de tapar la escucha. Tres
+           segundos de forcejeo con la sirena a todo volumen no protegen de
+           nada: la alarma se puede volver a encender de un toque. */
+        findViewById<View>(R.id.btn_parar_panico)?.setOnClickListener {
+            try {
+                val vib = getSystemService(Vibrator::class.java)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                    vib?.vibrate(VibrationEffect.createOneShot(80, 255))
+                else @Suppress("DEPRECATION") vib?.vibrate(80)
+            } catch (_: Exception) {}
+            arrancarServicio(ServicioSos.ACCION_PARAR)
+            tiempoInicioPanico = 0L
+            ir(R.id.t_inicio)
+            pintar()
         }
-
-        bloque?.setOnTouchListener { v, ev ->
-            when (ev.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    desde = System.currentTimeMillis()
-                    carga?.visibility = View.VISIBLE
-                    sub?.text = "SOLTANDO CANCELA..."
-                    val t = object : Runnable {
-                        override fun run() {
-                            val ido = System.currentTimeMillis() - desde
-                            carga?.progress = ((ido * 100) / 3000L).toInt().coerceIn(0, 100)
-                            if (ido >= 3000L) {
-                                soltar(false)
-                                try {
-                                    val vib = getSystemService(Vibrator::class.java)
-                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                                        vib?.vibrate(VibrationEffect.createOneShot(80, 255))
-                                    else @Suppress("DEPRECATION") vib?.vibrate(80)
-                                } catch (_: Exception) {}
-                                arrancarServicio(ServicioSos.ACCION_PARAR)
-                                tiempoInicioPanico = 0L
-                                ir(R.id.t_inicio)
-                                pintar()
-                            } else {
-                                bloque.postDelayed(this, 40)
-                            }
-                        }
-                    }
-                    tarea = t
-                    bloque.post(t)
-                    v.isPressed = true
-                    true
-                }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    soltar(true)
-                    v.isPressed = false
-                    true
-                }
-                else -> false
-            }
-        }
+        findViewById<View>(R.id.parar_panico_carga)?.visibility = View.GONE
+        findViewById<TextView>(R.id.parar_panico_sub)?.setText(R.string.parar_sub)
 
         findViewById<View>(R.id.btn_panico_a_rescate)?.setOnClickListener {
             arrancarServicio(ServicioSos.ACCION_RESCATE)
@@ -1182,6 +1153,37 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<View>(R.id.btn_repetir_autotest)?.setOnClickListener {
             arrancarServicio(ServicioSos.ACCION_DIAGNOSTICO)
+        }
+        findViewById<View>(R.id.btn_historial)?.setOnClickListener {
+            startActivity(Intent(this, HistorialActivity::class.java))
+        }
+    }
+
+    /** El botón grande del pie de Buscar. No tenía listener: se veía, se
+     *  pulsaba y no pasaba nada, justo en el momento en que ya estás encima de
+     *  alguien y el siguiente paso es hablarle. Lleva al interfono. */
+    private fun montarDockBusqueda() {
+        findViewById<View>(R.id.btn_trabajo_sonido)?.setOnClickListener { ir(R.id.v_interfono) }
+    }
+
+    /** Cuántos eventos hay guardados de verdad. La consulta va fuera del tic:
+     *  es disco, y aquí nada cambia tan deprisa. */
+    private var historialUltimo = 0L
+    private fun contarHistorial() {
+        val ahora = System.currentTimeMillis()
+        if (ahora - historialUltimo < 5000) return
+        historialUltimo = ahora
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val n = try {
+                red.sismo.data.SismoDatabase.getDatabase(this@MainActivity).eventoDao().cuantos()
+            } catch (e: Exception) {
+                Log.w("SismoRed", "no se pudo contar el historico", e); return@launch
+            }
+            withContext(kotlinx.coroutines.Dispatchers.Main) {
+                findViewById<TextView>(R.id.historial_cuantos)?.text =
+                    if (n > 0) resources.getQuantityString(R.plurals.historial_guardados, n, n)
+                    else getString(R.string.historial_sub)
+            }
         }
     }
 
@@ -1575,10 +1577,31 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun montarDiagnostico() {
-        findViewById<View>(R.id.permiso_micro)?.setOnClickListener { pedirMicrofono() }
-        findViewById<View>(R.id.permiso_ble)?.setOnClickListener { pedirRadio() }
-        findViewById<View>(R.id.permiso_cam)?.setOnClickListener { pedirPermisos() }
-        findViewById<View>(R.id.permiso_ubi)?.setOnClickListener { pedirPermisos() }
+        /* Cada fila pide SU permiso. Cámara y ubicación llamaban las dos a
+           `pedirPermisos`, que solo pide notificaciones y micrófono: pulsar
+           «Ubicación» no hacía nada visible, y pulsar «Cámara / linterna»
+           tampoco. Y cuando el sistema ya no va a volver a preguntar —porque se
+           denegó dos veces— la única vía son los ajustes de la app, así que
+           allí se manda en vez de dejar el toque en nada. */
+        findViewById<View>(R.id.permiso_micro)?.setOnClickListener {
+            if (hayMicro()) abrirAjustesDeLaApp() else pedirMicrofono()
+        }
+        findViewById<View>(R.id.permiso_ble)?.setOnClickListener {
+            if (faltanPermisosDeRadio().isEmpty()) abrirAjustesDeLaApp() else pedirRadio()
+        }
+        /* La linterna se maneja con `setTorchMode` y no pide permiso de cámara:
+           o el móvil tiene flash o no lo tiene, y eso no se concede. */
+        findViewById<View>(R.id.permiso_cam)?.setOnClickListener {
+            Toast.makeText(
+                this,
+                if (Linterna(this).hay()) R.string.permiso_flash_hay else R.string.permiso_flash_no,
+                Toast.LENGTH_LONG
+            ).show()
+        }
+        findViewById<View>(R.id.permiso_ubi)?.setOnClickListener {
+            if (Ubicacion(this).hayPermiso()) abrirAjustesDeLaApp()
+            else requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), PIDE_UBI)
+        }
 
         /* El atajo de volumen era la única fila de Ajustes sin listener: se
            veía, se pulsaba y no pasaba nada. Y es el control que más falta hace
@@ -1632,15 +1655,26 @@ class MainActivity : AppCompatActivity() {
         pintarFichaDatos(f)
     }
 
+    /** La tarjeta que lee quien te encuentra. Cada hueco vacío se dice; ninguno
+     *  se rellena con el ejemplo de la maqueta. Enseñaba «MARTA FERRÁN · 0− ·
+     *  34 · Penicilina · Anticoagulante diario · Luis Ferrán» a quien no había
+     *  escrito nada, y el teléfono «+34 612 88 40 21» estaba puesto fijo, sin
+     *  mirar siquiera la ficha: un número inventado en la línea que alguien iba
+     *  a marcar. */
     private fun pintarFichaDatos(f: Ficha) {
-        val nombre = if (f.nombre.isNotBlank()) f.nombre else "Marta\nFerrán"
-        findViewById<TextView>(R.id.ff_nombre)?.text = nombre
-        findViewById<TextView>(R.id.ff_sangre)?.text = if (f.sangre.isNotBlank()) f.sangre else "0−"
-        findViewById<TextView>(R.id.ff_edad)?.text = if (f.edad.isNotBlank()) f.edad else "34"
-        findViewById<TextView>(R.id.ff_alergias)?.text = if (f.medicacion.isNotBlank()) f.medicacion else "Penicilina · Látex"
-        findViewById<TextView>(R.id.ff_med)?.text = if (f.medicacion.isNotBlank()) f.medicacion else "Anticoagulante diario"
-        findViewById<TextView>(R.id.ff_contacto_nombre)?.text = if (f.contacto.isNotBlank()) f.contacto else "Luis Ferrán"
-        findViewById<TextView>(R.id.ff_contacto_tel)?.text = "+34 612 88 40 21"
+        fun poner(id: Int, v: String) {
+            findViewById<TextView>(id)?.let {
+                it.text = if (v.isNotBlank()) v else "—"
+                it.alpha = if (v.isNotBlank()) 1f else 0.45f
+            }
+        }
+        findViewById<TextView>(R.id.ff_nombre)?.text = if (f.nombre.isBlank()) getString(R.string.ficha_sin_nombre) else Nombres.enDosLineas(f.nombre)
+        poner(R.id.ff_sangre, f.sangre)
+        poner(R.id.ff_edad, f.edad)
+        poner(R.id.ff_alergias, f.alergias)
+        poner(R.id.ff_med, f.medicacion)
+        poner(R.id.ff_contacto_nombre, f.contacto)
+        poner(R.id.ff_contacto_tel, f.telefono)
     }
 
     private fun mostrarDialogoEditarFicha(f: Ficha) {
@@ -1649,28 +1683,39 @@ class MainActivity : AppCompatActivity() {
             val pad = (16 * resources.displayMetrics.density).toInt()
             setPadding(pad, pad, pad, pad)
         }
+        /* Siete campos, uno por dato. Eran cinco, con alergias y medicación
+           metidas en el mismo y el teléfono sin campo ninguno — por eso no
+           había manera de editar la medicación. */
         val etNombre = EditText(this).apply { hint = "Nombre y apellidos"; setText(f.nombre) }
-        val etSangre = EditText(this).apply { hint = "Grupo sanguíneo (ej: 0-, A+)"; setText(f.sangre) }
-        val etEdad = EditText(this).apply { hint = "Edad"; setText(f.edad); inputType = android.text.InputType.TYPE_CLASS_NUMBER }
-        val etMed = EditText(this).apply { hint = "Alergias o medicación"; setText(f.medicacion) }
-        val etContacto = EditText(this).apply { hint = "Nombre y teléfono contacto"; setText(f.contacto) }
+        val etSangre = EditText(this).apply { hint = "Grupo sanguíneo (ej: 0−, A+)"; setText(f.sangre) }
+        val etEdad = EditText(this).apply {
+            hint = "Edad"; setText(f.edad); inputType = android.text.InputType.TYPE_CLASS_NUMBER
+        }
+        val etAlergias = EditText(this).apply { hint = "Alergias (qué NO pueden darte)"; setText(f.alergias) }
+        val etMed = EditText(this).apply { hint = "Medicación que tomas"; setText(f.medicacion) }
+        val etContacto = EditText(this).apply { hint = "Contacto de emergencia"; setText(f.contacto) }
+        val etTelefono = EditText(this).apply {
+            hint = "Teléfono del contacto"; setText(f.telefono)
+            inputType = android.text.InputType.TYPE_CLASS_PHONE
+        }
 
-        layout.addView(etNombre)
-        layout.addView(etSangre)
-        layout.addView(etEdad)
-        layout.addView(etMed)
-        layout.addView(etContacto)
+        for (e in listOf(etNombre, etSangre, etEdad, etAlergias, etMed, etContacto, etTelefono)) {
+            layout.addView(e)
+        }
 
         AlertDialog.Builder(this)
-            .setTitle("Editar Ficha Médica")
-            .setView(layout)
+            .setTitle("Editar ficha médica")
+            .setView(ScrollView(this).apply { addView(layout) })
             .setPositiveButton("Guardar") { _, _ ->
                 f.nombre = etNombre.text.toString()
                 f.sangre = etSangre.text.toString()
                 f.edad = etEdad.text.toString()
+                f.alergias = etAlergias.text.toString()
                 f.medicacion = etMed.text.toString()
                 f.contacto = etContacto.text.toString()
+                f.telefono = etTelefono.text.toString()
                 pintarFichaDatos(f)
+                anotar("ficha médica actualizada")
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
@@ -1997,6 +2042,10 @@ class MainActivity : AppCompatActivity() {
         return String.format(Locale.US, "%02d:%02d:%02d", s / 3600, (s % 3600) / 60, s % 60)
     }
 
+    /** Cuántos van guardados desde que se abrió la app, solo para saber cuándo
+     *  toca podar. Ver [anotar]. */
+    private var guardados = 0
+
     private fun anotar(texto: String, saveToDb: Boolean = true) {
         val sdf = SimpleDateFormat("HH:mm:ss", Locale.US)
         val hora = sdf.format(Date())
@@ -2014,9 +2063,15 @@ class MainActivity : AppCompatActivity() {
                         fechaMs = System.currentTimeMillis(),
                         mensaje = texto
                     )
-                    db.eventoDao().insertar(evento)
+                    val dao = db.eventoDao()
+                    dao.insertar(evento)
+                    /* La poda no va en cada línea: son dos consultas y esto se
+                       llama desde el hilo de la malla. Cada doscientos eventos
+                       basta para que la tabla no se dispare. */
+                    guardados++
+                    if (guardados % 200 == 0) dao.podar()
                 } catch (e: Exception) {
-                    // Ignore errors
+                    Log.w("SismoRed", "no se pudo guardar el evento", e)
                 }
             }
         }
@@ -2048,6 +2103,7 @@ class MainActivity : AppCompatActivity() {
         if (respiraOk) totalOk++
 
         findViewById<TextView>(R.id.autotest_contador)?.text = "$totalOk / 5"
+        contarHistorial()
 
         findViewById<View>(R.id.ic_malla_sq)?.setBackgroundResource(if (micOk) R.drawable.cuadrado_verde else R.drawable.cuadrado_rojo)
         findViewById<TextView>(R.id.at_malla_ok)?.apply {
@@ -2165,58 +2221,12 @@ class MainActivity : AppCompatActivity() {
         actualizarSwTactico(R.id.sw_rescate_pantalla, op.mantener)
     }
 
-    private fun formatearNombreEnDosLineas(nombre: String): String {
-        val limpio = nombre.trim().uppercase()
-        /* Sin nombre no hay nombre. Devolvía «MARTA FERRÁN», el de la maqueta,
-           en la tarjeta que lee quien te encuentra inconsciente. */
-        if (limpio.isEmpty()) return getString(R.string.ficha_sin_nombre)
-        if (limpio.contains("\n")) {
-            val lineas = limpio.lines().filter { it.isNotBlank() }
-            return if (lineas.size <= 2) lineas.joinToString("\n")
-                   else "${lineas[0]}\n${lineas.drop(1).joinToString(" ")}"
-        }
-        val palabras = limpio.split("\\s+".toRegex()).filter { it.isNotBlank() }
-        return when {
-            palabras.size == 1 -> palabras[0]
-            palabras.size == 2 -> "${palabras[0]}\n${palabras[1]}"
-            else -> {
-                val mitad = palabras.size / 2
-                val l1 = palabras.take(mitad).joinToString(" ")
-                val l2 = palabras.drop(mitad).joinToString(" ")
-                "$l1\n$l2"
-            }
-        }
-    }
-
-    private fun pintarFicha() {
-        val f = Ficha(this)
-        val tvNombre = findViewById<TextView>(R.id.ff_nombre)
-        val tvGrupo = findViewById<TextView>(R.id.ff_sangre)
-        val tvEdad = findViewById<TextView>(R.id.ff_edad)
-        val tvAlergias = findViewById<TextView>(R.id.ff_alergias)
-        val tvMed = findViewById<TextView>(R.id.ff_med)
-        val tvContactoNombre = findViewById<TextView>(R.id.ff_contacto_nombre)
-        val tvContactoTel = findViewById<TextView>(R.id.ff_contacto_tel)
-
-        val nom = if (f.nombre.isNotBlank()) f.nombre else "Marta Ferrán"
-        tvNombre?.text = formatearNombreEnDosLineas(nom)
-
-
-        tvGrupo?.text = if (f.sangre.isNotBlank()) f.sangre.uppercase() else "0−"
-        tvEdad?.text = if (f.edad.isNotBlank()) f.edad else "34"
-
-        if (f.medicacion.isNotBlank()) {
-            val partes = f.medicacion.split("\n")
-            tvAlergias?.text = partes.getOrNull(0) ?: "Penicilina · Látex"
-            tvMed?.text = if (partes.size > 1) partes.drop(1).joinToString(" · ") else "Anticoagulante diario"
-        }
-
-        if (f.contacto.isNotBlank()) {
-            val lineas = f.contacto.split("\n")
-            tvContactoNombre?.text = lineas.getOrNull(0) ?: "Luis Ferrán"
-            if (lineas.size > 1) tvContactoTel?.text = lineas[1]
-        }
-    }
+    /* `pintarFicha` era una tercera copia de lo mismo, con su propio juego de
+       valores de la maqueta y una invención más: partía alergias y medicación
+       del mismo campo por saltos de línea, así que lo que escribieras en la
+       primera línea salía como alergia y el resto como medicación. Ahora son
+       dos campos de verdad y una sola función pinta la ficha. */
+    private fun pintarFicha() = pintarFichaDatos(Ficha(this))
 
     private fun pintarRed() {
         val viva = ServicioSos.mallaEscuchando

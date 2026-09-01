@@ -28,16 +28,33 @@ class Ficha(ctx: Context) {
         get() = p.getString("edad", "") ?: ""
         set(v) { p.edit().putString("edad", v).apply() }
 
-    var medicacion: String
+    /* Alergias y medicación son dos cosas distintas y son las dos que más
+       importan: una dice qué NO puede darte quien te atienda y la otra qué
+       llevas ya en el cuerpo. Estaban en el mismo campo, así que la pantalla
+       enseñaba el mismo texto en las dos tarjetas y no había forma de editar la
+       segunda. Lo que hubiera guardado se queda en alergias, que es donde
+       estaba escrito el rótulo. */
+    var alergias: String
         get() = p.getString("med", "") ?: ""
         set(v) { p.edit().putString("med", v).apply() }
+
+    var medicacion: String
+        get() = p.getString("medicacion", "") ?: ""
+        set(v) { p.edit().putString("medicacion", v).apply() }
 
     var contacto: String
         get() = p.getString("contacto", "") ?: ""
         set(v) { p.edit().putString("contacto", v).apply() }
 
+    /** El teléfono al que llamar, aparte del nombre: quien te encuentra tiene
+     *  que poder marcarlo sin descifrar una cadena. */
+    var telefono: String
+        get() = p.getString("telefono", "") ?: ""
+        set(v) { p.edit().putString("telefono", v).apply() }
+
     fun vacia() = nombre.isBlank() && sangre.isBlank() && edad.isBlank() &&
-                  medicacion.isBlank() && contacto.isBlank()
+                  alergias.isBlank() && medicacion.isBlank() &&
+                  contacto.isBlank() && telefono.isBlank()
 
     fun borrar() = p.edit().clear().apply()
 
@@ -45,8 +62,12 @@ class Ficha(ctx: Context) {
     fun comoTexto(): String = buildString {
         if (nombre.isNotBlank()) append(nombre).append("\n\n")
         if (sangre.isNotBlank()) append("SANGRE\n").append(sangre).append("\n\n")
-        if (medicacion.isNotBlank()) append("ALERGIAS / MEDICACIÓN\n").append(medicacion).append("\n\n")
+        if (alergias.isNotBlank()) append("ALERGIAS\n").append(alergias).append("\n\n")
+        if (medicacion.isNotBlank()) append("MEDICACIÓN\n").append(medicacion).append("\n\n")
         if (edad.isNotBlank()) append("EDAD\n").append(edad).append("\n\n")
-        if (contacto.isNotBlank()) append("CONTACTO\n").append(contacto)
+        if (contacto.isNotBlank() || telefono.isNotBlank()) {
+            append("CONTACTO\n").append(contacto)
+            if (telefono.isNotBlank()) append("\n").append(telefono)
+        }
     }.trim()
 }

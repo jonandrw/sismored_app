@@ -44,7 +44,7 @@
             android:letterSpacing="-0.015"
             android:lineSpacingMultiplier="0.92"
             android:maxLines="2"
-            android:text="MARTA\nFERRÁN"
+            android:text="@string/ficha_sin_nombre"
             android:textAllCaps="true"
             android:textColor="#0B0D0F"
             android:textSize="58sp"
@@ -85,7 +85,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/mono"
-                    android:text="0−"
+                    android:text="@string/guion"
                     android:textColor="#FFFFFF"
                     android:textSize="52sp"
                     android:textStyle="bold" />
@@ -115,7 +115,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/mono"
-                    android:text="34"
+                    android:text="@string/guion"
                     android:textColor="#0B0D0F"
                     android:textSize="52sp"
                     android:textStyle="bold" />
@@ -149,7 +149,7 @@
                 android:layout_marginTop="4dp"
                 android:fontFamily="@font/barlow"
                 android:lineSpacingMultiplier="1.2"
-                android:text="Penicilina · Látex"
+                android:text="@string/guion"
                 android:textColor="#0A0D0F"
                 android:textSize="22sp"
                 android:textStyle="bold" />
@@ -183,7 +183,7 @@
                 android:layout_marginTop="4dp"
                 android:fontFamily="@font/barlow"
                 android:lineSpacingMultiplier="1.2"
-                android:text="Anticoagulante diario"
+                android:text="@string/guion"
                 android:textColor="#0A0D0F"
                 android:textSize="22sp"
                 android:textStyle="bold" />
@@ -216,7 +216,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
                 android:fontFamily="@font/barlow"
-                android:text="Luis Ferrán"
+                android:text="@string/guion"
                 android:textColor="#0A0D0F"
                 android:textSize="22sp"
                 android:textStyle="bold" />
@@ -227,7 +227,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
                 android:fontFamily="@font/mono"
-                android:text="+34 612 88 40 21"
+                android:text="@string/guion"
                 android:textColor="#0A0D0F"
                 android:textSize="18sp" />
         </LinearLayout>

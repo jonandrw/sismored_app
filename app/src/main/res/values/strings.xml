@@ -603,6 +603,19 @@ Para leerla hace falta el permiso de acceso a notificaciones, que Android da ent
     <string name="ob4_txt">Cada uno se pide para una cosa concreta y la app sigue funcionando sin los que deniegues. Toca cualquiera para concederlo.</string>
 
     <string name="acerca_enlace_copiado">No hay con qué abrirlo. La dirección se ha copiado al portapapeles.</string>
+    <!-- El registro de la pestaña son las ultimas 50 lineas de esta sesion; el
+         historico es lo que queda guardado en el movil. -->
+    <string name="historial_ver">Ver todo el histórico</string>
+    <string name="historial_sub">Lo de arriba es solo esta sesión</string>
+    <plurals name="historial_guardados">
+        <item quantity="one">%d evento guardado en este móvil</item>
+        <item quantity="other">%d eventos guardados en este móvil</item>
+    </plurals>
+
+    <string name="parar_sub">SE PUEDE VOLVER A ENCENDER</string>
+    <string name="permiso_flash_hay">Este móvil tiene flash y la linterna funciona. No hace falta conceder nada: se controla sin el permiso de cámara.</string>
+    <string name="permiso_flash_no">Este móvil no tiene flash. El destello SOS no está disponible; todo lo demás sí.</string>
+
     <string name="ob_siguiente">SIGUIENTE</string>
     <string name="ob_saltar_intro">Saltar a los permisos</string>
 

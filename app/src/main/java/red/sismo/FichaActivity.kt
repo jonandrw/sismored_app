@@ -61,37 +61,25 @@ class FichaActivity : Activity() {
             (t.parent as? View)?.let { if (texto.isBlank()) it.visibility = View.GONE }
         }
 
-        fun formatearNombreEnDosLineas(nombre: String): String {
-            val limpio = nombre.trim().uppercase()
-            if (limpio.isEmpty()) return "MARTA\nFERRÁN"
-            if (limpio.contains("\n")) {
-                val lineas = limpio.lines().filter { it.isNotBlank() }
-                return if (lineas.size <= 2) lineas.joinToString("\n")
-                       else "${lineas[0]}\n${lineas.drop(1).joinToString(" ")}"
-            }
-            val palabras = limpio.split("\\s+".toRegex()).filter { it.isNotBlank() }
-            return when {
-                palabras.size == 1 -> palabras[0]
-                palabras.size == 2 -> "${palabras[0]}\n${palabras[1]}"
-                else -> {
-                    val mitad = palabras.size / 2
-                    val l1 = palabras.take(mitad).joinToString(" ")
-                    val l2 = palabras.drop(mitad).joinToString(" ")
-                    "$l1\n$l2"
-                }
-            }
-        }
-
-        val nom = if (f.nombre.isNotBlank()) f.nombre else "Marta Ferrán"
+        /* Esta es la pantalla que lee quien te encuentra inconsciente, y era la
+           que más se inventaba: sin ficha rellenada enseñaba «MARTA FERRÁN ·
+           0− · 34 años · Penicilina · Anticoagulante diario · Luis Ferrán», y
+           el teléfono «+34 612 88 40 21» estaba puesto fijo, sin mirar la
+           ficha siquiera. Un rescatista habría marcado un número inventado y
+           habría descartado darte penicilina por una alergia que no tienes.
+           Ahora cada hueco vacío desaparece —de eso se encarga `campo`— y lo
+           que no se sabe no se dice. */
         findViewById<TextView>(R.id.ff_nombre)?.apply {
-            text = formatearNombreEnDosLineas(nom)
+            text = if (f.nombre.isBlank()) getString(R.string.ficha_sin_nombre)
+                   else Nombres.enDosLineas(f.nombre)
+            if (f.nombre.isBlank()) alpha = 0.45f
         }
-        campo(R.id.ff_sangre, if (f.sangre.isNotBlank()) f.sangre.trim().uppercase() else "0−")
-        campo(R.id.ff_edad, if (f.edad.isNotBlank()) f.edad.trim() else "34")
-        campo(R.id.ff_alergias, if (f.medicacion.isNotBlank()) f.medicacion.trim() else "Penicilina · Látex")
-        campo(R.id.ff_med, if (f.medicacion.isNotBlank()) f.medicacion.trim() else "Anticoagulante diario")
-        campo(R.id.ff_contacto_nombre, if (f.contacto.isNotBlank()) f.contacto.trim() else "Luis Ferrán")
-        campo(R.id.ff_contacto_tel, "+34 612 88 40 21")
+        campo(R.id.ff_sangre, f.sangre.trim().uppercase())
+        campo(R.id.ff_edad, f.edad.trim())
+        campo(R.id.ff_alergias, f.alergias.trim())
+        campo(R.id.ff_med, f.medicacion.trim())
+        campo(R.id.ff_contacto_nombre, f.contacto.trim())
+        campo(R.id.ff_contacto_tel, f.telefono.trim())
 
         /* ---------- ME HAN ENCONTRADO ----------
            Lo único que apaga la baliza. Dos toques: el primero pregunta, el

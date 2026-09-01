@@ -1700,8 +1700,13 @@ class ServicioSos : Service() {
            trama 0 es la de siempre —nombre y grupo, legible ella sola— y detrás
            edad, avisos y contacto. Fuera de eso no se manda nada personal, que es
            la misma regla que ya tenía la baliza. */
+        /* Alergias delante de la medicación: en 31 bytes lo que se pierde es
+           la cola, y de los dos datos el que no puede perderse es qué NO
+           pueden darte. Van juntos porque el hueco de «avisos» es uno solo. */
+        val avisos = listOf(f.alergias.trim(), f.medicacion.trim())
+            .filter { it.isNotBlank() }.joinToString(" · ")
         val resto = if (estado == Baliza.ALARMA || estado == Baliza.RESCATE)
-            Baliza.restoDeFicha(f.edad, f.medicacion, f.contacto) else ByteArray(0)
+            Baliza.restoDeFicha(f.edad, avisos, f.contacto) else ByteArray(0)
         val ok = radio?.emitir(
             estado, saltoEntrante,
             Baliza.codigoSangre(f.sangre),
