@@ -546,8 +546,6 @@ Para leerla hace falta el permiso de acceso a notificaciones, que Android da ent
     <string name="panico_silenciar">SILENCIAR Y PARAR ALARMA</string>
     <string name="panico_a_rescate">CAMBIAR A MODO RESCATE</string>
     <string name="rescate_proximo_pulso">PRÓXIMO PULSO</string>
-    <string name="rescate_cadencia">CADENCIA 12 S</string>
-    <string name="rescate_pulso">PULSO 0.9 S</string>
     <string name="rescate_autonomia">AUTONOMÍA ESTIMADA</string>
     <string name="rescate_desactivar">DESACTIVAR MODO RESCATE</string>
     <string name="autotest_titulo">AUTOCOMPROBACIÓN AL ARRANCAR</string>
@@ -585,6 +583,20 @@ Para leerla hace falta el permiso de acceso a notificaciones, que Android da ent
     <!-- Tres pitidos de 0,20 s que arrancan cada 0,28 s: 0,76 en total. -->
     <string name="rescate_cadencia">CADENCIA 12 S</string>
     <string name="rescate_pulso">PULSO 0.76 S</string>
+
+    <!-- === Sonda ===
+         Un rótulo y una nota por herramienta. La nota dice siempre lo que la
+         herramienta NO puede decir, que es lo que evita que alguien cave donde
+         no es. -->
+    <string name="sonda_rot_eco">ECOLOCALIZACIÓN · CHASQUIDO</string>
+    <string name="sonda_rot_doppler">DOPPLER · TONO CONTINUO</string>
+    <string name="sonda_rot_respira">RESPIRACIÓN · BANDA LENTA</string>
+    <string name="sonda_rot_barrido">BARRIDO · RECORRIDO DE FRECUENCIA</string>
+    <string name="sonda_sin_medir">Sin medir todavía. Pulsa SONDEAR.</string>
+    <string name="sonda_nota_eco">Dice cuántas superficies devuelven el chasquido, no a qué distancia están. Dos metros de escombro atenúan más que veinte de aire.</string>
+    <string name="sonda_nota_doppler">Detecta que algo se mueve cerca del móvil. No distingue a una persona de una cortina.</string>
+    <string name="sonda_nota_respira">El umbral está calibrado contra señal sintética y <i>no</i> se ha contrastado con una persona bajo escombro. Trátalo como una pista, nunca como una confirmación.</string>
+    <string name="sonda_nota_barrido">Enseña en qué frecuencias responde el hueco. Sirve para comparar dos sitios, no para medir uno.</string>
 
     <string name="teclas_sin_ajustes">Este móvil no abre los ajustes de accesibilidad desde aquí. Búscalos como «Accesibilidad · Apps instaladas · SismoRed».</string>
     <string name="permisos_al_dia">NO FALTA NINGÚN PERMISO</string>

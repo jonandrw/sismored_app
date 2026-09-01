@@ -1478,12 +1478,8 @@
                         android:layout_marginTop="16dp" />
 
                     <!-- Visualizaciones alternativas (ocultas por defecto) -->
-                    <red.sismo.VistaSonar
-                        android:id="@+id/sonar_sonda"
-                        android:layout_width="match_parent"
-                        android:layout_height="200dp"
-                        android:layout_marginTop="16dp"
-                        android:visibility="gone" />
+                    <!-- La VistaSonar de aqui se quedaba siempre oculta desde que la sonda
+                         paso a pestañas. -->
                     <red.sismo.VistaPulso
                         android:id="@+id/pulso_mov"
                         android:layout_width="match_parent"
@@ -1502,6 +1498,56 @@
                         android:layout_height="200dp"
                         android:layout_marginTop="16dp"
                         android:visibility="gone" />
+
+                    <!-- ROTULO DE LA HERRAMIENTA Y SU LECTURA.
+                         La sonda calculaba las cuatro salidas —eco, doppler,
+                         respiracion y barrido— y no las enseñaba en ninguna
+                         parte: se pulsaba SONDEAR, el motor medía y la
+                         respuesta se perdía. Es justo lo unico que se le pide
+                         a esta pantalla. -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:background="@drawable/tarjeta"
+                        android:orientation="vertical"
+                        android:paddingStart="18dp"
+                        android:paddingEnd="18dp"
+                        android:paddingTop="16dp"
+                        android:paddingBottom="16dp">
+
+                        <TextView
+                            android:id="@+id/sonda_rotulo"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/mono"
+                            android:letterSpacing="0.2"
+                            android:text="@string/sonda_rot_eco"
+                            android:textColor="@color/dim"
+                            android:textSize="10sp" />
+
+                        <TextView
+                            android:id="@+id/sonda_lectura"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:fontFamily="@font/mono"
+                            android:lineSpacingMultiplier="1.35"
+                            android:text="@string/sonda_sin_medir"
+                            android:textColor="@color/lectura"
+                            android:textSize="13sp" />
+
+                        <TextView
+                            android:id="@+id/sonda_nota"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:fontFamily="@font/barlow"
+                            android:lineSpacingMultiplier="1.3"
+                            android:text="@string/sonda_nota_eco"
+                            android:textColor="@color/dim"
+                            android:textSize="13sp" />
+                    </LinearLayout>
 
                     <!-- Tarjeta Ganancia de entrada -->
                     <LinearLayout

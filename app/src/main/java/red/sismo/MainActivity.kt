@@ -4,7 +4,10 @@ import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
 import android.view.animation.AccelerateDecelerateInterpolator
+import android.view.animation.DecelerateInterpolator
 import android.view.animation.LinearInterpolator
+import android.media.AudioManager
+import androidx.core.content.res.ResourcesCompat
 import android.Manifest
 import android.app.NotificationManager
 import android.content.BroadcastReceiver
@@ -248,12 +251,37 @@ class MainActivity : AppCompatActivity() {
 
     /* ===================== navegación ===================== */
 
-    /** Acepta el id de una pestaña o el de una vista de segundo nivel. */
+    /**
+     * Acepta el id de una pestaña o el de una vista de segundo nivel.
+     *
+     * La entrada dura 160 ms con salida desacelerada y la salida 120 ms, que es
+     * lo que pide el libro del rediseño. No es adorno: el cambio era un corte
+     * seco entre dos pantallas casi negras y no se veía si había pasado algo,
+     * sobre todo bajando de Inicio a una herramienta. El desplazamiento es de
+     * 10 dp y solo hacia arriba — lo justo para que el ojo sepa por dónde ha
+     * entrado la pantalla, sin retrasar a nadie que tenga prisa.
+     */
     private fun ir(cual: Int) {
         val destino = pestanas.firstOrNull { it.first == cual }?.second ?: cual
+        val cambia = destino != vista
         vista = destino
         for (v in todasLasVistas) {
-            findViewById<View>(v)?.visibility = if (v == destino) View.VISIBLE else View.GONE
+            val vv = findViewById<View>(v) ?: continue
+            if (v != destino) {
+                vv.animate().cancel()
+                vv.visibility = View.GONE
+                continue
+            }
+            vv.visibility = View.VISIBLE
+            if (!cambia) continue
+            vv.animate().cancel()
+            vv.alpha = 0f
+            vv.translationY = 10f * resources.displayMetrics.density
+            vv.animate()
+                .alpha(1f).translationY(0f)
+                .setDuration(160)
+                .setInterpolator(DecelerateInterpolator())
+                .start()
         }
         val esPanicoActivo = destino == R.id.v_panico_activo
         val sub = destino in subtitulos && !esPanicoActivo
@@ -973,6 +1001,10 @@ class MainActivity : AppCompatActivity() {
         /* Los saltos reales. Antes se forzaba un mínimo de 1, así que la
            pantalla decía «1 / 4» aunque no hubiera contestado nadie: justo la
            diferencia entre estar en la malla y estar solo. */
+        /* El círculo del nivel late mientras entre sonido por el micro. Antes
+           latía siempre, incluso con el micrófono denegado. */
+        latido(R.id.panico_circulo_db, ServicioSos.oyeNivelDb > -100.0)
+
         val salto = ServicioSos.mallaSalto.coerceIn(0, MallaAcustica.MAX_HOP)
         findViewById<TextView>(R.id.txt_panico_saltos)?.text =
             if (salto > 0) "$salto / ${MallaAcustica.MAX_HOP}" else "SIN ECO"
@@ -980,6 +1012,25 @@ class MainActivity : AppCompatActivity() {
         findViewById<View>(R.id.hop_bar_2)?.setBackgroundResource(if (salto >= 2) R.drawable.hop_bar_verde else R.drawable.hop_bar_gris)
         findViewById<View>(R.id.hop_bar_3)?.setBackgroundResource(if (salto >= 3) R.drawable.hop_bar_verde else R.drawable.hop_bar_gris)
         findViewById<View>(R.id.hop_bar_4)?.setBackgroundResource(if (salto >= 4) R.drawable.hop_bar_verde else R.drawable.hop_bar_gris)
+    }
+
+    /* Cada lienzo que respira, guardado por el id de su vista. El libro del
+       rediseño lo dice en una línea: «nada decorativo se mueve — si se mueve,
+       está midiendo». Estas cuatro animaciones arrancaban en `onCreate` con
+       `repeatCount = INFINITE` y ya no paraban: el icono de la malla respiraba
+       con la malla apagada y la lupa de buscar latía sin estar buscando. Se
+       guardan para poder pararlas cuando lo que representan se para. */
+    private val latidos = HashMap<Int, AnimatorSet>()
+
+    /** Enciende o para el latido de un icono según lo que esté midiendo. */
+    private fun latido(id: Int, vivo: Boolean) {
+        val a = latidos[id] ?: return
+        if (vivo) {
+            if (!a.isStarted) a.start() else if (a.isPaused) a.resume()
+        } else if (a.isStarted && !a.isPaused) {
+            a.pause()
+            findViewById<View>(id)?.apply { alpha = 0.45f; scaleX = 1f; scaleY = 1f }
+        }
     }
 
     private fun iniciarAnimacionesInicio() {
@@ -995,7 +1046,7 @@ class MainActivity : AppCompatActivity() {
             scaleX.repeatCount = ValueAnimator.INFINITE
             scaleY.repeatCount = ValueAnimator.INFINITE
             alpha.repeatCount = ValueAnimator.INFINITE
-            set.start()
+            latidos[R.id.panico_anillo_pulso] = set
         }
 
         // 2. DETECTOR: Las 5 barras se animan en desorden de forma autónoma en VistaIconoDetector
@@ -1014,7 +1065,7 @@ class MainActivity : AppCompatActivity() {
             scaleX.repeatCount = ValueAnimator.INFINITE
             scaleY.repeatCount = ValueAnimator.INFINITE
             alpha.repeatCount = ValueAnimator.INFINITE
-            set.start()
+            latidos[R.id.img_tool_malla] = set
         }
 
         // 4. BUSCAR: solo la lupa palpitando (heartbeat pulse)
@@ -1029,7 +1080,7 @@ class MainActivity : AppCompatActivity() {
             scaleY.repeatMode = ValueAnimator.REVERSE
             scaleX.repeatCount = ValueAnimator.INFINITE
             scaleY.repeatCount = ValueAnimator.INFINITE
-            set.start()
+            latidos[R.id.img_tool_buscar] = set
         }
 
         // 5. BALIZA radio wave pulse
@@ -1046,7 +1097,7 @@ class MainActivity : AppCompatActivity() {
             alpha.repeatCount = ValueAnimator.INFINITE
             scaleX.repeatCount = ValueAnimator.INFINITE
             scaleY.repeatCount = ValueAnimator.INFINITE
-            set.start()
+            latidos[R.id.img_tool_baliza] = set
         }
     }
 
@@ -1088,19 +1139,12 @@ class MainActivity : AppCompatActivity() {
             scaleY.repeatMode = ValueAnimator.REVERSE
             scaleX.repeatCount = ValueAnimator.INFINITE
             scaleY.repeatCount = ValueAnimator.INFINITE
-            set.start()
+            latidos[R.id.panico_circulo_db] = set
         }
-        // Saltos bars animation (sr-hop)
-        listOf(R.id.hop_bar_1 to 0L, R.id.hop_bar_2 to 350L, R.id.hop_bar_3 to 700L).forEach { (id, delay) ->
-            findViewById<View>(id)?.let { bar ->
-                val alpha = ObjectAnimator.ofFloat(bar, "alpha", 0.3f, 1.0f)
-                alpha.duration = 800
-                alpha.startDelay = delay
-                alpha.repeatMode = ValueAnimator.REVERSE
-                alpha.repeatCount = ValueAnimator.INFINITE
-                alpha.start()
-            }
-        }
+        /* Las barras de salto tenían aquí un parpadeo infinito que peleaba
+           con `pintarPanicoActivo`, que es quien las pone verdes o grises
+           según los saltos que se hayan oído de verdad. Ganaba la animación:
+           parpadeaban las cuatro hubiera eco o no. */
     }
 
     private fun montarDetector() {
@@ -1927,9 +1971,18 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<TextView>(R.id.chip_tool_interfono)?.let {
             val ocupado = ServicioSos.interfonoOcupado
-            it.text = if (ocupado) "CANAL ACTIVO" else "LISTO"
-            it.setTextColor(if (ocupado) android.graphics.Color.parseColor("#E53035") else android.graphics.Color.parseColor("#90CA50"))
+            it.text = if (ocupado) "CANAL ABIERTO" else "CERRADO"
+            it.setTextColor(getColor(if (ocupado) R.color.rd else R.color.dim))
         }
+
+        /* Y aquí se decide qué se mueve. Cada icono late solo mientras la cosa
+           que representa esté midiendo o emitiendo; parado, se queda quieto y
+           a media opacidad, que es la diferencia entre «esto está en marcha» y
+           «esto está ahí». */
+        latido(R.id.panico_anillo_pulso, ServicioSos.armado || alarma)
+        latido(R.id.img_tool_malla, ServicioSos.mallaEscuchando)
+        latido(R.id.img_tool_buscar, ServicioSos.buscando)
+        latido(R.id.img_tool_baliza, ServicioSos.radioEmitiendo)
 
     }
 
@@ -2340,8 +2393,6 @@ class MainActivity : AppCompatActivity() {
         // ── Paneles: solo el seleccionado es visible ─────────────
         findViewById<View>(R.id.eco_panel)?.visibility =
             if (sondaTab == 0) View.VISIBLE else View.GONE
-        findViewById<View>(R.id.sonar_sonda)?.visibility =
-            if (sondaTab == 0) View.GONE else View.GONE  // reservado, no se usa con tabs
         findViewById<View>(R.id.pulso_mov)?.visibility =
             if (sondaTab == 1) View.VISIBLE else View.GONE
         findViewById<View>(R.id.pulso_resp)?.visibility =
@@ -2355,6 +2406,23 @@ class MainActivity : AppCompatActivity() {
         (findViewById<View>(R.id.pulso_mov) as? VistaPulso)?.activo = movOn
         (findViewById<View>(R.id.pulso_resp) as? VistaPulso)?.apply { activo = respOn; lento = true }
         (findViewById<View>(R.id.graf_barrido) as? VistaBarrido)?.activo = barOn
+
+        /* ── La lectura de la herramienta ──────────────────────────
+           Las cuatro salidas existían en el servicio y no las leía nadie: se
+           pulsaba SONDEAR, el motor medía y la respuesta se perdía. Cada
+           pestaña enseña la suya, con su rótulo y con lo que esa herramienta
+           NO puede decir — que es lo que evita cavar donde no es. */
+        val (rotulo, nota, salida) = when (sondaTab) {
+            0 -> Triple(R.string.sonda_rot_eco, R.string.sonda_nota_eco, ServicioSos.ecoSalida)
+            1 -> Triple(R.string.sonda_rot_doppler, R.string.sonda_nota_doppler, ServicioSos.dopplerSalida)
+            2 -> Triple(R.string.sonda_rot_respira, R.string.sonda_nota_respira, ServicioSos.respiraSalida)
+            else -> Triple(R.string.sonda_rot_barrido, R.string.sonda_nota_barrido, ServicioSos.barridoSalida)
+        }
+        findViewById<TextView>(R.id.sonda_rotulo)?.setText(rotulo)
+        findViewById<TextView>(R.id.sonda_nota)?.text =
+            androidx.core.text.HtmlCompat.fromHtml(getString(nota), 0)
+        findViewById<TextView>(R.id.sonda_lectura)?.text =
+            if (salida.isBlank() || salida == "—") getString(R.string.sonda_sin_medir) else salida
 
         // ── Botón Sondear / Detener y Feedback Visual en Vivo ─────
         val estaCorriendo = when (sondaTab) {
@@ -2383,13 +2451,17 @@ class MainActivity : AppCompatActivity() {
             if (estaCorriendo) {
                 container?.setBackgroundResource(R.drawable.chip_rd_outline)
                 chipSub?.text = "EMITIENDO"
-                chipSub?.setTextColor(android.graphics.Color.parseColor("#E53035"))
+                chipSub?.setTextColor(getColor(R.color.rd))
                 dot?.visibility = View.VISIBLE
             } else {
                 dot?.visibility = View.GONE
                 container?.setBackgroundResource(R.drawable.chip_ambar)
-                chipSub?.text = "SIN CALIBRAR"
-                chipSub?.setTextColor(android.graphics.Color.parseColor("#F0A02A"))
+                /* «SIN CALIBRAR» es verdad y hay que decirlo, pero solo de la
+                   respiración: es la única de las cuatro cuyo umbral está
+                   contra señal sintética. Las otras tres, paradas, están
+                   paradas. */
+                chipSub?.text = if (sondaTab == 2) "SIN CALIBRAR" else "PARADA"
+                chipSub?.setTextColor(getColor(if (sondaTab == 2) R.color.ambar else R.color.dim))
             }
         }
     }
