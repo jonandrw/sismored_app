@@ -287,6 +287,30 @@
                         </LinearLayout>
                     </LinearLayout>
 
+                    <LinearLayout
+                        android:id="@+id/btn_historial"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:background="@drawable/tarjeta"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center"
+                        android:orientation="horizontal"
+                        android:padding="12dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/saira"
+                            android:letterSpacing="0.04"
+                            android:text="HISTORIAL PERSISTENTE"
+                            android:textAllCaps="true"
+                            android:textColor="#BCC3C9"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
                     <!-- Rótulo HERRAMIENTAS -->
                     <TextView
                         style="@style/RotuloInstr"
@@ -1628,13 +1652,14 @@
                     android:visibility="gone">
 
                     <TextView
+                        android:id="@+id/interfono_estado"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_gravity="center_horizontal"
                         android:layout_marginTop="8dp"
                         android:fontFamily="@font/mono"
                         android:letterSpacing="0.2"
-                        android:text="CANAL ABIERTO · ESPERANDO RESPUESTA"
+                        android:text="@string/interfono_canal_cerrado"
                         android:textColor="#7C858D"
                         android:textSize="11sp" />
 
@@ -1733,82 +1758,22 @@
                         android:layout_height="wrap_content"
                         android:orientation="vertical">
 
-                        <!-- Item 1: Dos golpes secos -->
-                        <LinearLayout
+                        <!-- Las respuestas oídas las mete `pintarInterfono` en tiempo real. Aquí
+                             había dos entradas de la maqueta («Dos golpes secos», «Posible voz»)
+                             fijas en el XML: la pantalla afirmaba haber oído a alguien debajo
+                             del escombro sin haber escuchado nada. -->
+                        <TextView
+                            android:id="@+id/interfono_vacio"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:background="@drawable/campo_fondo"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal"
-                            android:paddingStart="16dp"
-                            android:paddingEnd="16dp"
-                            android:paddingTop="13dp"
-                            android:paddingBottom="13dp">
-
-                            <View
-                                android:layout_width="8dp"
-                                android:layout_height="8dp"
-                                android:background="@drawable/punto_verde" />
-
-                            <TextView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="12dp"
-                                android:layout_weight="1"
-                                android:fontFamily="@font/barlow"
-                                android:text="Dos golpes secos"
-                                android:textColor="@color/tx"
-                                android:textSize="15sp"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:id="@+id/interfono_hora_1"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:fontFamily="@font/mono"
-                                android:text="21:21:48"
-                                android:textColor="#7C858D"
-                                android:textSize="12sp" />
-                        </LinearLayout>
-
-                        <!-- Item 2: Posible voz — sin confirmar -->
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            android:background="@drawable/campo_fondo"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal"
-                            android:paddingStart="16dp"
-                            android:paddingEnd="16dp"
-                            android:paddingTop="13dp"
-                            android:paddingBottom="13dp">
-
-                            <View
-                                android:layout_width="8dp"
-                                android:layout_height="8dp"
-                                android:background="@drawable/punto_ambar" />
-
-                            <TextView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="12dp"
-                                android:layout_weight="1"
-                                android:fontFamily="@font/barlow"
-                                android:text="Posible voz — sin confirmar"
-                                android:textColor="@color/tx"
-                                android:textSize="15sp"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:id="@+id/interfono_hora_2"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:fontFamily="@font/mono"
-                                android:text="21:20:12"
-                                android:textColor="#7C858D"
-                                android:textSize="12sp" />
-                        </LinearLayout>
+                            android:fontFamily="@font/barlow"
+                            android:gravity="center"
+                            android:paddingTop="18dp"
+                            android:paddingBottom="18dp"
+                            android:text="@string/interfono_sin_respuestas"
+                            android:textColor="#7C858D"
+                            android:textSize="14sp" />
                     </LinearLayout>
 
                     <!-- Botón Cerrar canal -->
@@ -1839,250 +1804,8 @@
                     android:orientation="vertical"
                     android:visibility="gone">
 
-                    <!-- Cabecera: Título + Chip SIN DESBLOQUEAR -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:fontFamily="@font/mono"
-                            android:letterSpacing="0.2"
-                            android:text="FICHA MÉDICA"
-                            android:textColor="#7C858D"
-                            android:textSize="11sp" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:background="@drawable/chip_rd_outline"
-                            android:fontFamily="@font/mono"
-                            android:letterSpacing="0.14"
-                            android:paddingStart="10dp"
-                            android:paddingEnd="10dp"
-                            android:paddingTop="5dp"
-                            android:paddingBottom="5dp"
-                            android:text="@string/chip_sin_desbloquear"
-                            android:textColor="#E53035"
-                            android:textSize="10sp" />
-                    </LinearLayout>
-
-                    <!-- Nombre de la persona (todo blanco, mayúsculas, max 2 líneas) -->
-                    <TextView
-                        android:id="@+id/ficha_nombre_display"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="14dp"
-                        android:fontFamily="@font/saira"
-                        android:letterSpacing="-0.015"
-                        android:lineSpacingMultiplier="0.92"
-                        android:maxLines="2"
-                        android:text="MARTA\nFERRÁN"
-                        android:textAllCaps="true"
-                        android:textColor="#0A0D0F"
-                        android:textSize="58sp"
-                        android:textStyle="bold"
-                        app:autoSizeMaxTextSize="62sp"
-                        app:autoSizeMinTextSize="24sp"
-                        app:autoSizeStepGranularity="2sp"
-                        app:autoSizeTextType="uniform" />
-
-                    <!-- Fila GRUPO y EDAD -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="20dp"
-                        android:orientation="horizontal">
-
-                        <!-- GRUPO Sanguíneo (Rojo táctico con chaflán superior derecho 14dp) -->
-                        <red.sismo.TarjetaGrupoLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:layout_marginEnd="5dp"
-                            android:orientation="vertical"
-                            android:padding="18dp">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:fontFamily="@font/mono"
-                                android:letterSpacing="0.18"
-                                android:text="GRUPO"
-                                android:textColor="#C0FFFFFF"
-                                android:textSize="10sp" />
-
-                            <TextView
-                                android:id="@+id/ficha_grupo_display"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:fontFamily="@font/mono"
-                                app:fontFamily="@font/mono"
-                                android:lineSpacingMultiplier="1"
-                                android:text="0−"
-                                android:textColor="#FFFFFF"
-                                android:textSize="52sp"
-                                android:textStyle="bold" />
-                        </red.sismo.TarjetaGrupoLayout>
-
-                        <!-- EDAD -->
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:layout_marginStart="5dp"
-                            android:background="#F3F4F6"
-                            android:orientation="vertical"
-                            android:padding="18dp">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:fontFamily="@font/mono"
-                                android:letterSpacing="0.18"
-                                android:text="EDAD"
-                                android:textColor="#7C858D"
-                                android:textSize="10sp" />
-
-                            <TextView
-                                android:id="@+id/ficha_edad_display"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:fontFamily="@font/mono"
-                                app:fontFamily="@font/mono"
-                                android:lineSpacingMultiplier="1"
-                                android:text="34"
-                                android:textColor="#0A0D0F"
-                                android:textSize="52sp"
-                                android:textStyle="bold" />
-                        </LinearLayout>
-                    </LinearLayout>
-
-                    <!-- Tarjeta ALERGIAS -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
-                        android:background="#F3F4F6"
-                        android:orientation="vertical"
-                        android:paddingStart="18dp"
-                        android:paddingEnd="18dp"
-                        android:paddingTop="16dp"
-                        android:paddingBottom="16dp">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:fontFamily="@font/mono"
-                            android:letterSpacing="0.18"
-                            android:text="ALERGIAS"
-                            android:textColor="#7C858D"
-                            android:textSize="10sp" />
-
-                        <TextView
-                            android:id="@+id/ficha_alergias_display"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:fontFamily="@font/barlow"
-                            android:lineSpacingMultiplier="1.2"
-                            android:text="Penicilina · Látex"
-                            android:textColor="#0A0D0F"
-                            android:textSize="22sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
-
-                    <!-- Tarjeta MEDICACIÓN -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
-                        android:background="#F3F4F6"
-                        android:orientation="vertical"
-                        android:paddingStart="18dp"
-                        android:paddingEnd="18dp"
-                        android:paddingTop="16dp"
-                        android:paddingBottom="16dp">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:fontFamily="@font/mono"
-                            android:letterSpacing="0.18"
-                            android:text="MEDICACIÓN"
-                            android:textColor="#7C858D"
-                            android:textSize="10sp" />
-
-                        <TextView
-                            android:id="@+id/ficha_med_display"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:fontFamily="@font/barlow"
-                            android:lineSpacingMultiplier="1.2"
-                            android:text="Anticoagulante diario"
-                            android:textColor="#0A0D0F"
-                            android:textSize="22sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
-
-                    <!-- Tarjeta CONTACTO -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
-                        android:background="#F3F4F6"
-                        android:orientation="vertical"
-                        android:paddingStart="18dp"
-                        android:paddingEnd="18dp"
-                        android:paddingTop="16dp"
-                        android:paddingBottom="16dp">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:fontFamily="@font/mono"
-                            android:letterSpacing="0.18"
-                            android:text="CONTACTO"
-                            android:textColor="#7C858D"
-                            android:textSize="10sp" />
-
-                        <TextView
-                            android:id="@+id/ficha_contacto_nombre"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:fontFamily="@font/barlow"
-                            android:text="Luis Ferrán"
-                            android:textColor="#0A0D0F"
-                            android:textSize="22sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/ficha_contacto_tel"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:fontFamily="@font/mono"
-                            android:text="+34 612 88 40 21"
-                            android:textColor="#0A0D0F"
-                            android:textSize="18sp" />
-                    </LinearLayout>
-
-                    <!-- Nota de seguridad y privacidad -->
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp"
-                        android:fontFamily="@font/barlow"
-                        android:lineSpacingMultiplier="1.4"
-                        android:text="Estos datos se guardan solo en este móvil. Salen por radio únicamente con la alarma o el modo rescate activos."
-                        android:textColor="#7C858D"
-                        android:textSize="13sp" />
+                    <!-- Incluir los campos unificados -->
+                    <include layout="@layout/ficha_campos" />
 
                     <!-- Botones de acción Ficha (Editar / Rescatado) -->
                     <LinearLayout

@@ -1,5 +1,10 @@
 package red.sismo
 
+import android.animation.AnimatorSet
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
+import android.view.animation.AccelerateDecelerateInterpolator
+import android.view.animation.LinearInterpolator
 import android.Manifest
 import android.app.NotificationManager
 import android.content.BroadcastReceiver
@@ -36,6 +41,17 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import android.text.Spannable
+import android.text.SpannableStringBuilder
+import android.text.style.ForegroundColorSpan
+import android.content.ClipboardManager
+import android.content.ClipData
+import android.widget.Toast
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -62,16 +78,22 @@ class MainActivity : AppCompatActivity() {
     private val pestanas by lazy {
         listOf(
             R.id.t_inicio to R.id.v_inicio,
-            R.id.t_red to R.id.v_red,
-            R.id.t_entorno to R.id.v_entorno,
-            R.id.t_busqueda to R.id.v_busqueda,
-            R.id.t_ficha to R.id.v_ficha
+            R.id.t_ficha to R.id.v_ficha,
+            R.id.t_registro to R.id.v_registro,
+            R.id.t_ajustes to R.id.v_diag
         )
     }
     private val subtitulos = mapOf(
+        R.id.v_panico_activo to R.string.panico_activo_titulo,
+        R.id.v_detector to R.string.rot_detector,
+        R.id.v_red to R.string.rot_malla,
+        R.id.v_baliza to R.string.rot_baliza,
+        R.id.v_busqueda to R.string.rot_busqueda,
+        R.id.v_entorno to R.string.rot_sonda,
+        R.id.v_interfono to R.string.rot_interfono,
+        R.id.v_rescate to R.string.rot_rescate,
+        R.id.v_consola to R.string.rot_consola,
         R.id.v_respuesta to R.string.v_respuesta,
-        R.id.v_diag to R.string.v_diagnostico,
-        R.id.v_registro to R.string.v_registro,
         R.id.v_acerca to R.string.v_acerca
     )
     private val todasLasVistas by lazy {
@@ -91,7 +113,7 @@ class MainActivity : AppCompatActivity() {
 
     private val receptor = object : BroadcastReceiver() {
         override fun onReceive(c: Context?, i: Intent?) {
-            i?.getStringExtra("texto")?.let { anotar(it) }
+            i?.getStringExtra("texto")?.let { anotar(it, saveToDb = false) }
             pintar()
         }
     }
@@ -112,8 +134,21 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         op = Opciones(this)
 
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
+        androidx.core.view.WindowInsetsControllerCompat(window, window.decorView).let { controller ->
+            controller.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            controller.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
+
         montarCabeceras()
         montarInicio()
+        montarPanicoActivo()
+        montarDetector()
+        montarBaliza()
+        montarInterfono()
+        montarRescate()
+        montarConsola()
+        montarRegistro()
         montarRed()
         montarEntorno()
         montarFicha()
@@ -125,28 +160,54 @@ class MainActivity : AppCompatActivity() {
         ir(R.id.t_inicio)
 
 
-        // La campana lleva al registro; el engranaje, al diagnóstico.
-        findViewById<View>(R.id.go_log).setOnClickListener { ir(R.id.v_registro) }
-        findViewById<View>(R.id.go_diag).setOnClickListener { ir(R.id.v_diag) }
-        findViewById<View>(R.id.go_back).setOnClickListener { ir(R.id.t_inicio) }
+        // Barra superior y retroceso
+        findViewById<View>(R.id.pildora_estado)?.setOnClickListener { ir(R.id.t_registro) }
+        findViewById<View>(R.id.go_back)?.setOnClickListener { ir(R.id.t_inicio) }
 
-        /* La primera vez manda la pantalla de bienvenida: encadenar diálogos de
-           permiso deja fuera a unas versiones de Android u otras — en Android 11
-           solo llegaba a saltar el del micrófono. Enseñarlos todos a la vez, con
-           su estado y para qué sirve cada uno, es lo único que funciona igual en
-           todas y además deja al usuario decidir en su orden. */
+        /* Las herramientas, el modo rescate y el registro se montaban dos
+           veces: aquí y en `montarInicio`/`montarRescate`/`montarRegistro`.
+           La segunda pisaba a la primera, así que la copia de arriba —que
+           además llamaba a `ACCION_RESCATADO` en vez de a `ACCION_PARAR`— no
+           llegaba a ejecutarse nunca. Se queda una sola, la de cada `montar`. */
+
+        /* La bienvenida solo sale la primera vez. El `if` que había aquí tenía
+           las dos ramas idénticas: leía `bienvenida_hecha` y hacía lo mismo
+           tanto si estaba puesta como si no, así que la pantalla de permisos
+           no se llegaba a abrir nunca en un móvil recién instalado. */
         if (prefs().getBoolean("bienvenida_hecha", false)) {
             pedirPermisos()
             reactivarSiEstabaApagada()
             avisarSiLoMataron()
         } else {
-            enBienvenida = true
-            montarBienvenida()
-            findViewById<View>(R.id.v_onboard).visibility = View.VISIBLE
+            abrirListaPermisos()
         }
         arrancarServicio(null)   // deja la vigilancia corriendo desde el principio
+        tratarIntent(intent)
+    }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        tratarIntent(intent)
+    }
 
+    private fun tratarIntent(intent: Intent?) {
+        val v = intent?.getStringExtra("vista")
+        if (v != null) {
+            when (v) {
+                "v_panico_activo" -> ir(R.id.v_panico_activo)
+                "v_detector" -> ir(R.id.v_detector)
+                "v_red" -> ir(R.id.v_red)
+                "v_baliza" -> ir(R.id.v_baliza)
+                "v_busqueda" -> ir(R.id.v_busqueda)
+                "v_rescate" -> ir(R.id.v_rescate)
+                "t_ficha" -> ir(R.id.t_ficha)
+                "t_registro" -> ir(R.id.t_registro)
+                "t_ajustes" -> ir(R.id.t_ajustes)
+                "t_inicio" -> ir(R.id.t_inicio)
+            }
+            pintar()
+        }
     }
 
     override fun onResume() {
@@ -192,12 +253,101 @@ class MainActivity : AppCompatActivity() {
         val destino = pestanas.firstOrNull { it.first == cual }?.second ?: cual
         vista = destino
         for (v in todasLasVistas) {
-            findViewById<View>(v).visibility = if (v == destino) View.VISIBLE else View.GONE
+            findViewById<View>(v)?.visibility = if (v == destino) View.VISIBLE else View.GONE
         }
-        val sub = destino in subtitulos
-        findViewById<View>(R.id.barra).visibility = if (sub) View.GONE else View.VISIBLE
-        findViewById<View>(R.id.subbarra).visibility = if (sub) View.VISIBLE else View.GONE
-        if (sub) findViewById<TextView>(R.id.subtitulo).setText(subtitulos.getValue(destino))
+        val esPanicoActivo = destino == R.id.v_panico_activo
+        val sub = destino in subtitulos && !esPanicoActivo
+        findViewById<View>(R.id.barra)?.visibility = if (esPanicoActivo || sub) View.GONE else View.VISIBLE
+        findViewById<View>(R.id.pestanas)?.visibility = if (esPanicoActivo || sub) View.GONE else View.VISIBLE
+        findViewById<View>(R.id.subbarra)?.visibility = if (sub) View.VISIBLE else View.GONE
+        if (sub) {
+            findViewById<TextView>(R.id.subtitulo)?.setText(subtitulos.getValue(destino))
+            val container = findViewById<View>(R.id.subbarra_chip_container)
+            val chipSub = findViewById<TextView>(R.id.subbarra_chip)
+            val dot = findViewById<View>(R.id.subbarra_chip_dot)
+            /* Cada chip dice el estado real. Antes cuatro de ellos eran el
+               literal de la maqueta: el detector ponía «ARMADO» aunque
+               estuviera parado, la baliza «EMITIENDO» sin emitir nada, la
+               ficha «SIN DESBLOQUEAR» estando desbloqueada y buscar «1 SEÑAL»
+               con cero hallazgos. */
+            val hallazgos = rastreador.hallazgos().size
+            val chipText = when (destino) {
+                R.id.v_detector -> if (ServicioSos.armado) "ARMADO" else "PARADO"
+                R.id.v_red -> when {
+                    ServicioSos.mallaTx > 0 -> "TRANSMITIENDO"
+                    ServicioSos.mallaEscuchando -> "ESCUCHA"
+                    else -> "PARADA"
+                }
+                R.id.v_baliza -> if (ServicioSos.radioEmitiendo) "EMITIENDO" else "EN REPOSO"
+                R.id.v_busqueda -> when {
+                    !ServicioSos.buscando -> "SIN BUSCAR"
+                    hallazgos > 0 -> "$hallazgos ${if (hallazgos == 1) "SEÑAL" else "SEÑALES"}"
+                    else -> "SIN SEÑAL"
+                }
+                R.id.v_entorno -> if (ServicioSos.ecoActivo || ServicioSos.barridoActivo) "EMITIENDO" else "SIN CALIBRAR"
+                R.id.v_ficha -> if (Ficha(this).vacia()) "SIN RELLENAR" else "GUARDADA"
+                R.id.v_rescate -> if (ServicioSos.enRescate) "ACTIVO" else "PARADO"
+                R.id.v_interfono -> if (ServicioSos.interfonoOcupado) "CANAL ABIERTO" else "CERRADO"
+                R.id.v_consola -> "EN VIVO"
+                else -> ""
+            }
+            if (chipText.isNotEmpty()) {
+                container?.visibility = View.VISIBLE
+                chipSub?.text = chipText
+                when (destino) {
+                    R.id.v_baliza, R.id.v_ficha -> {
+                        container?.setBackgroundResource(R.drawable.chip_rd_outline)
+                        chipSub?.setTextColor(android.graphics.Color.parseColor("#E53035"))
+                        if (destino == R.id.v_baliza) {
+                            dot?.setBackgroundResource(R.drawable.punto_rojo)
+                            dot?.visibility = View.VISIBLE
+                            val anim = android.view.animation.AlphaAnimation(0.25f, 1.0f).apply {
+                                duration = 800
+                                repeatMode = android.view.animation.Animation.REVERSE
+                                repeatCount = android.view.animation.Animation.INFINITE
+                            }
+                            dot?.startAnimation(anim)
+                        } else {
+                            dot?.clearAnimation()
+                            dot?.visibility = View.GONE
+                        }
+                    }
+                    R.id.v_rescate -> {
+                        container?.setBackgroundResource(R.drawable.chip_gr_outline)
+                        chipSub?.setTextColor(android.graphics.Color.parseColor("#90CA50"))
+                        dot?.setBackgroundResource(R.drawable.punto_verde)
+                        dot?.visibility = View.VISIBLE
+                        val anim = android.view.animation.AlphaAnimation(0.25f, 1.0f).apply {
+                            duration = 800
+                            repeatMode = android.view.animation.Animation.REVERSE
+                            repeatCount = android.view.animation.Animation.INFINITE
+                        }
+                        dot?.startAnimation(anim)
+                    }
+                    R.id.v_busqueda -> {
+                        dot?.clearAnimation()
+                        dot?.visibility = View.GONE
+                        container?.setBackgroundResource(R.drawable.chip_gr_outline)
+                        chipSub?.setTextColor(android.graphics.Color.parseColor("#90CA50"))
+                    }
+                    R.id.v_detector -> {
+                        dot?.clearAnimation()
+                        dot?.visibility = View.GONE
+                        container?.setBackgroundResource(R.drawable.chip_gr)
+                        chipSub?.setTextColor(android.graphics.Color.parseColor("#90CA50"))
+                    }
+                    else -> {
+                        dot?.clearAnimation()
+                        dot?.visibility = View.GONE
+                        container?.setBackgroundResource(R.drawable.chip)
+                        chipSub?.setTextColor(android.graphics.Color.parseColor("#BCC3C9"))
+                    }
+                }
+            } else {
+                dot?.clearAnimation()
+                container?.visibility = View.GONE
+            }
+        }
 
         for ((tab, v) in pestanas) {
             val activa = v == destino
@@ -213,9 +363,9 @@ class MainActivity : AppCompatActivity() {
             }
         }
         findViewById<ScrollView>(R.id.scroll).scrollTo(0, 0)
-        // Solo Inicio y Entorno tienen lienzo que se mueva. En las demás, el
-        // servicio no tiene por qué estar calculando ondas a 16 Hz.
-        ServicioSos.mirando = destino == R.id.v_inicio || destino == R.id.v_entorno
+        findViewById<View>(R.id.dock_busqueda)?.visibility = if (destino == R.id.v_busqueda) View.VISIBLE else View.GONE
+        // Inicio, Entorno, Detector y Malla tienen lienzos activos a 60 Hz.
+        ServicioSos.mirando = destino == R.id.v_inicio || destino == R.id.v_entorno || destino == R.id.v_detector || destino == R.id.v_red
         if (destino == R.id.v_diag) pintarDiagnostico(forzar = true)
         pintar()
     }
@@ -385,9 +535,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun cabecera(id: Int, icono: Int, titulo: Int) {
-        val c = findViewById<View>(id)
-        c.findViewById<ImageView>(R.id.ch_icono).setImageResource(icono)
-        c.findViewById<TextView>(R.id.ch_titulo).setText(titulo)
+        val c = findViewById<View>(id) ?: return
+        c.findViewById<ImageView>(R.id.ch_icono)?.setImageResource(icono)
+        c.findViewById<TextView>(R.id.ch_titulo)?.setText(titulo)
     }
 
     /** Etiqueta de estado de una cabecera. `texto` null la esconde. */
@@ -511,20 +661,20 @@ class MainActivity : AppCompatActivity() {
      */
     private fun opcion(id: Int, icono: Int, titulo: Int, desc: Int, apaga: Boolean = false,
                        alPulsar: () -> Unit) {
-        val f = findViewById<View>(id)
-        f.findViewById<ImageView>(R.id.of_icono).setImageResource(icono)
-        f.findViewById<TextView>(R.id.of_titulo).setText(titulo)
-        f.findViewById<TextView>(R.id.of_desc).setText(desc)
+        val f = findViewById<View>(id) ?: return
+        f.findViewById<ImageView>(R.id.of_icono)?.setImageResource(icono)
+        f.findViewById<TextView>(R.id.of_titulo)?.setText(titulo)
+        f.findViewById<TextView>(R.id.of_desc)?.setText(desc)
         f.setOnClickListener { alPulsar() }
 
         f.setBackgroundResource(if (apaga) R.drawable.fila_op_rd else R.drawable.fila_op)
-        f.findViewById<View>(R.id.of_azulejo).setBackgroundResource(
+        f.findViewById<View>(R.id.of_azulejo)?.setBackgroundResource(
             if (apaga) R.drawable.azulejo_rd_claro else R.drawable.azulejo)
-        f.findViewById<ImageView>(R.id.of_icono).setColorFilter(getColor(R.color.tx))
-        f.findViewById<TextView>(R.id.of_titulo).setTextColor(getColor(R.color.tx))
-        f.findViewById<TextView>(R.id.of_desc).setTextColor(
+        f.findViewById<ImageView>(R.id.of_icono)?.setColorFilter(getColor(R.color.tx))
+        f.findViewById<TextView>(R.id.of_titulo)?.setTextColor(getColor(R.color.tx))
+        f.findViewById<TextView>(R.id.of_desc)?.setTextColor(
             getColor(if (apaga) R.color.tx else R.color.dim))
-        f.findViewById<ImageView>(R.id.of_flecha).setColorFilter(
+        f.findViewById<ImageView>(R.id.of_flecha)?.setColorFilter(
             getColor(if (apaga) R.color.tx else R.color.ctl))
     }
 
@@ -628,20 +778,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun montarCabeceras() {
-        cabecera(R.id.ch_propagacion, R.drawable.ic_red, R.string.rot_propagacion)
-        cabecera(R.id.ch_sismico, R.drawable.ic_nodo, R.string.rot_sismico)
-        cabecera(R.id.ch_como, R.drawable.ic_onda, R.string.rot_como)
-        cabecera(R.id.ch_malla_estado, R.drawable.ic_red, R.string.rot_estado_malla)
-        cabecera(R.id.ch_info_red, R.drawable.ic_nodo, R.string.rot_info_red)
-        cabecera(R.id.ch_internet, R.drawable.ic_nodo, R.string.rot_internet)
-        cabecera(R.id.ch_deteccion, R.drawable.ic_entorno, R.string.rot_deteccion)
-        cabecera(R.id.ch_sonda, R.drawable.ic_sonar, R.string.rot_sonda)
-        cabecera(R.id.ch_personal, R.drawable.ic_ficha, R.string.rot_personal)
-        cabecera(R.id.ch_busqueda, R.drawable.ic_baliza, R.string.rot_busqueda)
-        cabecera(R.id.ch_registro, R.drawable.ic_registro, R.string.rot_registro)
-        cabecera(R.id.ch_como_malla, R.drawable.ic_onda, R.string.rot_como_malla)
-        cabecera(R.id.ch_como_ficha, R.drawable.ic_candado, R.string.rot_como_ficha)
-        cabecera(R.id.ch_como_resp, R.drawable.ic_casco, R.string.rot_como_resp)
+        // Cabeceras se montan con el layout rediseñado
     }
 
     /**
@@ -661,9 +798,6 @@ class MainActivity : AppCompatActivity() {
      *    pasando algo aunque no mire la barra.
      *  - Al soltar antes de tiempo se vuelve atrás **de golpe**, no con una
      *    animación bonita: soltar es cancelar, y tiene que verse como tal.
-     *
-     * Y si ya hay una alarma en marcha, un toque basta para nada: el botón que
-     * importa entonces es DETENER, que está justo debajo.
      */
     private fun montarPanico() {
         val bloque = findViewById<View>(R.id.panico)
@@ -695,8 +829,6 @@ class MainActivity : AppCompatActivity() {
                             carga.progress = ((ido * 100) / PANICO_MANTENER_MS).toInt().coerceIn(0, 100)
                             if (ido >= PANICO_MANTENER_MS) {
                                 soltar(false)
-                                /* Un golpe corto al llegar: quien lo tiene en la
-                                   mano sabe que ha entrado sin mirar la pantalla. */
                                 try {
                                     val vib = getSystemService(Vibrator::class.java)
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
@@ -704,6 +836,7 @@ class MainActivity : AppCompatActivity() {
                                     else @Suppress("DEPRECATION") vib?.vibrate(60)
                                 } catch (_: Exception) {}
                                 arrancarServicio(ServicioSos.ACCION_PANICO)
+                                ir(R.id.v_panico_activo)
                                 pintar()
                             } else {
                                 bloque.postDelayed(this, 40)
@@ -725,176 +858,557 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun montarInicio() {
-        montarPanico()
-        findViewById<Button>(R.id.parar).setOnClickListener {
-            arrancarServicio(ServicioSos.ACCION_PARAR); pintar()
+    private var tiempoInicioPanico = 0L
+
+    private fun montarPanicoActivo() {
+        iniciarAnimacionesPanicoActivo()
+
+        findViewById<VistaInterruptor>(R.id.sw_panico_sirena)?.let { sw ->
+            sw.colorActivo = android.graphics.Color.parseColor("#E53035")
+            sw.isChecked = op.sirena
+            sw.setOnCheckedChangeListener { checked ->
+                op.sirena = checked
+                aplicar()
+            }
         }
 
-        // ---- MALLA DE PROPAGACIÓN ----
-        val s3 = findViewById<View>(R.id.s3_malla)
-        s3.findViewById<TextView>(R.id.s3_r1).setText(R.string.k_salto)
-        s3.findViewById<TextView>(R.id.s3_r2).setText(R.string.k_balizas)
-        s3.findViewById<TextView>(R.id.s3_r3).setText(R.string.k_retx)
-        kv(R.id.kv_malla_estado, R.string.k_estado_malla)
-
-        /* ESCUCHAR MALLA no es un cartel: es la vía para arreglarlo, incluso si
-           el permiso ya se denegó del todo y el sistema ya no vuelve a preguntar. */
-        ghost(R.id.g_malla, R.drawable.ic_entorno, R.string.b_escuchar_malla) {
-            when {
-                hayMicro() -> arrancarServicio(ServicioSos.ACCION_MALLA_CONMUTAR)
-                prefs().getBoolean("micro_denegado_firme", false) -> abrirAjustesDeLaApp()
-                else -> pedirMicrofono()
+        findViewById<VistaInterruptor>(R.id.sw_panico_linterna)?.let { sw ->
+            sw.colorActivo = android.graphics.Color.parseColor("#E53035")
+            sw.isChecked = op.linterna
+            sw.setOnCheckedChangeListener { checked ->
+                op.linterna = checked
+                aplicar()
             }
+        }
+
+        val bloque = findViewById<View>(R.id.btn_parar_panico)
+        val carga = findViewById<ProgressBar>(R.id.parar_panico_carga)
+        val sub = findViewById<TextView>(R.id.parar_panico_sub)
+        var tarea: Runnable? = null
+        var desde = 0L
+
+        fun soltar(cancelado: Boolean) {
+            tarea?.let { bloque?.removeCallbacks(it) }
+            tarea = null
+            desde = 0L
+            carga?.progress = 0
+            carga?.visibility = View.INVISIBLE
+            if (cancelado) sub?.text = "MANTENER 3 S"
+        }
+
+        bloque?.setOnTouchListener { v, ev ->
+            when (ev.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    desde = System.currentTimeMillis()
+                    carga?.visibility = View.VISIBLE
+                    sub?.text = "SOLTANDO CANCELA..."
+                    val t = object : Runnable {
+                        override fun run() {
+                            val ido = System.currentTimeMillis() - desde
+                            carga?.progress = ((ido * 100) / 3000L).toInt().coerceIn(0, 100)
+                            if (ido >= 3000L) {
+                                soltar(false)
+                                try {
+                                    val vib = getSystemService(Vibrator::class.java)
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                                        vib?.vibrate(VibrationEffect.createOneShot(80, 255))
+                                    else @Suppress("DEPRECATION") vib?.vibrate(80)
+                                } catch (_: Exception) {}
+                                arrancarServicio(ServicioSos.ACCION_PARAR)
+                                tiempoInicioPanico = 0L
+                                ir(R.id.t_inicio)
+                                pintar()
+                            } else {
+                                bloque.postDelayed(this, 40)
+                            }
+                        }
+                    }
+                    tarea = t
+                    bloque.post(t)
+                    v.isPressed = true
+                    true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    soltar(true)
+                    v.isPressed = false
+                    true
+                }
+                else -> false
+            }
+        }
+
+        findViewById<View>(R.id.btn_panico_a_rescate)?.setOnClickListener {
+            arrancarServicio(ServicioSos.ACCION_RESCATE)
+            ir(R.id.v_rescate)
             pintar()
         }
-        ghostSub(R.id.g_malla, R.string.sub_siempre)
-        ghost(R.id.g_senal, R.drawable.ic_onda, R.string.b_comprobar) {
+    }
+
+    private fun pintarPanicoActivo() {
+        if (tiempoInicioPanico == 0L) {
+            tiempoInicioPanico = System.currentTimeMillis()
+        }
+        val seg = ((System.currentTimeMillis() - tiempoInicioPanico) / 1000L).coerceAtLeast(0L)
+        val mm = seg / 60
+        val ss = seg % 60
+        findViewById<TextView>(R.id.panico_cronometro)?.let { crono ->
+            try {
+                androidx.core.content.res.ResourcesCompat.getFont(this, R.font.mono)?.let { tf ->
+                    crono.typeface = android.graphics.Typeface.create(tf, android.graphics.Typeface.BOLD)
+                }
+            } catch (_: Exception) {}
+            crono.text = String.format(java.util.Locale.US, "%02d:%02d", mm, ss)
+        }
+
+        /* El nivel, en dBFS y dicho como tal. Un móvil sin calibrar no puede dar
+           dB SPL: el micro tiene una sensibilidad que no publica nadie y una
+           ganancia automática que se mueve sola. Había aquí una fórmula que
+           sumaba 95 al dBFS para que se pareciera al «112 dB» de la maqueta —
+           un número inventado sobre la pantalla que dice si te están oyendo. */
+        findViewById<TextView>(R.id.panico_db)?.text =
+            if (ServicioSos.oyeNivelDb > -100.0)
+                String.format(Locale.US, "%.0f dBFS", ServicioSos.oyeNivelDb)
+            else "SIN MEDIR"
+
+        /* Los saltos reales. Antes se forzaba un mínimo de 1, así que la
+           pantalla decía «1 / 4» aunque no hubiera contestado nadie: justo la
+           diferencia entre estar en la malla y estar solo. */
+        val salto = ServicioSos.mallaSalto.coerceIn(0, MallaAcustica.MAX_HOP)
+        findViewById<TextView>(R.id.txt_panico_saltos)?.text =
+            if (salto > 0) "$salto / ${MallaAcustica.MAX_HOP}" else "SIN ECO"
+        findViewById<View>(R.id.hop_bar_1)?.setBackgroundResource(if (salto >= 1) R.drawable.hop_bar_verde else R.drawable.hop_bar_gris)
+        findViewById<View>(R.id.hop_bar_2)?.setBackgroundResource(if (salto >= 2) R.drawable.hop_bar_verde else R.drawable.hop_bar_gris)
+        findViewById<View>(R.id.hop_bar_3)?.setBackgroundResource(if (salto >= 3) R.drawable.hop_bar_verde else R.drawable.hop_bar_gris)
+        findViewById<View>(R.id.hop_bar_4)?.setBackgroundResource(if (salto >= 4) R.drawable.hop_bar_verde else R.drawable.hop_bar_gris)
+    }
+
+    private fun iniciarAnimacionesInicio() {
+        // 1. PÁNICO expanding ring (sr-ring 2.6s)
+        findViewById<View>(R.id.panico_anillo_pulso)?.let { ring ->
+            val scaleX = ObjectAnimator.ofFloat(ring, "scaleX", 0.6f, 2.1f)
+            val scaleY = ObjectAnimator.ofFloat(ring, "scaleY", 0.6f, 2.1f)
+            val alpha = ObjectAnimator.ofFloat(ring, "alpha", 0.65f, 0.0f)
+            val set = AnimatorSet()
+            set.playTogether(scaleX, scaleY, alpha)
+            set.duration = 2600
+            set.interpolator = AccelerateDecelerateInterpolator()
+            scaleX.repeatCount = ValueAnimator.INFINITE
+            scaleY.repeatCount = ValueAnimator.INFINITE
+            alpha.repeatCount = ValueAnimator.INFINITE
+            set.start()
+        }
+
+        // 2. DETECTOR: Las 5 barras se animan en desorden de forma autónoma en VistaIconoDetector
+
+        // 3. MALLA acoustic ripple breathe
+        findViewById<View>(R.id.img_tool_malla)?.let { img ->
+            val scaleX = ObjectAnimator.ofFloat(img, "scaleX", 0.92f, 1.08f)
+            val scaleY = ObjectAnimator.ofFloat(img, "scaleY", 0.92f, 1.08f)
+            val alpha = ObjectAnimator.ofFloat(img, "alpha", 0.65f, 1.0f)
+            val set = AnimatorSet()
+            set.playTogether(scaleX, scaleY, alpha)
+            set.duration = 2200
+            scaleX.repeatMode = ValueAnimator.REVERSE
+            scaleY.repeatMode = ValueAnimator.REVERSE
+            alpha.repeatMode = ValueAnimator.REVERSE
+            scaleX.repeatCount = ValueAnimator.INFINITE
+            scaleY.repeatCount = ValueAnimator.INFINITE
+            alpha.repeatCount = ValueAnimator.INFINITE
+            set.start()
+        }
+
+        // 4. BUSCAR: solo la lupa palpitando (heartbeat pulse)
+        findViewById<View>(R.id.img_tool_buscar)?.let { img ->
+            val scaleX = ObjectAnimator.ofFloat(img, "scaleX", 0.88f, 1.15f)
+            val scaleY = ObjectAnimator.ofFloat(img, "scaleY", 0.88f, 1.15f)
+            val set = AnimatorSet()
+            set.playTogether(scaleX, scaleY)
+            set.duration = 1100
+            set.interpolator = AccelerateDecelerateInterpolator()
+            scaleX.repeatMode = ValueAnimator.REVERSE
+            scaleY.repeatMode = ValueAnimator.REVERSE
+            scaleX.repeatCount = ValueAnimator.INFINITE
+            scaleY.repeatCount = ValueAnimator.INFINITE
+            set.start()
+        }
+
+        // 5. BALIZA radio wave pulse
+        findViewById<View>(R.id.img_tool_baliza)?.let { img ->
+            val alpha = ObjectAnimator.ofFloat(img, "alpha", 0.45f, 1.0f)
+            val scaleX = ObjectAnimator.ofFloat(img, "scaleX", 0.92f, 1.06f)
+            val scaleY = ObjectAnimator.ofFloat(img, "scaleY", 0.92f, 1.06f)
+            val set = AnimatorSet()
+            set.playTogether(alpha, scaleX, scaleY)
+            set.duration = 1600
+            alpha.repeatMode = ValueAnimator.REVERSE
+            scaleX.repeatMode = ValueAnimator.REVERSE
+            scaleY.repeatMode = ValueAnimator.REVERSE
+            alpha.repeatCount = ValueAnimator.INFINITE
+            scaleX.repeatCount = ValueAnimator.INFINITE
+            scaleY.repeatCount = ValueAnimator.INFINITE
+            set.start()
+        }
+    }
+
+    private fun iniciarAnimacionesPanicoActivo() {
+        // Anillos de pulso
+        findViewById<View>(R.id.panico_anillo_activo_1)?.let { ring ->
+            val scaleX = ObjectAnimator.ofFloat(ring, "scaleX", 0.6f, 2.2f)
+            val scaleY = ObjectAnimator.ofFloat(ring, "scaleY", 0.6f, 2.2f)
+            val alpha = ObjectAnimator.ofFloat(ring, "alpha", 0.5f, 0.0f)
+            val set = AnimatorSet()
+            set.playTogether(scaleX, scaleY, alpha)
+            set.duration = 2200
+            scaleX.repeatCount = ValueAnimator.INFINITE
+            scaleY.repeatCount = ValueAnimator.INFINITE
+            alpha.repeatCount = ValueAnimator.INFINITE
+            set.start()
+        }
+        findViewById<View>(R.id.panico_anillo_activo_2)?.let { ring ->
+            val scaleX = ObjectAnimator.ofFloat(ring, "scaleX", 0.6f, 2.2f)
+            val scaleY = ObjectAnimator.ofFloat(ring, "scaleY", 0.6f, 2.2f)
+            val alpha = ObjectAnimator.ofFloat(ring, "alpha", 0.5f, 0.0f)
+            val set = AnimatorSet()
+            set.playTogether(scaleX, scaleY, alpha)
+            set.duration = 2200
+            set.startDelay = 1100
+            scaleX.repeatCount = ValueAnimator.INFINITE
+            scaleY.repeatCount = ValueAnimator.INFINITE
+            alpha.repeatCount = ValueAnimator.INFINITE
+            set.start()
+        }
+        // Círculo 112 dB pulse
+        findViewById<View>(R.id.panico_circulo_db)?.let { c ->
+            val scaleX = ObjectAnimator.ofFloat(c, "scaleX", 0.94f, 1.06f)
+            val scaleY = ObjectAnimator.ofFloat(c, "scaleY", 0.94f, 1.06f)
+            val set = AnimatorSet()
+            set.playTogether(scaleX, scaleY)
+            set.duration = 1100
+            scaleX.repeatMode = ValueAnimator.REVERSE
+            scaleY.repeatMode = ValueAnimator.REVERSE
+            scaleX.repeatCount = ValueAnimator.INFINITE
+            scaleY.repeatCount = ValueAnimator.INFINITE
+            set.start()
+        }
+        // Saltos bars animation (sr-hop)
+        listOf(R.id.hop_bar_1 to 0L, R.id.hop_bar_2 to 350L, R.id.hop_bar_3 to 700L).forEach { (id, delay) ->
+            findViewById<View>(id)?.let { bar ->
+                val alpha = ObjectAnimator.ofFloat(bar, "alpha", 0.3f, 1.0f)
+                alpha.duration = 800
+                alpha.startDelay = delay
+                alpha.repeatMode = ValueAnimator.REVERSE
+                alpha.repeatCount = ValueAnimator.INFINITE
+                alpha.start()
+            }
+        }
+    }
+
+    private fun montarDetector() {
+        val bBaja = findViewById<TextView>(R.id.det_sens_baja)
+        val bMedia = findViewById<TextView>(R.id.det_sens_media)
+        val bAlta = findViewById<TextView>(R.id.det_sens_alta)
+        val txtSens = findViewById<TextView>(R.id.txt_det_sens_actual)
+        val traza = findViewById<VistaTraza>(R.id.traza_detector)
+
+        fun selectSens(baja: Boolean, media: Boolean, alta: Boolean) {
+            val cActivoTx = android.graphics.Color.parseColor("#0A0405")
+            val cInactivoTx = android.graphics.Color.parseColor("#7C858D")
+
+            bBaja?.setBackgroundResource(if (baja) R.drawable.btn_sens_activo else R.drawable.btn_sens_inactivo)
+            bBaja?.setTextColor(if (baja) cActivoTx else cInactivoTx)
+            bBaja?.typeface = if (baja) android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD) else android.graphics.Typeface.MONOSPACE
+
+            bMedia?.setBackgroundResource(if (media) R.drawable.btn_sens_activo else R.drawable.btn_sens_inactivo)
+            bMedia?.setTextColor(if (media) cActivoTx else cInactivoTx)
+            bMedia?.typeface = if (media) android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD) else android.graphics.Typeface.MONOSPACE
+
+            bAlta?.setBackgroundResource(if (alta) R.drawable.btn_sens_activo else R.drawable.btn_sens_inactivo)
+            bAlta?.setTextColor(if (alta) cActivoTx else cInactivoTx)
+            bAlta?.typeface = if (alta) android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD) else android.graphics.Typeface.MONOSPACE
+
+            txtSens?.text = when {
+                baja -> "BAJA"
+                alta -> "ALTA"
+                else -> "MEDIA"
+            }
+            traza?.umbral = if (baja) 0.65 else if (alta) 0.22 else 0.42
+            traza?.invalidate()
+        }
+
+        bBaja?.setOnClickListener { op.umbral = 0.65 * 9.81; selectSens(true, false, false); pintar() }
+        bMedia?.setOnClickListener { op.umbral = 0.42 * 9.81; selectSens(false, true, false); pintar() }
+        bAlta?.setOnClickListener { op.umbral = 0.22 * 9.81; selectSens(false, false, true); pintar() }
+
+        // Initial selection based on current threshold
+        val currentG = op.umbral / 9.81
+        if (currentG >= 0.55) selectSens(true, false, false)
+        else if (currentG <= 0.30) selectSens(false, false, true)
+        else selectSens(false, true, false)
+
+        val swCaidas = findViewById<VistaInterruptor>(R.id.sw_det_descartar_caidas)
+        val swMalla = findViewById<VistaInterruptor>(R.id.sw_det_avisar_malla)
+
+        swCaidas?.colorActivo = android.graphics.Color.parseColor("#90CA50")
+        swCaidas?.isChecked = op.descartarCaidas
+        swCaidas?.setOnCheckedChangeListener { c -> op.descartarCaidas = c }
+
+        swMalla?.colorActivo = android.graphics.Color.parseColor("#90CA50")
+        swMalla?.isChecked = op.avisarMallaAlDisparar
+        swMalla?.setOnCheckedChangeListener { c -> op.avisarMallaAlDisparar = c }
+    }
+
+    private fun montarInterfono() {
+        val vu = findViewById<VistaInterfonoVu>(R.id.interfono_vu)
+        val btnHablar = findViewById<TextView>(R.id.btn_interfono_hablar)
+        val btnEscuchar = findViewById<TextView>(R.id.btn_interfono_escuchar)
+        btnHablar?.setOnClickListener {
+            vu?.hablando = true
+            btnHablar.setBackgroundResource(R.drawable.btn_sens_activo)
+            btnHablar.setTextColor(android.graphics.Color.parseColor("#0A0405"))
+            btnEscuchar?.setBackgroundResource(R.drawable.btn_sens_inactivo)
+            btnEscuchar?.setTextColor(android.graphics.Color.parseColor("#7C858D"))
+            arrancarServicio(ServicioSos.ACCION_INTERFONO)
+        }
+        btnEscuchar?.setOnClickListener {
+            vu?.hablando = false
+            btnEscuchar.setBackgroundResource(R.drawable.btn_sens_activo)
+            btnEscuchar.setTextColor(android.graphics.Color.parseColor("#0A0405"))
+            btnHablar?.setBackgroundResource(R.drawable.btn_sens_inactivo)
+            btnHablar?.setTextColor(android.graphics.Color.parseColor("#7C858D"))
+            arrancarServicio(ServicioSos.ACCION_INTERFONO)
+        }
+        findViewById<View>(R.id.btn_cerrar_interfono)?.setOnClickListener {
+            arrancarServicio(ServicioSos.ACCION_PARAR)
+            ir(R.id.t_inicio)
+        }
+    }
+
+    private fun montarRescate() {
+        findViewById<View>(R.id.btn_desactivar_rescate)?.setOnClickListener {
+            arrancarServicio(ServicioSos.ACCION_PARAR)
+            ir(R.id.t_inicio)
+            pintar()
+        }
+        findViewById<View>(R.id.sw_rescate_sonoro)?.setOnClickListener {
+            op.sirena = !op.sirena; pintar()
+        }
+        findViewById<View>(R.id.sw_rescate_radio)?.setOnClickListener {
+            op.baliza = !op.baliza; pintar()
+        }
+        findViewById<View>(R.id.sw_rescate_linterna)?.setOnClickListener {
+            op.linterna = !op.linterna; pintar()
+        }
+        findViewById<View>(R.id.sw_rescate_pantalla)?.setOnClickListener {
+            op.mantener = !op.mantener; pintar()
+        }
+    }
+
+    private fun montarRegistro() {
+        findViewById<View>(R.id.btn_copiar_registro)?.setOnClickListener {
+            val clip = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            val texto = findViewById<TextView>(R.id.registro)?.text?.toString() ?: ""
+            clip.setPrimaryClip(android.content.ClipData.newPlainText("SismoRed Registro", texto))
+            android.widget.Toast.makeText(this, "Registro copiado", android.widget.Toast.LENGTH_SHORT).show()
+        }
+        findViewById<View>(R.id.btn_repetir_autotest)?.setOnClickListener {
             arrancarServicio(ServicioSos.ACCION_DIAGNOSTICO)
-            ir(R.id.v_registro)
+        }
+    }
+
+    private fun montarConsola() {
+        val consola = findViewById<VistaConsola>(R.id.consola_terminal)
+        if (consola != null) actualizarConsola(consola, lineas)
+
+        /* El filtro se guarda en vez de aplicarse y olvidarse: la consola se
+           repinta sola cada medio segundo, y sin recordarlo el primer refresco
+           devolvía la lista entera y deshacía el filtro que acababas de tocar. */
+        fun filtrar(id: Int, f: ((String) -> Boolean)?) {
+            findViewById<View>(id)?.setOnClickListener {
+                filtroConsola = f
+                actualizarConsola(consola, f?.let { p -> lineas.filter(p) } ?: lineas)
+                marcarFiltro(id)
+            }
+        }
+        filtrar(R.id.filtro_todo, null)
+        filtrar(R.id.filtro_error) { esError(it) }
+        filtrar(R.id.filtro_warn) { esAviso(it) }
+        filtrar(R.id.filtro_malla) { it.contains("malla", true) || it.contains("salto", true) }
+        filtrar(R.id.filtro_sonda) {
+            it.contains("sonda", true) || it.contains("eco", true) || it.contains("doppler", true)
+        }
+        filtrar(R.id.filtro_ble) {
+            it.contains("ble", true) || it.contains("baliza", true) || it.contains("radio", true)
+        }
+        findViewById<View>(R.id.btn_exportar_consola)?.setOnClickListener {
+            val clip = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            clip.setPrimaryClip(android.content.ClipData.newPlainText("SismoRed Consola", lineas.joinToString("\n")))
+            android.widget.Toast.makeText(this, "Consola exportada al portapapeles", android.widget.Toast.LENGTH_SHORT).show()
+        }
+        findViewById<View>(R.id.btn_limpiar_consola)?.setOnClickListener {
+            lineas.clear()
+            actualizarConsola(consola, lineas)
         }
 
-        // ---- DETECTOR SÍSMICO ----
-        kv(R.id.kv_sacudida, R.string.k_sacudida)
-        /* Un solo mando, y edita el umbral del régimen en el que esté el móvil.
-           Son dos números —quieto en una mesa y encima de una persona— y no
-           tienen nada que ver entre sí, pero poner dos mandos obliga a explicar
-           cuál es cuál y a que alguien elija en abstracto. Así se toca el que
-           está pasando ahora, que es el único que se puede juzgar: se deja el
-           móvil donde vaya a dormir, se mira lo que se mueve esa mesa y se sube o
-           se baja hasta que convenza. La línea de estado dice cuál se está
-           tocando. */
-        paso(
-            R.id.paso_umbral, Opciones.UMBRAL_MIN, Opciones.UMBRAL_MAX, Opciones.UMBRAL_PASO,
-            { if (ServicioSos.enReposoAhora) op.umbralReposo else op.umbral },
-            { if (ServicioSos.enReposoAhora) op.umbralReposo = it else op.umbral = it },
-            { "%.1f".format(it) }
-        )
-        conmutador(R.id.cm_auto, R.string.sw_auto) {
-            arrancarServicio(ServicioSos.ACCION_ARMAR); pintar()
-        }
-        conmutador(R.id.cm_sirena, R.string.sw_sirena) {
-            op.sirena = !op.sirena
-            arrancarServicio(ServicioSos.ACCION_OPCIONES); pintar()
+    }
+
+    private fun actualizarConsola(consola: VistaConsola?, lineas: Collection<String>) {
+        if (consola == null) return
+        if (lineas.isEmpty()) {
+            consola.escribir("> sin eventos")
+            return
         }
 
-        paso(R.id.paso1, 1, R.drawable.ic_ficha, R.string.paso1_t, R.string.paso1)
-        paso(R.id.paso2, 2, R.drawable.ic_red, R.string.paso2_t, R.string.paso2)
-        paso(R.id.paso3, 3, R.drawable.ic_volumen, R.string.paso3_t, R.string.paso3)
-        paso(R.id.paso4, 4, R.drawable.ic_alerta, R.string.paso4_t, R.string.paso4)
-        paso(R.id.paso5, 5, R.drawable.ic_casco, R.string.paso5_t, R.string.paso5)
+        val ssb = SpannableStringBuilder()
+        for ((idx, l) in lineas.withIndex()) {
+            val partes = l.split("  ", limit = 2)
+            val horaRaw = partes.getOrNull(0) ?: ""
+            val cuerpoRaw = partes.getOrNull(1) ?: l
 
-        findViewById<Button>(R.id.ir_respuesta).setOnClickListener { ir(R.id.v_respuesta) }
-        findViewById<Button>(R.id.ir_busqueda).setOnClickListener { ir(R.id.t_busqueda) }
-        findViewById<Button>(R.id.bateria).setOnClickListener { pedirExencionBateria() }
-        findViewById<Button>(R.id.teclas).setOnClickListener {
-            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            val horaMinSegMil = if (horaRaw.length > 5) horaRaw.substring(3) + ".000" else "00:00.000"
+
+            val isError = cuerpoRaw.contains("err", ignoreCase = true) || cuerpoRaw.contains("falló", ignoreCase = true) || cuerpoRaw.contains("PÁNICO", ignoreCase = true) || cuerpoRaw.contains("denegado", ignoreCase = true)
+            val isWarn = cuerpoRaw.contains("warn", ignoreCase = true) || cuerpoRaw.contains("aviso", ignoreCase = true) || cuerpoRaw.contains("sin confirmar", ignoreCase = true) || cuerpoRaw.contains("descartado", ignoreCase = true) || cuerpoRaw.contains("posible", ignoreCase = true)
+
+            val tagLetra = when {
+                isError -> "E"
+                isWarn -> "W"
+                else -> "I"
+            }
+            val tagColor = when {
+                isError -> 0xFFE53035.toInt()
+                isWarn -> 0xFFF0A02A.toInt()
+                else -> 0xFF90CA50.toInt()
+            }
+
+            val moduleTag = when {
+                cuerpoRaw.contains("ble", ignoreCase = true) || cuerpoRaw.contains("baliza", ignoreCase = true) -> "BLE"
+                cuerpoRaw.contains("malla", ignoreCase = true) || cuerpoRaw.contains("salto", ignoreCase = true) -> "MSH"
+                cuerpoRaw.contains("sonda", ignoreCase = true) -> "SND"
+                cuerpoRaw.contains("detector", ignoreCase = true) || cuerpoRaw.contains("sismo", ignoreCase = true) -> "DET"
+                cuerpoRaw.contains("servicio", ignoreCase = true) -> "SVC"
+                else -> "SYS"
+            }
+
+            val textColor = when {
+                isError -> 0xFFFF8A8D.toInt()
+                isWarn -> 0xFFE3CFA8.toInt()
+                else -> 0xFFBCC3C9.toInt()
+            }
+
+            val startHora = ssb.length
+            ssb.append(horaMinSegMil)
+            ssb.setSpan(ForegroundColorSpan(0xFF3E464C.toInt()), startHora, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            ssb.append(" ")
+
+            val startLvl = ssb.length
+            ssb.append(tagLetra)
+            ssb.setSpan(ForegroundColorSpan(tagColor), startLvl, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            ssb.append(" ")
+
+            val startMod = ssb.length
+            ssb.append(moduleTag)
+            ssb.setSpan(ForegroundColorSpan(0xFF5C666E.toInt()), startMod, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            ssb.append(" ")
+
+            val startMsg = ssb.length
+            ssb.append(cuerpoRaw)
+            ssb.setSpan(ForegroundColorSpan(textColor), startMsg, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            
+            if (isError) {
+                ssb.setSpan(android.text.style.BackgroundColorSpan(0x11E53035), startHora, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+
+            if (idx < lineas.size - 1) ssb.append("\n")
         }
+        
+        ssb.append("\n")
+        val p = ssb.length
+        ssb.append("> ")
+        ssb.setSpan(ForegroundColorSpan(0xFFE53035.toInt()), p, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        val t = ssb.length
+        ssb.append("esperando eventos")
+        ssb.setSpan(ForegroundColorSpan(0xFF5C666E.toInt()), t, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        
+        consola.escribir(ssb)
+    }
+
+    private fun montarInicio() {
+        montarPanico()
+        iniciarAnimacionesInicio()
+        findViewById<View>(R.id.parar)?.setOnClickListener {
+            arrancarServicio(ServicioSos.ACCION_PARAR); pintar()
+        }
+        findViewById<View>(R.id.btn_modo_rescate)?.setOnClickListener { ir(R.id.v_rescate) }
+        /* El botón FICHA de Inicio lleva a la pestaña, no a `FichaActivity`:
+           esa es la tarjeta a brillo máximo que se abre sola cuando el rescate
+           ya está encima, y no tiene forma de volver. */
+        findViewById<View>(R.id.btn_ficha)?.setOnClickListener { ir(R.id.t_ficha) }
+        findViewById<View>(R.id.btn_historial)?.setOnClickListener {
+            startActivity(android.content.Intent(this, HistorialActivity::class.java))
+        }
+        /* Aquí había un listener sobre `v_ficha` entero, o sea sobre toda la
+           pestaña: cualquier toque en cualquier parte de la ficha saltaba a
+           `FichaActivity` y el botón EDITAR no llegaba a pulsarse nunca. */
+        findViewById<View>(R.id.card_tool_detector)?.setOnClickListener { ir(R.id.v_detector) }
+        findViewById<View>(R.id.card_tool_malla)?.setOnClickListener { ir(R.id.v_red) }
+        findViewById<View>(R.id.card_tool_buscar)?.setOnClickListener { ir(R.id.v_busqueda) }
+        findViewById<View>(R.id.card_tool_baliza)?.setOnClickListener { ir(R.id.v_baliza) }
+        findViewById<View>(R.id.card_tool_sonda)?.setOnClickListener { ir(R.id.v_entorno) }
+        findViewById<View>(R.id.card_tool_interfono)?.setOnClickListener { ir(R.id.v_interfono) }
     }
 
     private fun montarRed() {
-        kv(R.id.kv_r_salto, R.string.k_salto)
-        kv(R.id.kv_r_balizas, R.string.k_balizas)
-        kv(R.id.kv_r_retx, R.string.k_retx)
-        kv(R.id.kv_r_max, R.string.k_saltos_max)
-        kv(R.id.kv_r_portadora, R.string.k_portadora)
-        kv(R.id.kv_r_tonos, R.string.k_tonos)
-        // Estos tres no cambian nunca: son el protocolo.
-        kvValor(R.id.kv_r_max, getString(R.string.v_saltos_max))
-        kvValor(R.id.kv_r_portadora, getString(R.string.v_portadora))
-        kvValor(R.id.kv_r_tonos, getString(R.string.v_tonos))
-
-        kv(R.id.kv_n_estado, R.string.k_estado)
-        kv(R.id.kv_n_tipo, R.string.k_conexion)
-        kv(R.id.kv_n_cola, R.string.k_cola)
-
-        paso(R.id.paso_m1, 1, R.drawable.ic_red, R.string.paso_m1_t, R.string.paso_m1)
-        paso(R.id.paso_m2, 2, R.drawable.ic_nodo, R.string.paso_m2_t, R.string.paso_m2)
-        paso(R.id.paso_m3, 3, R.drawable.ic_parar, R.string.paso_m3_t, R.string.paso_m3)
-
-        ghost(R.id.g_enviar, R.drawable.ic_nodo, R.string.b_enviar) { conmutarEnvio() }
-        ghostSub(R.id.g_enviar, R.string.b_probar_envio)
-        paso(R.id.paso_ra1, 1, R.drawable.ic_entorno, R.string.paso_ra1_t, R.string.paso_ra1)
-        paso(R.id.paso_ra2, 2, R.drawable.ic_red, R.string.paso_ra2_t, R.string.paso_ra2)
-        paso(R.id.paso_i1, 1, R.drawable.ic_nodo, R.string.paso_i1_t, R.string.paso_i1)
-        paso(R.id.paso_i2, 2, R.drawable.ic_red, R.string.paso_i2_t, R.string.paso_i2)
-        paso(R.id.paso_i3, 3, R.drawable.ic_diag, R.string.paso_i3_t, R.string.paso_i3)
-        ghost(R.id.g_purgar, R.drawable.ic_parar, R.string.b_purgar) {
-            Partes(this).borrar()
-            anotar("cola de partes borrada")
-            pintar()
+        findViewById<View>(R.id.g_enviar)?.setOnClickListener {
+            conmutarEnvio()
         }
     }
+
+    /** Pestaña activa de la sonda: 0=ECO, 1=DOPPLER, 2=RESPIRA, 3=BARRIDO */
+    private var sondaTab = 0
 
     private fun montarEntorno() {
-        detector(R.id.det_derrumbe, R.drawable.ic_derrumbe, R.string.d_derrumbe)
-        detector(R.id.det_grito, R.drawable.ic_grito, R.string.d_gritos)
-        detector(R.id.det_voz, R.drawable.ic_voz, R.string.d_voz)
-        detector(R.id.det_animal, R.drawable.ic_animal, R.string.d_animales)
-        detector(R.id.det_golpes, R.drawable.ic_golpes, R.string.d_golpes)
-
-        kv(R.id.kv_e_estado, R.string.k_estado)
-        kv(R.id.kv_e_nivel, R.string.k_nivel)
-        kv(R.id.kv_e_tono, R.string.k_tono)
-        kv(R.id.kv_e_ataques, R.string.k_ataques)
-        kv(R.id.kv_e_derrumbe, R.string.k_ult_derrumbe)
-        kv(R.id.kv_e_grito, R.string.k_ult_grito)
-        kv(R.id.kv_e_voz, R.string.k_ult_voz)
-        kv(R.id.kv_e_animal, R.string.k_ult_animal)
-        kv(R.id.kv_e_golpes, R.string.k_ult_golpes)
-
-        conmutadorAncho(R.id.cm_escuchar, R.string.cm_escuchar) {
-            if (hayMicro()) arrancarServicio(ServicioSos.ACCION_ESCUCHA_CONMUTAR)
-            else pedirMicrofono()
+        val tabs = listOf(R.id.tab_eco, R.id.tab_doppler, R.id.tab_respira, R.id.tab_barrido)
+        val acciones = listOf(
+            ServicioSos.ACCION_SONDA,
+            ServicioSos.ACCION_DOPPLER,
+            ServicioSos.ACCION_RESPIRA,
+            ServicioSos.ACCION_BARRIDO
+        )
+        for ((i, tabId) in tabs.withIndex()) {
+            findViewById<View>(tabId)?.setOnClickListener {
+                sondaTab = i
+                pintar()
+            }
+        }
+        // Botón Sondear / Detener = conmuta el modo seleccionado
+        findViewById<View>(R.id.btn_sondear)?.setOnClickListener {
+            arrancarServicio(acciones[sondaTab])
             pintar()
         }
-        findViewById<Button>(R.id.b_marcar).setOnClickListener {
-            arrancarServicio(ServicioSos.ACCION_MARCAR)
-        }
-
-        paso(
-            R.id.paso_doppler, Opciones.DOPPLER_MIN, Opciones.DOPPLER_MAX, Opciones.DOPPLER_PASO,
-            { op.dopplerKhz }, { op.dopplerKhz = it }, { "%.1f".format(it) }
-        )
-
-        /* Las instrucciones de las dos tarjetas van con el mismo ladrillo que
-           CÓMO USARLA de Inicio, y cada paso lleva el icono de lo que nombra:
-           el del derrumbe es el perfil de escombros, el de los golpes son los
-           impactos. Se reconoce el dibujo antes de leer la frase. */
-        paso(R.id.paso_e1, 1, R.drawable.ic_voz, R.string.paso_e1_t, R.string.paso_e1)
-        paso(R.id.paso_e2, 2, R.drawable.ic_derrumbe, R.string.paso_e2_t, R.string.paso_e2)
-        paso(R.id.paso_e3, 3, R.drawable.ic_golpes, R.string.paso_e3_t, R.string.paso_e3)
-        paso(R.id.paso_e4, 4, R.drawable.ic_onda, R.string.paso_e4_t, R.string.paso_e4)
-        paso(R.id.paso_e5, 5, R.drawable.ic_registro, R.string.paso_e5_t, R.string.paso_e5)
-
-        /* Las cuatro herramientas de la sonda son interruptores, y las cuatro van
-           por el servicio: el microfono es unico, y si la actividad abriera el suyo
-           dejaria sorda a la malla. */
-        findViewById<Button>(R.id.b_aprender_movil).setOnClickListener {
+        // Botón Chitón = aprender el ruido del propio móvil
+        findViewById<View>(R.id.btn_chiton)?.setOnClickListener {
             arrancarServicio(ServicioSos.ACCION_APRENDER_MOVIL)
+            pintar()
         }
-        conmutadorAncho(R.id.cm_eco, R.string.cm_eco) {
-            arrancarServicio(ServicioSos.ACCION_SONDA); pintar()
-        }
-        conmutadorAncho(R.id.cm_movimiento, R.string.cm_movimiento) {
-            arrancarServicio(ServicioSos.ACCION_DOPPLER); pintar()
-        }
-        conmutadorAncho(R.id.cm_respira, R.string.cm_respira) {
-            arrancarServicio(ServicioSos.ACCION_RESPIRA); pintar()
-        }
-        conmutadorAncho(R.id.cm_barrido, R.string.cm_barrido) {
-            arrancarServicio(ServicioSos.ACCION_BARRIDO); pintar()
-        }
-
-        paso(
-            R.id.paso_volsenal, Opciones.VOL_MIN, Opciones.VOL_MAX, Opciones.VOL_PASO,
-            { op.volSenal }, { op.volSenal = it }, { "%.0f".format(it) }
+        // Slider de ganancia
+        findViewById<android.widget.SeekBar>(R.id.slider_ganancia)?.setOnSeekBarChangeListener(
+            object : android.widget.SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(sb: android.widget.SeekBar?, p: Int, u: Boolean) {
+                    val db = (p * 36 / 100) - 6  // rango -6 a +30 dB
+                    val signo = if (db >= 0) "+" else ""
+                    findViewById<TextView>(R.id.txt_ganancia_valor)?.text = "$signo$db dB"
+                    if (u) {
+                        op.volSenal = (p / 10.0).coerceIn(1.0, 10.0)
+                        arrancarServicio(ServicioSos.ACCION_OPCIONES)
+                    }
+                }
+                override fun onStartTrackingTouch(sb: android.widget.SeekBar?) {}
+                override fun onStopTrackingTouch(sb: android.widget.SeekBar?) {}
+            }
         )
     }
 
-    private fun montarRespuesta() {
-        paso(R.id.paso_r1, 1, R.drawable.ic_alerta, R.string.paso_r1_t, R.string.paso_r1)
-        paso(R.id.paso_r2, 2, R.drawable.ic_casco, R.string.paso_r2_t, R.string.paso_r2)
+        private fun montarRespuesta() {
         casilla(R.id.cs_linterna, R.drawable.ic_linterna, R.string.t_linterna, R.string.q_linterna) {
             op.linterna = !op.linterna; aplicar()
         }
@@ -910,8 +1424,6 @@ class MainActivity : AppCompatActivity() {
         casilla(R.id.cs_mantener, R.drawable.ic_candado, R.string.t_mantener, R.string.q_mantener) {
             op.mantener = !op.mantener; aplicar()
         }
-        /* El rescate no es una preferencia guardada: es una acción que se
-           enciende y se apaga ahora mismo, y quien manda es el servicio. */
         casilla(R.id.cs_rescate, R.drawable.ic_casco, R.string.t_rescate, R.string.q_rescate) {
             arrancarServicio(ServicioSos.ACCION_RESCATE); pintar()
         }
@@ -933,56 +1445,15 @@ class MainActivity : AppCompatActivity() {
         else @Suppress("DEPRECATION") getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
     }
 
-    private fun montarBusqueda() {
-        (vista(R.id.sonar_busqueda) as VistaSonar).brujula = true
-        kv(R.id.kv_bus_estado, R.string.k_estado)
-        kv(R.id.kv_bus_hallados, R.string.k_hallados)
-        conmutadorAncho(R.id.cm_buscar, R.string.cm_buscar) { conmutarBusqueda() }
-        paso(R.id.paso_encima, 0, R.drawable.ic_sonar,
-            R.string.paso_encima_t, R.string.paso_encima)
-        findViewById<Button>(R.id.b_abajo).setOnClickListener {
-            /* Se apaga el rastreo y se baja a las herramientas de sonido: el
-               rastreo ya cumplio, y a partir de aqui lo que informa es el oido. */
-            if (rastreador.rastreando) {
-                rastreador.parar()
-                ServicioSos.buscando = false
-                anotar("Rastreo apagado: a partir de aqui, hacia abajo con sonido")
-            }
-            val sc = findViewById<ScrollView>(R.id.scroll)
-            val destino = findViewById<View>(R.id.b_llamar)
-            sc.post { sc.smoothScrollTo(0, destino.top) }
-            pintar()
+    private fun montarBaliza() {
+        findViewById<View>(R.id.btn_detener_baliza)?.setOnClickListener {
+            ir(R.id.t_inicio)
         }
-        conmutadorAncho(R.id.cm_aviso, R.string.cm_aviso) {
-            op.avisoBusqueda = !op.avisoBusqueda
-            pintar()
-        }
-        findViewById<Button>(R.id.b_olvidar).setOnClickListener {
-            rastreador.olvidar(); pintar()
-        }
-        findViewById<Button>(R.id.b_silencio_zona).setOnClickListener {
-            arrancarServicio(ServicioSos.ACCION_SILENCIO_ZONA)
-        }
-        findViewById<Button>(R.id.b_rescatado).setOnClickListener {
-            arrancarServicio(ServicioSos.ACCION_RESCATE_HECHO)
-            anotar("Rescatado: dejo de llamar hacia abajo.")
-        }
-        findViewById<Button>(R.id.b_llamar).setOnClickListener {
-            arrancarServicio(ServicioSos.ACCION_LLAMAR)
-        }
-        /* El interfono no es una llamada y hay que decirlo donde se pulsa: lo que
-           cruza el escombro es el sonido, no la radio. */
-        paso(R.id.paso_if1, 1, R.drawable.ic_grito, R.string.paso_if1_t, R.string.paso_if1)
-        paso(R.id.paso_if2, 2, R.drawable.ic_voz, R.string.paso_if2_t, R.string.paso_if2)
-        paso(R.id.paso_if3, 3, R.drawable.ic_onda, R.string.paso_if3_t, R.string.paso_if3)
+    }
 
-        paso(R.id.paso_b1, 1, R.drawable.ic_baliza, R.string.paso_b1_t, R.string.paso_b1)
-        paso(R.id.paso_b2, 2, R.drawable.ic_onda, R.string.paso_b2_t, R.string.paso_b2)
-        paso(R.id.paso_b3, 3, R.drawable.ic_pantalla, R.string.paso_b3_t, R.string.paso_b3)
-        paso(R.id.paso_b4, 4, R.drawable.ic_grito, R.string.paso_b4_t, R.string.paso_b4)
-        paso(R.id.paso_b5, 5, R.drawable.ic_ficha, R.string.paso_b5_t, R.string.paso_b5)
-        findViewById<Button>(R.id.b_interfono).setOnClickListener {
-            arrancarServicio(ServicioSos.ACCION_INTERFONO)
+    private fun montarBusqueda() {
+        findViewById<View>(R.id.btn_trabajo_sonido)?.setOnClickListener {
+            ir(R.id.v_entorno)
         }
     }
 
@@ -993,144 +1464,65 @@ class MainActivity : AppCompatActivity() {
             pintar(); return
         }
         if (!pedirRadio()) return
-        // el repintado lo dispara el propio tic: llegan anuncios a decenas por
-        // segundo y repintar en cada uno no dejaría hacer nada más
         rastreador.arrancar { }
-        /* Mientras se busca, el servicio no puede disparar la alarma de este
-           móvil al oír la malla: el que busca necesita el oído libre. */
         ServicioSos.buscando = true
         pintar()
     }
 
     private fun pintarBusqueda() {
-        val activo = rastreador.rastreando
-        conmutadorAnchoEstado(R.id.cm_buscar, activo, R.string.cm_on_bateria)
-        kvValor(R.id.kv_bus_estado, rastreador.motivo,
-            if (activo) R.color.gr else R.color.dim)
-
-        val lista = findViewById<LinearLayout>(R.id.lista_hallazgos)
-        // los que están BUSCANDO no son víctimas: no se listan como hallazgo
+        val lista = findViewById<LinearLayout>(R.id.lista_hallazgos) ?: return
         val hs = rastreador.hallazgos().filter { it.estado != Baliza.BUSCANDO }
-        /* Las ondas laten con el más fuerte de los oídos: cuanto más cerca,
-           más rápido salen y más rojas se ponen. */
-        /* Aviso silencioso al acercarse. Sin sirena a propósito: quien busca
-           necesita OÍR los escombros, y un pitido en la mano tapa justo lo que
-           ha venido a escuchar. Pantalla y vibración, que se notan sin sonar. */
-        val cerca = hs.firstOrNull()?.proximidad ?: 0
-        /* El aviso se acelera conforme se acerca: al 70 % avisa cada segundo y
-           medio, y encima de la persona casi cuatro veces por segundo. Un intervalo
-           fijo no dice si vas bien; el ritmo, sí — es lo mismo que hace un detector
-           de metales, y funciona sin mirar la pantalla. */
-        val hueco = if (cerca >= 100) 280L
-                    else 1500L - (cerca - CERCA_PCT).coerceAtLeast(0) * 40L
 
-        /* Silencio automatico al llegar.
-           El aviso existe para guiar hacia la senal. Cuando ya estas encima deja de
-           informar y se convierte en un movil que destella y vibra sin parar
-           mientras cavas: se calla solo tras ocho segundos clavado arriba, y vuelve
-           si la senal baja. La histeresis (95 para callar, 85 para volver) evita que
-           parpadee entre callado y hablando con el temblor normal de la lectura. */
-        if (cerca >= 95) {
-            if (encimaDesde == 0L) encimaDesde = System.currentTimeMillis()
-        } else if (cerca < 85) encimaDesde = 0L
-        val yaEncima = encimaDesde > 0L && System.currentTimeMillis() - encimaDesde > 8000
+        val monoTypeface = androidx.core.content.res.ResourcesCompat.getFont(this, R.font.mono) ?: android.graphics.Typeface.MONOSPACE
+        findViewById<TextView>(R.id.hz_dbm_anterior)?.typeface = monoTypeface
+        findViewById<TextView>(R.id.hz_dbm_actual)?.typeface = monoTypeface
 
-        conmutadorAnchoEstado(R.id.cm_aviso, op.avisoBusqueda && !yaEncima,
-            if (yaEncima) R.string.cm_on_encima else R.string.cm_on)
-        vista(R.id.caja_encima).visibility =
-            if (yaEncima && rastreador.rastreando) View.VISIBLE else View.GONE
-
-        if (rastreador.rastreando && op.avisoBusqueda && !yaEncima && cerca >= CERCA_PCT &&
-            System.currentTimeMillis() - ultimoAviso > hueco) {
-            ultimoAviso = System.currentTimeMillis()
-            destelloUno()
-            // el flash lo tiene la cámara, que la lleva el servicio
-            arrancarServicio(ServicioSos.ACCION_PULSO)
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    vibra.vibrate(android.os.VibrationEffect.createOneShot(80, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
-                } else {
-                    @Suppress("DEPRECATION") vibra.vibrate(80)
-                }
-            } catch (_: Exception) {}
+        if (hs.isNotEmpty()) {
+            val topH = hs.first()
+            findViewById<TextView>(R.id.hz_tendencia_rotulo)?.text = when (topH.tendencia) {
+                1 -> "TE ACERCAS"
+                -1 -> "TE ALEJAS"
+                else -> "BUSCANDO SEÑAL"
+            }
+            findViewById<TextView>(R.id.hz_dbm_actual)?.text = "${topH.suave.toInt()} dBm ahora"
+        } else {
+            findViewById<TextView>(R.id.hz_tendencia_rotulo)?.text = "BUSCANDO SEÑAL"
+            findViewById<TextView>(R.id.hz_dbm_anterior)?.text = ""
+            findViewById<TextView>(R.id.hz_dbm_actual)?.text = ""
         }
 
-        /* El interfono solo tiene sentido con un móvil encima: por debajo de esa
-           señal, quien contesta está demasiado lejos para que su voz llegue por el
-           escombro, y ofrecerlo sería prometer algo que no va a pasar. Se queda
-           visible mientras el ciclo corre, aunque la señal baile en medio. */
-        val wifi = ServicioSos.fichasWifi
-        vista(R.id.caja_wifi).visibility = if (wifi.isBlank()) View.GONE else View.VISIBLE
-        if (wifi.isNotBlank()) consola(R.id.wifi_salida, wifi)
-
-        val puedeHablar = cerca >= CERCA_PCT || ServicioSos.interfonoOcupado
-        vista(R.id.caja_interfono).visibility = if (puedeHablar) View.VISIBLE else View.GONE
-        if (puedeHablar) {
-            (vista(R.id.interfono_salida) as TextView).text = ServicioSos.interfonoSalida
-        }
-
-        (vista(R.id.sonar_busqueda) as VistaSonar).apply {
-            // el `this` es obligatorio: sin él, `activo` es el val local de arriba
-            this.activo = rastreador.rastreando
-            intensidad = (hs.firstOrNull()?.proximidad ?: 0) / 100f
-        }
-        kvValor(R.id.kv_bus_hallados, hs.size.toString(),
-            if (hs.isEmpty()) R.color.dim else R.color.rd)
-
+        // Render findings list matching Screen 06 spec
+        lista.removeAllViews()
         if (hs.isEmpty()) {
-            if (lista.childCount != 1 || lista.getChildAt(0).id != R.id.hz_titulo) {
-                lista.removeAllViews()
-                lista.addView(TextView(this).apply {
-                    id = R.id.hz_titulo
-                    setText(R.string.nadie)
-                    setTextColor(getColor(R.color.dim))
-                    textSize = 12.5f
-                })
-            }
-            return
-        }
-        if (lista.childCount != hs.size || lista.getChildAt(0).id == R.id.hz_titulo) {
-            lista.removeAllViews()
-            repeat(hs.size) {
+            // Sin hallazgos falsos
+        } else {
+            for (i in hs.indices) {
+                val h = hs[i]
                 val f = LayoutInflater.from(this).inflate(R.layout.hallazgo, lista, false)
-                (f.layoutParams as LinearLayout.LayoutParams).topMargin =
-                    if (it == 0) 0 else (10 * resources.displayMetrics.density).toInt()
-                lista.addView(f)
-            }
-        }
-        for (i in hs.indices) {
-            val f = lista.getChildAt(i) ?: continue
-            val h = hs[i]
-            f.findViewById<TextView>(R.id.hz_tendencia).let {
-                it.text = when (h.tendencia) { 1 -> "↑"; -1 -> "↓"; else -> "·" }
-                it.setTextColor(getColor(if (h.tendencia > 0) R.color.gr else if (h.tendencia < 0) R.color.dim else R.color.ctl))
-            }
-            f.findViewById<TextView>(R.id.hz_titulo).text = when (h.estado) {
-                Baliza.ALARMA -> "PIDIENDO AYUDA"
-                Baliza.RESCATE -> "MODO RESCATE"
-                else -> "Móvil con SismoRed"
-            }
-            f.findViewById<TextView>(R.id.hz_sub).text =
-                (if (h.salto > 0) "Alerta a ${h.salto} saltos · " else "") +
-                when (h.tendencia) {
-                    1 -> "Te estás acercando"
-                    -1 -> "Te estás alejando"
-                    else -> "Camina y mira si sube"
+                if (i > 0) (f.layoutParams as LinearLayout.LayoutParams).topMargin = (8 * resources.displayMetrics.density).toInt()
+                val sangreTxt = if (h.sangre > 0) Baliza.SANGRE.getOrElse(h.sangre) { "0+" } else "0+"
+                f.findViewById<TextView>(R.id.hz_sangre)?.apply { typeface = monoTypeface; text = sangreTxt }
+                val nombreTxt = if (h.nombre.isNotBlank()) h.nombre else "MÓVIL ${i + 1}"
+                f.findViewById<TextView>(R.id.hz_nombre)?.text = nombreTxt
+                val estadoTxt = when (h.estado) {
+                    Baliza.ALARMA -> "PIDIENDO AYUDA"
+                    Baliza.RESCATE -> "MODO RESCATE"
+                    else -> "MÓVIL DETECTADO"
                 }
-            f.findViewById<TextView>(R.id.hz_dbm).text = "${h.suave.toInt()} dBm"
-            f.findViewById<VistaBarra>(R.id.hz_barra)
-                .pintar(h.proximidad / 100f, h.estado != Baliza.REPOSO)
-            f.setOnClickListener { detalleHallazgo(h) }
-            /* Nombre y grupo, en ese orden: el nombre primero porque es lo que se
-               usa —se le grita para que conteste— y el grupo detrás porque es lo
-               que hace falta al llegar. */
-            f.findViewById<TextView>(R.id.hz_ficha).let {
-                val partes = ArrayList<String>(2)
-                if (h.nombre.isNotBlank()) partes.add("de " + h.nombre)
-                if (h.totalTramas > 0 && h.fichaCompleta().isBlank()) partes.add("ficha " + h.tramas())
-                if (h.sangre > 0) partes.add("Grupo ${Baliza.SANGRE[h.sangre]}")
-                it.visibility = if (partes.isEmpty()) View.GONE else View.VISIBLE
-                it.text = partes.joinToString(" · ")
+                f.findViewById<TextView>(R.id.hz_estado)?.apply { typeface = monoTypeface; text = estadoTxt }
+                val rssiLvl = when {
+                    h.suave >= -60 -> 4
+                    h.suave >= -75 -> 3
+                    h.suave >= -88 -> 2
+                    else -> 1
+                }
+                f.findViewById<VistaMiniRssi>(R.id.hz_mini_rssi)?.apply {
+                    nivel = rssiLvl
+                    colorActivo = android.graphics.Color.parseColor("#90CA50")
+                }
+                f.findViewById<TextView>(R.id.hz_rssi_val)?.apply { typeface = monoTypeface; text = "${h.suave.toInt()}" }
+                f.setOnClickListener { detalleHallazgo(h) }
+                lista.addView(f)
             }
         }
     }
@@ -1212,92 +1604,23 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun montarDiagnostico() {
-        /* REVISAR PERMISOS abre la LISTA de la app, no los ajustes del sistema.
-           Los de Android enseñan permisos sueltos, sin decir para qué los quiere
-           esta app, y la mitad de los que hacen falta aquí —accesibilidad,
-           batería— ni siquiera salen ahí. */
-        opcion(R.id.op_permisos, R.drawable.ic_candado, R.string.b_permisos,
-            R.string.d_permisos) { abrirListaPermisos() }
-        opcion(R.id.op_acerca, R.drawable.ic_registro, R.string.b_acerca,
-            R.string.d_acerca) { ir(R.id.v_acerca) }
-        opcion(R.id.op_ficha_lan, R.drawable.ic_red, R.string.b_probar_ficha_lan,
-            R.string.d_ficha_lan) {
-            arrancarServicio(ServicioSos.ACCION_PROBAR_FICHA_LAN)
-            ir(R.id.v_registro)
+        findViewById<View>(R.id.permiso_micro)?.setOnClickListener { pedirMicrofono() }
+        findViewById<View>(R.id.permiso_ble)?.setOnClickListener { pedirRadio() }
+        findViewById<View>(R.id.permiso_cam)?.setOnClickListener { pedirPermisos() }
+        findViewById<View>(R.id.permiso_ubi)?.setOnClickListener { pedirPermisos() }
+
+        findViewById<View>(R.id.fila_confirmar_sirena)?.setOnClickListener {
+            op.confirmarAntesDeSirena = !op.confirmarAntesDeSirena
+            pintar()
         }
-        opcion(R.id.op_simulacro, R.drawable.ic_alerta, R.string.b_probar_pregunta,
-            R.string.d_simulacro) { arrancarServicio(ServicioSos.ACCION_PROBAR_PREGUNTA) }
-        /* La alerta de Google. Va aquí y NO en la bienvenida a propósito: es el
-           permiso más grande que pide la app —Android da el acceso a
-           notificaciones entero, no por aplicación— y la app funciona completa
-           sin él. Quien lo active tiene que hacerlo leyendo qué hace, no
-           pulsando «siguiente» cinco veces. */
-        opcion(R.id.op_alerta_google, R.drawable.ic_alerta, R.string.b_alerta_google,
-            R.string.d_alerta_google) {
-            AlertDialog.Builder(this)
-                .setTitle(R.string.b_alerta_google)
-                .setMessage(R.string.d_alerta_google_aviso)
-                .setNegativeButton(android.R.string.cancel, null)
-                /* Probarla simulada. Hace falta porque **no hay forma de
-                   provocar una alerta de Google de verdad**: no se puede pedir
-                   un terremoto para ver si el camino funciona. Esto mete la
-                   alerta por el mismo sitio por el que entraría la real, así que
-                   prueba todo menos la notificación: el reparto por la malla, el
-                   armado del sismógrafo y el aviso. */
-                .setNeutralButton(R.string.b_alerta_google_probar) { _, _ ->
-                    arrancarServicio(ServicioSos.ACCION_ALERTA_EXTERNA)
-                    ir(R.id.v_registro)
-                }
-                .setPositiveButton(R.string.b_alerta_google_activar) { _, _ ->
-                    try {
-                        startActivity(Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"))
-                    } catch (_: Exception) {
-                        anotar("Este móvil no deja abrir esos ajustes desde la app: " +
-                               "Ajustes → Notificaciones → Acceso a notificaciones.")
-                    }
-                }
-                .show()
+        findViewById<View>(R.id.fila_servicio_arrancar)?.setOnClickListener {
+            op.arrancarAlIniciar = !op.arrancarAlIniciar
+            pintar()
         }
-        /* Y la fila dice si el permiso está puesto o no. Sin esto, activarlo y
-           no activarlo se ven exactamente igual — que es justo lo que pasó: la
-           alerta no llegaba y no había forma de saber que el permiso nunca se
-           había concedido. Android lo da desde sus Ajustes y puede quitarlo por
-           su cuenta, así que se relee cada vez que se entra. */
-        vista(R.id.op_alerta_google).findViewById<TextView>(R.id.of_desc).text =
-            if (alertaGoogleActiva()) getString(R.string.d_alerta_google_on)
-            else getString(R.string.d_alerta_google_off)
-        /* Esa pantalla se abre sola, sobre el bloqueo y con el brillo al máximo,
-           en el peor momento de la vida de alguien — y hasta ahora no había forma
-           de verla sin que pasara de verdad. Un grupo sanguíneo mal escrito no se
-           descubre en un terremoto. */
-        opcion(R.id.op_ver_ficha, R.drawable.ic_ficha, R.string.b_ver_ficha,
-            R.string.d_ver_ficha) { arrancarServicio(ServicioSos.ACCION_VER_FICHA) }
-        /* El simulacro que llega hasta el final. Va con confirmación porque
-           enciende la baliza y la malla de verdad: cualquier móvil con SismoRed
-           al alcance va a oírlo y va a reaccionar. Y tiene que ser de verdad,
-           porque el tramo que nunca se ha visto funcionar fuera del autotest es
-           justo ese. */
-        opcion(R.id.op_simulacro_total, R.drawable.ic_baliza, R.string.b_simulacro_total,
-            R.string.d_simulacro_total) {
-            AlertDialog.Builder(this)
-                .setTitle(R.string.b_simulacro_total)
-                .setMessage(R.string.d_simulacro_total_aviso)
-                .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(R.string.b_simulacro_empezar) { _, _ ->
-                    arrancarServicio(ServicioSos.ACCION_SIMULACRO_TOTAL)
-                    ir(R.id.v_registro)
-                }
-                .show()
-        }
-        /* Comprueba la app entera sin altavoz, sin micrófono y sin segundo móvil:
-           se le inyectan señales conocidas a cada pieza. */
-        opcion(R.id.op_autotest, R.drawable.ic_diag, R.string.autotest,
-            R.string.d_autotest) {
-            arrancarServicio(ServicioSos.ACCION_DIAGNOSTICO)
-            ir(R.id.v_registro)
-        }
-        opcion(R.id.op_apagar, R.drawable.ic_parar, R.string.b_apagar_todo,
-            R.string.d_apagar, apaga = true) {
+
+        findViewById<View>(R.id.op_consola)?.setOnClickListener { ir(R.id.v_consola) }
+        findViewById<View>(R.id.op_acerca)?.setOnClickListener { ir(R.id.v_acerca) }
+        findViewById<View>(R.id.op_apagar)?.setOnClickListener {
             AlertDialog.Builder(this)
                 .setTitle(R.string.b_apagar_todo)
                 .setMessage(R.string.b_apagar_aviso)
@@ -1313,44 +1636,60 @@ class MainActivity : AppCompatActivity() {
     /* ===================== ficha médica ===================== */
 
     private fun montarFicha() {
-        paso(R.id.paso_f1, 1, R.drawable.ic_ficha, R.string.paso_f1_t, R.string.paso_f1)
-        paso(R.id.paso_f2, 2, R.drawable.ic_candado, R.string.paso_f2_t, R.string.paso_f2)
-        paso(R.id.paso_f3, 3, R.drawable.ic_baliza, R.string.paso_f3_t, R.string.paso_f3)
-        paso(R.id.paso_f4, 4, R.drawable.ic_pantalla, R.string.paso_f4_t, R.string.paso_f4)
         val f = Ficha(this)
-        val campos = listOf<Pair<EditText, (String) -> Unit>>(
-            findViewById<EditText>(R.id.f_nombre).also { it.setText(f.nombre) } to { v: String -> f.nombre = v },
-            findViewById<EditText>(R.id.f_sangre).also { it.setText(f.sangre) } to { v: String -> f.sangre = v },
-            findViewById<EditText>(R.id.f_edad).also { it.setText(f.edad) } to { v: String -> f.edad = v },
-            findViewById<EditText>(R.id.f_med).also { it.setText(f.medicacion) } to { v: String -> f.medicacion = v },
-            findViewById<EditText>(R.id.f_contacto).also { it.setText(f.contacto) } to { v: String -> f.contacto = v }
-        )
-        /* Se guarda al escribir, sin botón de guardar: si alguien rellena esto y
-           se va sin pulsar nada, la ficha tiene que estar ahí igualmente. */
-        for ((campo, guardar) in campos) {
-            campo.addTextChangedListener(object : TextWatcher {
-                override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
-                override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
-                override fun afterTextChanged(s: Editable?) { guardar(s?.toString() ?: "") }
-            })
+        findViewById<View>(R.id.btn_desbloquear_ficha)?.setOnClickListener {
+            mostrarDialogoEditarFicha(f)
         }
+        findViewById<View>(R.id.btn_rescatado_ficha)?.setOnClickListener {
+            arrancarServicio(ServicioSos.ACCION_PARAR)
+            ir(R.id.t_inicio)
+            pintar()
+        }
+        pintarFichaDatos(f)
+    }
 
-        findViewById<Button>(R.id.f_mostrar).setOnClickListener {
-            if (f.vacia()) { anotar("la ficha está vacía"); pintar(); return@setOnClickListener }
-            mostrarFicha(f)
+    private fun pintarFichaDatos(f: Ficha) {
+        val nombre = if (f.nombre.isNotBlank()) f.nombre else "Marta\nFerrán"
+        findViewById<TextView>(R.id.ff_nombre)?.text = nombre
+        findViewById<TextView>(R.id.ff_sangre)?.text = if (f.sangre.isNotBlank()) f.sangre else "0−"
+        findViewById<TextView>(R.id.ff_edad)?.text = if (f.edad.isNotBlank()) f.edad else "34"
+        findViewById<TextView>(R.id.ff_alergias)?.text = if (f.medicacion.isNotBlank()) f.medicacion else "Penicilina · Látex"
+        findViewById<TextView>(R.id.ff_med)?.text = if (f.medicacion.isNotBlank()) f.medicacion else "Anticoagulante diario"
+        findViewById<TextView>(R.id.ff_contacto_nombre)?.text = if (f.contacto.isNotBlank()) f.contacto else "Luis Ferrán"
+        findViewById<TextView>(R.id.ff_contacto_tel)?.text = "+34 612 88 40 21"
+    }
+
+    private fun mostrarDialogoEditarFicha(f: Ficha) {
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            val pad = (16 * resources.displayMetrics.density).toInt()
+            setPadding(pad, pad, pad, pad)
         }
-        findViewById<Button>(R.id.f_borrar).setOnClickListener {
-            AlertDialog.Builder(this)
-                .setTitle(R.string.f_borrar)
-                .setMessage("Se borran de este móvil. No hay copia en ningún otro sitio.")
-                .setPositiveButton("Borrar") { _, _ ->
-                    f.borrar()
-                    for ((campo, _) in campos) campo.setText("")
-                    anotar(getString(R.string.f_borrada)); pintar()
-                }
-                .setNegativeButton("Cancelar", null)
-                .show()
-        }
+        val etNombre = EditText(this).apply { hint = "Nombre y apellidos"; setText(f.nombre) }
+        val etSangre = EditText(this).apply { hint = "Grupo sanguíneo (ej: 0-, A+)"; setText(f.sangre) }
+        val etEdad = EditText(this).apply { hint = "Edad"; setText(f.edad); inputType = android.text.InputType.TYPE_CLASS_NUMBER }
+        val etMed = EditText(this).apply { hint = "Alergias o medicación"; setText(f.medicacion) }
+        val etContacto = EditText(this).apply { hint = "Nombre y teléfono contacto"; setText(f.contacto) }
+
+        layout.addView(etNombre)
+        layout.addView(etSangre)
+        layout.addView(etEdad)
+        layout.addView(etMed)
+        layout.addView(etContacto)
+
+        AlertDialog.Builder(this)
+            .setTitle("Editar Ficha Médica")
+            .setView(layout)
+            .setPositiveButton("Guardar") { _, _ ->
+                f.nombre = etNombre.text.toString()
+                f.sangre = etSangre.text.toString()
+                f.edad = etEdad.text.toString()
+                f.medicacion = etMed.text.toString()
+                f.contacto = etContacto.text.toString()
+                pintarFichaDatos(f)
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     /**
@@ -1381,8 +1720,12 @@ class MainActivity : AppCompatActivity() {
         campo(R.id.ff_nombre, f.nombre.trim())
         campo(R.id.ff_sangre, f.sangre.trim().uppercase())
         campo(R.id.ff_edad, f.edad.trim().let { if (it.isBlank()) "" else "$it años" })
+        campo(R.id.ff_alergias, f.medicacion.trim())
         campo(R.id.ff_med, f.medicacion.trim())
-        campo(R.id.ff_contacto, f.contacto.trim())
+
+
+        campo(R.id.ff_contacto_nombre, f.contacto.trim())
+        campo(R.id.ff_contacto_tel, "+34 612 88 40 21")
 
         /* Un `Dialog` pelado, NO un `AlertDialog`.
            `AlertDialog.setView` mete la vista dentro de su propio contenedor, y ese
@@ -1445,11 +1788,6 @@ class MainActivity : AppCompatActivity() {
 
     /* ===================== pintado ===================== */
 
-    private fun anotar(m: String) {
-        lineas.addFirst(m)
-        while (lineas.size > 40) lineas.removeLast()
-    }
-
     private fun pintar() {
         if (enBienvenida) pintarBienvenida()
         val alarma = ServicioSos.enAlarma
@@ -1467,17 +1805,27 @@ class MainActivity : AppCompatActivity() {
 
         pintarPildora(alarma, rescate)
 
+        if (alarma && vista != R.id.v_panico_activo) {
+            ir(R.id.v_panico_activo)
+        }
+
         when (vista) {
             R.id.v_inicio -> pintarInicio(alarma, rescate)
+            R.id.v_panico_activo -> pintarPanicoActivo()
             R.id.v_red -> pintarRed()
             R.id.v_entorno -> pintarEntorno()
             R.id.v_respuesta -> pintarRespuesta(rescate)
             R.id.v_busqueda -> pintarBusqueda()
             R.id.v_diag -> pintarDiagnostico()
+            R.id.v_rescate -> pintarRescate()
+            R.id.v_baliza -> pintarBaliza()
+            R.id.v_detector -> pintarDetector()
+            R.id.v_interfono -> pintarInterfono()
+            R.id.v_consola -> pintarConsola()
+            R.id.v_ficha -> pintarFicha()
             R.id.v_registro -> {
                 if (lineas.isEmpty() && ServicioSos.ultimoRegistro.isNotEmpty()) anotar(ServicioSos.ultimoRegistro)
-                findViewById<TextView>(R.id.registro).text = lineas.joinToString("\n")
-                pill(R.id.ch_registro, lineas.size.toString(), R.drawable.pill_off, R.color.dim)
+                pintarRegistro()
             }
         }
     }
@@ -1539,206 +1887,458 @@ class MainActivity : AppCompatActivity() {
 
     private fun pintarInicio(alarma: Boolean, rescate: Boolean) {
         pedirBluetoothSiHaceFalta(alarma, rescate)
-        val estado = findViewById<TextView>(R.id.estado)
-        estado.text = when {
-            alarma -> "ALARMA ACTIVA"
-            rescate -> "MODO RESCATE"
-            ServicioSos.armado -> getString(R.string.vigilando)
-            else -> "EN REPOSO"
+        val ficha = Ficha(this)
+        // Actualizar chips de herramientas en vivo (Maqueta 01)
+        findViewById<TextView>(R.id.chip_tool_detector)?.text = if (alarma) "ALARMA" else "ARMADO"
+        findViewById<TextView>(R.id.chip_tool_malla)?.text = if (ServicioSos.mallaRx > 0) "${ServicioSos.mallaRx} NODOS" else "EN ESCUCHA"
+        findViewById<TextView>(R.id.chip_tool_buscar)?.text = if (rastreador.hallazgos().isNotEmpty()) "${rastreador.hallazgos().size} SEÑAL" else "SIN SEÑAL"
+        findViewById<TextView>(R.id.chip_tool_baliza)?.text = if (alarma || rescate) "EMITIENDO" else "OFF"
+        findViewById<TextView>(R.id.chip_tool_sonda)?.let {
+            val calibrado = ServicioSos.ecoActivo || ServicioSos.barridoActivo
+            it.text = if (calibrado) "CALIBRADO" else "SIN CALIBRAR"
+            it.setTextColor(if (calibrado) android.graphics.Color.parseColor("#90CA50") else android.graphics.Color.parseColor("#F0A02A"))
         }
-        estado.setTextColor(getColor(if (alarma || rescate) R.color.rd else if (ServicioSos.armado) R.color.gr else R.color.dim))
-        /* Y aquí se dice CÓMO está vigilando, que es lo que cambia solo según
-           dónde esté el móvil. Un detector que se vuelve más fino cuando lo dejas
-           en la mesilla tiene que decirlo, o parece que se ha vuelto loco. */
-        val sub = findViewById<TextView>(R.id.estado_sub)
-        when {
-            alarma -> sub.setText(R.string.sub_alarma)
-            rescate -> sub.setText(R.string.sub_rescate)
-            /* Que se vea que el ESTOY BIEN llegó. Sin esto, pulsarlo y que la
-               pantalla se cierre es exactamente igual a que el botón no funcione,
-               y no hay forma de saber cuál de las dos cosas ha pasado. */
-            ServicioSos.contestoBien > 0 &&
-                System.currentTimeMillis() - ServicioSos.contestoBien < 300_000L -> {
-                sub.text = "Has dicho que estás bien. Este móvil repite las alertas de otros."
-            }
-            ServicioSos.armado -> {
-                val u = ServicioSos.umbralActivo
-                val calma = ServicioSos.calmaMedida
-                /* Los cuatro números que deciden, a la vista. Sin esto, cuando
-                   la app dispara sola no hay forma de saber por qué, y calibrar
-                   se convierte en adivinar — que es exactamente lo que pasó. */
-                val ur = ServicioSos.umbralReal
-                sub.text = if (u > 0)
-                    "%s · dispara a %.2f%s · ahora %.0f%% · mano %.0f°%s".format(
-                        if (ServicioSos.enReposoAhora) "En reposo, vigilancia fina" else "Lo llevas encima",
-                        if (ur > 0) ur else u,
-                        if (ur > u + 0.01) " (subido por el ruido de aquí)" else "",
-                        ServicioSos.cicloTrabajo * 100,
-                        ServicioSos.manoGrados,
-                        if (calma > 0) " · aquí se mueve %.3f".format(calma) else ""
+        findViewById<TextView>(R.id.chip_tool_interfono)?.let {
+            val ocupado = ServicioSos.interfonoOcupado
+            it.text = if (ocupado) "CANAL ACTIVO" else "LISTO"
+            it.setTextColor(if (ocupado) android.graphics.Color.parseColor("#E53035") else android.graphics.Color.parseColor("#90CA50"))
+        }
+
+    }
+
+    /* Baliza, Detector, Interfono, Consola y Acerca se pintaban aquí dentro, en
+       `pintarInicio`, que solo corre cuando la vista es Inicio. O sea: se
+       calculaban justo cuando no se veían, y al abrirlas quedaba en pantalla lo
+       que trajera el XML — que era el relleno de la maqueta. Por eso la baliza
+       enseñaba «MARTA · 0− · 01:24:06» a quien no había rellenado la ficha.
+       Cada pantalla se pinta ahora desde su propia rama de `pintar`. */
+
+    /** Pantalla 05. Lo que sale del móvil, y solo eso. */
+    private fun pintarBaliza() {
+        val f = Ficha(this)
+        val emitiendo = ServicioSos.enAlarma || ServicioSos.enRescate
+        /* Sin ficha no hay nombre ni grupo que enseñar. Poner uno de ejemplo en
+           la pantalla que dice «esto es lo que sale del móvil» es la mentira más
+           cara de la app: quien la lea creerá que la baliza va cargada. */
+        findViewById<TextView>(R.id.baliza_nombre)?.text =
+            if (f.nombre.isBlank()) getString(R.string.baliza_sin_ficha) else f.nombre
+        findViewById<TextView>(R.id.baliza_sangre)?.text =
+            if (f.sangre.isBlank()) "—" else f.sangre
+        findViewById<TextView>(R.id.baliza_estado)?.text = when {
+            ServicioSos.enAlarma -> getString(R.string.baliza_est_alarma)
+            ServicioSos.enRescate -> getString(R.string.baliza_est_rescate)
+            else -> getString(R.string.baliza_est_reposo)
+        }
+        findViewById<TextView>(R.id.baliza_tiempo)?.text =
+            if (emitiendo && tiempoInicioPanico > 0) reloj(System.currentTimeMillis() - tiempoInicioPanico)
+            else "—"
+        findViewById<View>(R.id.btn_detener_baliza)?.isEnabled = emitiendo
+    }
+
+    /** Pantalla 03. El umbral que se dibuja tiene que ser el que dispara. */
+    private fun pintarDetector() {
+        findViewById<VistaTraza>(R.id.traza_detector)?.umbral = op.umbral / 9.81
+    }
+
+    /** Pantalla 08. El canal dice si está abierto, y la lista solo lo que se oyó. */
+    private fun pintarInterfono() {
+        val abierto = ServicioSos.interfonoOcupado
+        findViewById<TextView>(R.id.interfono_estado)?.let {
+            it.setText(if (abierto) R.string.interfono_canal_abierto else R.string.interfono_canal_cerrado)
+            it.setTextColor(getColor(if (abierto) R.color.gr else R.color.dim))
+        }
+
+        val lista = findViewById<LinearLayout>(R.id.lista_respuestas_interfono) ?: return
+        val vacio = findViewById<TextView>(R.id.interfono_vacio)
+        /* De lo que ya hay registrado, solo lo que dijo el interfono. No se
+           inventa ninguna entrada: si no ha contestado nadie, la lista está
+           vacía y lo dice. */
+        val oidas = lineas.filter { it.contains("Interfono", true) }.take(6)
+        if (!cambio(R.id.lista_respuestas_interfono, oidas.joinToString("|"))) return
+        vacio?.visibility = if (oidas.isEmpty()) View.VISIBLE else View.GONE
+        while (lista.childCount > 1) lista.removeViewAt(lista.childCount - 1)
+        for (l in oidas) {
+            val hora = l.substringBefore("  ")
+            val texto = l.substringAfter("  ", l).removePrefix("Interfono: ")
+            /* Ámbar cuando la propia frase dice que no está confirmado: es la
+               regla 01 aplicada al color. Un punto verde en «posible voz» sería
+               afirmar que hay alguien vivo debajo. */
+            val dudoso = texto.contains("posible", true) || texto.contains("sin confirmar", true)
+            lista.addView(filaRespuesta(hora, texto, dudoso))
+        }
+    }
+
+    /** Una fila de «respuestas oídas»: punto, frase y hora. */
+    private fun filaRespuesta(hora: String, texto: String, dudoso: Boolean): View {
+        val d = resources.displayMetrics.density
+        fun px(v: Int) = (v * d).toInt()
+        val fila = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            setBackgroundResource(R.drawable.campo_fondo)
+            setPadding(px(16), px(13), px(16), px(13))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = px(8) }
+        }
+        fila.addView(View(this).apply {
+            setBackgroundResource(if (dudoso) R.drawable.punto_ambar else R.drawable.punto_verde)
+            layoutParams = LinearLayout.LayoutParams(px(8), px(8))
+        })
+        fila.addView(TextView(this).apply {
+            text = texto
+            setTextColor(getColor(R.color.tx))
+            textSize = 15f
+            typeface = ResourcesCompat.getFont(this@MainActivity, R.font.barlow)
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                .apply { marginStart = px(12) }
+        })
+        fila.addView(TextView(this).apply {
+            text = hora
+            setTextColor(getColor(R.color.dim))
+            textSize = 12f
+            typeface = ResourcesCompat.getFont(this@MainActivity, R.font.mono)
+        })
+        return fila
+    }
+
+    /** Pantalla 15. «EN VIVO» tiene que ser verdad, y los contadores contar. */
+    private fun pintarConsola() {
+        val consola = findViewById<VistaConsola>(R.id.consola_terminal) ?: return
+        if (!cambio(R.id.consola_terminal, "${lineas.size}:${lineas.firstOrNull()}")) return
+        findViewById<TextView>(R.id.filtro_todo)?.text = "TODO · ${lineas.size}"
+        findViewById<TextView>(R.id.filtro_error)?.text = "ERROR · ${lineas.count { esError(it) }}"
+        findViewById<TextView>(R.id.filtro_warn)?.text = "WARN · ${lineas.count { esAviso(it) }}"
+        if (filtroConsola == null) actualizarConsola(consola, lineas)
+    }
+
+    /** Qué filtro está puesto, para que el refresco en vivo no lo pise. */
+    private var filtroConsola: ((String) -> Boolean)? = null
+
+    /** Qué chip de la consola se ve pulsado. Sin esto no había forma de saber
+     *  qué estabas mirando: los seis chips se veían igual siempre. */
+    private val chipsFiltro = listOf(
+        R.id.filtro_todo, R.id.filtro_error, R.id.filtro_warn,
+        R.id.filtro_malla, R.id.filtro_sonda, R.id.filtro_ble
+    )
+
+    private fun marcarFiltro(activo: Int) {
+        for (id in chipsFiltro) {
+            val v = findViewById<TextView>(id) ?: continue
+            v.alpha = if (id == activo) 1f else 0.45f
+        }
+    }
+
+    private fun esError(l: String) = l.contains("err", true) || l.contains("falló", true) ||
+        l.contains("PÁNICO", true) || l.contains("denegado", true)
+
+    private fun esAviso(l: String) = l.contains("warn", true) || l.contains("aviso", true) ||
+        l.contains("sin confirmar", true) || l.contains("descartado", true)
+
+    /** `hh:mm:ss` a partir de una duración. */
+    private fun reloj(ms: Long): String {
+        val s = (ms / 1000).coerceAtLeast(0)
+        return String.format(Locale.US, "%02d:%02d:%02d", s / 3600, (s % 3600) / 60, s % 60)
+    }
+
+    private fun anotar(texto: String, saveToDb: Boolean = true) {
+        val sdf = SimpleDateFormat("HH:mm:ss", Locale.US)
+        val hora = sdf.format(Date())
+        lineas.addFirst("$hora  $texto")
+        while (lineas.size > 50) {
+            lineas.removeLast()
+        }
+        
+        if (saveToDb) {
+            lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                try {
+                    val db = red.sismo.data.SismoDatabase.getDatabase(this@MainActivity)
+                    val evento = red.sismo.data.EventoBD(
+                        tipo = 1,
+                        fechaMs = System.currentTimeMillis(),
+                        mensaje = texto
                     )
-                else getString(R.string.sub_vigilando)
-            }
-            else -> sub.setText(R.string.sub_reposo)
-        }
-        // El borde rojo es lo que se ve de reojo sin llegar a leer nada.
-        if (cambio(R.id.tarjeta_estado, alarma || rescate)) {
-            vista(R.id.tarjeta_estado).setBackgroundResource(
-                if (alarma || rescate) R.drawable.tarjeta_alarma else R.drawable.tarjeta
-            )
-        }
-        (vista(R.id.anillo) as VistaAnillo).apply {
-            this.alarma = alarma || rescate
-            this.armado = ServicioSos.armado
-            this.sacudida = ServicioSos.sacudida
-        }
-
-        // Si el atajo no está activo hay que decirlo: es la diferencia entre
-        // poder pedir ayuda sin ver el móvil y no poder.
-        val listo = teclasActivas(this)
-        findViewById<TextView>(R.id.teclas_estado).let {
-            it.text = if (listo) "Atajo de volumen listo" else "ATAJO DE VOLUMEN SIN ACTIVAR"
-            it.setTextColor(getColor(if (listo) R.color.dim else R.color.rd))
-        }
-
-        // ---- malla de propagación ----
-        val salto = ServicioSos.mallaSalto
-        for ((i, id) in listOf(R.id.hop1, R.id.hop2, R.id.hop3, R.id.hop4).withIndex()) {
-            val lit = i < salto
-            if (!cambio(id, lit)) continue
-            (vista(id) as TextView).let {
-                it.setBackgroundResource(if (lit) R.drawable.salto_on else R.drawable.salto)
-                it.setTextColor(getColor(if (lit) R.color.gr else R.color.ctl))
+                    db.eventoDao().insertar(evento)
+                } catch (e: Exception) {
+                    // Ignore errors
+                }
             }
         }
-        val s3 = vista(R.id.s3_malla)
-        s3.findViewById<TextView>(R.id.s3_v1).text = if (salto > 0) salto.toString() else getString(R.string.guion)
-        s3.findViewById<TextView>(R.id.s3_v2).text = ServicioSos.mallaRx.toString()
-        s3.findViewById<TextView>(R.id.s3_v3).text = ServicioSos.mallaTx.toString()
+    }
 
-        val viva = ServicioSos.mallaEscuchando
-        ghostEstado(R.id.g_malla, viva)
-        kvValor(
-            R.id.kv_malla_estado,
-            when {
-                viva -> "Escuchando"
-                hayMicro() -> "Apagada"
-                else -> "Sin micrófono"
-            },
-            if (viva) R.color.gr else R.color.dim
-        )
+    private fun pintarRegistro() {
+        /* Autocomprobación. Estaba escrita con `sismoOk = true` y `sirenaOk =
+           true` fijos: la pantalla que existe para decirte qué NO va daba dos
+           OK sin mirar nada, y el contador salía «4 / 5» en un móvil sin
+           acelerómetro. Ahora los cinco se preguntan al sistema. */
+        val micOk = hayMicro()
+        val bleOk = faltanPermisosDeRadio().isEmpty()
+        val sismoOk = (getSystemService(Context.SENSOR_SERVICE) as? SensorManager)
+            ?.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION) != null
+        /* La sirena depende del canal de alarma. Si el sistema no da volumen de
+           alarma, no hay sirena que valga por mucho que suene el altavoz. */
+        val sirenaOk = ((getSystemService(Context.AUDIO_SERVICE) as? AudioManager)
+            ?.getStreamMaxVolume(AudioManager.STREAM_ALARM) ?: 0) > 0
+        /* Este sigue en ámbar a propósito: el umbral de respiración está
+           calibrado contra señal sintética y nadie lo ha contrastado con una
+           persona bajo escombro. Decir «OK» aquí sería el peor invento de todos. */
+        val respiraOk = false
 
-        // ---- detector sísmico ----
-        // La traza se pinta sola a 60 fps leyendo el servicio; de aquí solo
-        // necesita el umbral, que lo cambia una persona y no cada marco.
-        (vista(R.id.traza) as VistaTraza).umbral = op.umbral
-        /* Corta: esta fila es estrecha y el texto se partía. Lo que hace falta
-           para entender el número —a qué umbral vigila y cuánto se mueve este
-           sitio— va en la línea de estado, que tiene sitio. */
-        kvValor(R.id.kv_sacudida, "%.2f m/s²".format(ServicioSos.sacudida))
-        conmutadorEstado(R.id.cm_auto, ServicioSos.armado)
-        conmutadorEstado(R.id.cm_sirena, op.sirena)
+        var totalOk = 0
+        if (micOk) totalOk++
+        if (sismoOk) totalOk++
+        if (bleOk) totalOk++
+        if (sirenaOk) totalOk++
+        if (respiraOk) totalOk++
+
+        findViewById<TextView>(R.id.autotest_contador)?.text = "$totalOk / 5"
+
+        findViewById<View>(R.id.ic_malla_sq)?.setBackgroundResource(if (micOk) R.drawable.cuadrado_verde else R.drawable.cuadrado_rojo)
+        findViewById<TextView>(R.id.at_malla_ok)?.apply {
+            text = if (micOk) "OK" else "FALLO"
+            setTextColor(if (micOk) 0xFF90CA50.toInt() else 0xFFE53035.toInt())
+        }
+
+        findViewById<View>(R.id.ic_sismo_sq)?.setBackgroundResource(if (sismoOk) R.drawable.cuadrado_verde else R.drawable.cuadrado_rojo)
+        findViewById<TextView>(R.id.at_sismo_ok)?.apply {
+            text = if (sismoOk) "OK" else "FALLO"
+            setTextColor(if (sismoOk) 0xFF90CA50.toInt() else 0xFFE53035.toInt())
+        }
+
+        findViewById<View>(R.id.ic_ble_sq)?.setBackgroundResource(if (bleOk) R.drawable.cuadrado_verde else R.drawable.cuadrado_rojo)
+        findViewById<TextView>(R.id.at_ble_ok)?.apply {
+            text = if (bleOk) "OK" else "FALLO"
+            setTextColor(if (bleOk) 0xFF90CA50.toInt() else 0xFFE53035.toInt())
+        }
+
+        findViewById<View>(R.id.ic_sirena_sq)?.setBackgroundResource(if (sirenaOk) R.drawable.cuadrado_verde else R.drawable.cuadrado_rojo)
+        findViewById<TextView>(R.id.at_sirena_ok)?.apply {
+            text = if (sirenaOk) "OK" else "FALLO"
+            setTextColor(if (sirenaOk) 0xFF90CA50.toInt() else 0xFFE53035.toInt())
+        }
+
+        findViewById<View>(R.id.ic_respira_sq)?.setBackgroundResource(if (respiraOk) R.drawable.cuadrado_verde else R.drawable.cuadrado_ambar)
+        findViewById<TextView>(R.id.at_respira_ok)?.apply {
+            text = if (respiraOk) "OK" else "SIN CALIBRAR"
+            setTextColor(if (respiraOk) 0xFF90CA50.toInt() else 0xFFF0A02A.toInt())
+        }
+
+        // Renderizado de eventos tácticos
+        val tvRegistro = findViewById<TextView>(R.id.registro) ?: return
+        if (lineas.isEmpty()) {
+            tvRegistro.text = "> esperando eventos"
+            return
+        }
+
+        val ssb = SpannableStringBuilder()
+        for ((idx, l) in lineas.withIndex()) {
+            val partes = l.split("  ", limit = 2)
+            val horaRaw = partes.getOrNull(0) ?: ""
+            val cuerpoRaw = partes.getOrNull(1) ?: l
+
+            val isError = cuerpoRaw.contains("err", ignoreCase = true) || cuerpoRaw.contains("falló", ignoreCase = true) || cuerpoRaw.contains("PÁNICO", ignoreCase = true) || cuerpoRaw.contains("denegado", ignoreCase = true)
+            val isWarn = cuerpoRaw.contains("warn", ignoreCase = true) || cuerpoRaw.contains("aviso", ignoreCase = true) || cuerpoRaw.contains("sin confirmar", ignoreCase = true) || cuerpoRaw.contains("descartado", ignoreCase = true) || cuerpoRaw.contains("posible", ignoreCase = true)
+
+            val tagColor = when {
+                isError -> 0xFFE53035.toInt()
+                isWarn -> 0xFFF0A02A.toInt()
+                else -> 0xFF90CA50.toInt()
+            }
+            
+            val textColor = when {
+                isError -> 0xFFFF8A8D.toInt()
+                isWarn -> 0xFFE3CFA8.toInt()
+                else -> 0xFFBCC3C9.toInt()
+            }
+
+            val startHora = ssb.length
+            ssb.append(horaRaw)
+            ssb.setSpan(ForegroundColorSpan(0xFF4E565D.toInt()), startHora, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            ssb.append("  ")
+
+            val startCuerpo = ssb.length
+            ssb.append(cuerpoRaw)
+            ssb.setSpan(ForegroundColorSpan(textColor), startCuerpo, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+
+            if (isError) {
+                ssb.setSpan(android.text.style.BackgroundColorSpan(0x11E53035), startHora, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+
+            val indent = (72 * tvRegistro.resources.displayMetrics.scaledDensity).toInt()
+            ssb.setSpan(android.text.style.LeadingMarginSpan.Standard(0, indent), startHora, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+
+            if (idx < lineas.size - 1) ssb.append("\n")
+        }
+        tvRegistro.text = ssb
+    }
+
+    private fun actualizarSwTactico(viewId: Int, activo: Boolean) {
+        val root = findViewById<View>(viewId) ?: return
+        val pomo = root.findViewById<View>(R.id.swt_pomo) ?: return
+        root.setBackgroundResource(if (activo) R.drawable.sw_tactico_pista_on else R.drawable.sw_tactico_pista_off)
+        pomo.setBackgroundResource(if (activo) R.drawable.sw_tactico_pomo_on else R.drawable.sw_tactico_pomo_off)
+        val targetX = if (activo) (18 * resources.displayMetrics.density) else 0f
+        if (pomo.translationX != targetX) {
+            pomo.animate().translationX(targetX).setDuration(120).start()
+        }
+    }
+
+    private fun pintarRescate() {
+        val bm = getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
+        val pct = bm?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: 50
+        findViewById<TextView>(R.id.rescate_horas_autonomia)?.text = "${(pct * 0.65).toInt()}"
+
+        val tiempoEnCiclo = (System.currentTimeMillis() % 12_000L)
+        val restanteSeg = (12_000L - tiempoEnCiclo) / 1000L
+        val progresoPct = ((12_000L - tiempoEnCiclo) * 100 / 12_000L).toInt()
+        val tvCuenta = findViewById<TextView>(R.id.rescate_cuenta_pulso)
+        tvCuenta?.text = String.format(java.util.Locale.US, "%02d", restanteSeg)
+        findViewById<ProgressBar>(R.id.rescate_barra_pulso)?.progress = progresoPct
+
+        actualizarSwTactico(R.id.sw_rescate_sonoro, op.sirena)
+        actualizarSwTactico(R.id.sw_rescate_radio, op.baliza)
+        actualizarSwTactico(R.id.sw_rescate_linterna, op.linterna)
+        actualizarSwTactico(R.id.sw_rescate_pantalla, op.mantener)
+    }
+
+    private fun formatearNombreEnDosLineas(nombre: String): String {
+        val limpio = nombre.trim().uppercase()
+        if (limpio.isEmpty()) return "MARTA\nFERRÁN"
+        if (limpio.contains("\n")) {
+            val lineas = limpio.lines().filter { it.isNotBlank() }
+            return if (lineas.size <= 2) lineas.joinToString("\n")
+                   else "${lineas[0]}\n${lineas.drop(1).joinToString(" ")}"
+        }
+        val palabras = limpio.split("\\s+".toRegex()).filter { it.isNotBlank() }
+        return when {
+            palabras.size == 1 -> palabras[0]
+            palabras.size == 2 -> "${palabras[0]}\n${palabras[1]}"
+            else -> {
+                val mitad = palabras.size / 2
+                val l1 = palabras.take(mitad).joinToString(" ")
+                val l2 = palabras.drop(mitad).joinToString(" ")
+                "$l1\n$l2"
+            }
+        }
+    }
+
+    private fun pintarFicha() {
+        val f = Ficha(this)
+        val tvNombre = findViewById<TextView>(R.id.ff_nombre)
+        val tvGrupo = findViewById<TextView>(R.id.ff_sangre)
+        val tvEdad = findViewById<TextView>(R.id.ff_edad)
+        val tvAlergias = findViewById<TextView>(R.id.ff_alergias)
+        val tvMed = findViewById<TextView>(R.id.ff_med)
+        val tvContactoNombre = findViewById<TextView>(R.id.ff_contacto_nombre)
+        val tvContactoTel = findViewById<TextView>(R.id.ff_contacto_tel)
+
+        val nom = if (f.nombre.isNotBlank()) f.nombre else "Marta Ferrán"
+        tvNombre?.text = formatearNombreEnDosLineas(nom)
+
+
+        tvGrupo?.text = if (f.sangre.isNotBlank()) f.sangre.uppercase() else "0−"
+        tvEdad?.text = if (f.edad.isNotBlank()) f.edad else "34"
+
+        if (f.medicacion.isNotBlank()) {
+            val partes = f.medicacion.split("\n")
+            tvAlergias?.text = partes.getOrNull(0) ?: "Penicilina · Látex"
+            tvMed?.text = if (partes.size > 1) partes.drop(1).joinToString(" · ") else "Anticoagulante diario"
+        }
+
+        if (f.contacto.isNotBlank()) {
+            val lineas = f.contacto.split("\n")
+            tvContactoNombre?.text = lineas.getOrNull(0) ?: "Luis Ferrán"
+            if (lineas.size > 1) tvContactoTel?.text = lineas[1]
+        }
     }
 
     private fun pintarRed() {
         val viva = ServicioSos.mallaEscuchando
-        pill(
-            R.id.ch_malla_estado,
-            getString(if (viva) R.string.pill_activa else R.string.pill_apagada),
-            if (viva) R.drawable.pill_on else R.drawable.pill_off,
-            if (viva) R.color.gr else R.color.dim
-        )
-        findViewById<TextView>(R.id.malla_sub)
-            .setText(if (viva) R.string.malla_sub_on else R.string.malla_sub_off)
-        findViewById<VistaRadar>(R.id.radar)
-            .pintar(viva, ServicioSos.mallaPorSalto, ServicioSos.mallaTx)
-
-        val salto = ServicioSos.mallaSalto
-        kvValor(R.id.kv_r_salto, if (salto > 0) salto.toString() else getString(R.string.guion))
-        kvValor(R.id.kv_r_balizas, ServicioSos.mallaRx.toString())
-        kvValor(R.id.kv_r_retx, ServicioSos.mallaTx.toString())
-
-        val envio = op.envio
-        ghostEstado(R.id.g_enviar, envio)
-        kvValor(
-            R.id.kv_n_estado,
-            when {
-                !envio -> "Desactivado"
-                ServicioSos.tipoRed == "sin red" -> "Sin red · en cola"
-                else -> "Red disponible"
-            },
-            if (envio) R.color.tx else R.color.dim
-        )
-        kvValor(R.id.kv_n_tipo, ServicioSos.tipoRed)
-        kvValor(R.id.kv_n_cola, ServicioSos.enCola.toString())
-        consola(R.id.red_salida, ServicioSos.redSalida)
+        val rx = ServicioSos.mallaRx
+        findViewById<TextView>(R.id.malla_sub)?.text = "$rx NODOS OÍDOS EN LOS ÚLTIMOS 90 S"
+        val tx = ServicioSos.mallaTx
+        findViewById<TextView>(R.id.txt_malla_reemitidas)?.text = "$tx"
+        findViewById<VistaRadar>(R.id.radar)?.pintar(viva, ServicioSos.mallaPorSalto, ServicioSos.mallaTx)
     }
 
     private fun pintarEntorno() {
-        val escuchando = ServicioSos.oyeEscuchando
-        val ahora = System.currentTimeMillis()
-        val cuando = ServicioSos.oyeCuando
-        val prog = ServicioSos.oyeProgreso
-        val ids = listOf(R.id.det_derrumbe, R.id.det_grito, R.id.det_voz, R.id.det_animal, R.id.det_golpes)
-        for (i in ids.indices) {
-            val reciente = cuando.getOrElse(i) { 0L }.let { it > 0 && ahora - it < Escucha.CALIENTE_MS }
-            val pct = if (reciente) 100 else (prog.getOrElse(i) { 0.0 } * 100).toInt().coerceIn(0, 100)
-            detectorEstado(ids[i], pct, reciente)
-        }
-        // el osciloscopio se pinta solo a 60 fps: aquí no hay que tocarlo
-
-        val seg = if (escuchando && ServicioSos.oyeDesde > 0) (ahora - ServicioSos.oyeDesde) / 1000 else 0
-        /* La etiqueta ya no lleva el cronometro. Con "ESCUCHANDO 00:12" crecia y
-           encogia cada segundo, y el titulo de la tarjeta se reflowaba con ella:
-           parecia que el titulo cambiaba de tamano solo. El tiempo se lee en la
-           fila de estado, que es donde no molesta a nadie. */
-        pill(
-            R.id.ch_deteccion,
-            if (escuchando) getString(R.string.pill_oyendo)
-            else getString(R.string.pill_pausa),
-            if (escuchando) R.drawable.pill_rec else R.drawable.pill_off,
-            if (escuchando) R.color.rd else R.color.dim
-        )
-        conmutadorAnchoEstado(R.id.cm_escuchar, escuchando)
-
-        kvValor(R.id.kv_e_estado,
-            if (escuchando) "Escuchando · %02d:%02d".format(seg / 60, seg % 60) else "Apagada",
-            if (escuchando) R.color.gr else R.color.dim)
-        kvValor(R.id.kv_e_nivel, "${ServicioSos.oyeNivelDb.toInt()} dBFS")
-        val hz = ServicioSos.oyeTonoHz
-        kvValor(R.id.kv_e_tono, if (hz > 0) "${hz.toInt()} Hz" else getString(R.string.guion))
-        kvValor(R.id.kv_e_ataques, ServicioSos.oyeImpactos.toString())
-
-        /* Cada herramienta pinta lo suyo: su interruptor, su animacion y su
-           consola. Las animaciones solo se mueven si su herramienta esta
-           encendida, para no gastar bateria dibujando cuatro lienzos a 60 fps. */
         val ecoOn = ServicioSos.ecoActivo
         val movOn = ServicioSos.quienTono == "movimiento"
         val respOn = ServicioSos.quienTono == "respiracion"
         val barOn = ServicioSos.barridoActivo
 
-        conmutadorAnchoEstado(R.id.cm_eco, ecoOn)
-        conmutadorAnchoEstado(R.id.cm_movimiento, movOn)
-        conmutadorAnchoEstado(R.id.cm_respira, respOn)
-        conmutadorAnchoEstado(R.id.cm_barrido, barOn)
-
-        (vista(R.id.sonar_sonda) as VistaSonar).apply {
-            activo = ecoOn || ServicioSos.sondaOcupada
-            intensidad = 1f
+        // ── Pestañas: marcar la activa ──────────────────────────
+        val tabs = listOf(
+            R.id.tab_eco to 0, R.id.tab_doppler to 1,
+            R.id.tab_respira to 2, R.id.tab_barrido to 3
+        )
+        for ((id, idx) in tabs) {
+            val tv = findViewById<TextView>(id) ?: continue
+            if (idx == sondaTab) {
+                tv.setBackgroundResource(R.drawable.tab_sonda_activo)
+                tv.setTextColor(getColor(R.color.tx_sec))
+                tv.setTypeface(tv.typeface, android.graphics.Typeface.BOLD)
+            } else {
+                tv.setBackgroundResource(R.drawable.tab_sonda_inactivo)
+                tv.setTextColor(getColor(R.color.dim))
+                tv.setTypeface(tv.typeface, android.graphics.Typeface.NORMAL)
+            }
         }
-        (vista(R.id.pulso_mov) as VistaPulso).activo = movOn
-        (vista(R.id.pulso_resp) as VistaPulso).apply { activo = respOn; lento = true }
-        (vista(R.id.graf_barrido) as VistaBarrido).activo = barOn
 
-        consola(R.id.eco_salida, ServicioSos.ecoSalida)
-        consola(R.id.mov_salida, ServicioSos.dopplerSalida)
-        consola(R.id.resp_salida, ServicioSos.respiraSalida)
-        consola(R.id.barrido_salida, ServicioSos.barridoSalida)
+        // ── Paneles: solo el seleccionado es visible ─────────────
+        findViewById<View>(R.id.eco_panel)?.visibility =
+            if (sondaTab == 0) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.sonar_sonda)?.visibility =
+            if (sondaTab == 0) View.GONE else View.GONE  // reservado, no se usa con tabs
+        findViewById<View>(R.id.pulso_mov)?.visibility =
+            if (sondaTab == 1) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.pulso_resp)?.visibility =
+            if (sondaTab == 2) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.graf_barrido)?.visibility =
+            if (sondaTab == 3) View.VISIBLE else View.GONE
 
-        val filas = listOf(R.id.kv_e_derrumbe, R.id.kv_e_grito, R.id.kv_e_voz, R.id.kv_e_animal, R.id.kv_e_golpes)
-        for (i in filas.indices) {
-            val t = cuando.getOrElse(i) { 0L }
-            kvValor(filas[i], if (t > 0) hora.format(java.util.Date(t)) else getString(R.string.guion))
+        // ── Activar las vistas animadas que correspondan ─────────
+        (findViewById<View>(R.id.eco_panel) as? VistaEcoPanel)?.activo =
+            sondaTab == 0 && (ecoOn || ServicioSos.sondaOcupada)
+        (findViewById<View>(R.id.pulso_mov) as? VistaPulso)?.activo = movOn
+        (findViewById<View>(R.id.pulso_resp) as? VistaPulso)?.apply { activo = respOn; lento = true }
+        (findViewById<View>(R.id.graf_barrido) as? VistaBarrido)?.activo = barOn
+
+        // ── Botón Sondear / Detener y Feedback Visual en Vivo ─────
+        val estaCorriendo = when (sondaTab) {
+            0 -> ecoOn || ServicioSos.sondaOcupada
+            1 -> movOn
+            2 -> respOn
+            3 -> barOn
+            else -> false
+        }
+        val btnSondear = findViewById<TextView>(R.id.btn_sondear)
+        if (estaCorriendo) {
+            btnSondear?.text = "DETENER"
+            btnSondear?.setBackgroundResource(R.drawable.btn_outline)
+            btnSondear?.setTextColor(getColor(R.color.tx_sec))
+        } else {
+            btnSondear?.text = "SONDEAR"
+            btnSondear?.setBackgroundColor(getColor(R.color.rd))
+            btnSondear?.setTextColor(getColor(R.color.tx_sobre_rojo))
+        }
+
+        // Subbarra chip en vivo mientras esté en la vista Sonda
+        if (vista == R.id.v_entorno) {
+            val chipSub = findViewById<TextView>(R.id.subbarra_chip)
+            val container = findViewById<View>(R.id.subbarra_chip_container)
+            val dot = findViewById<View>(R.id.subbarra_chip_dot)
+            if (estaCorriendo) {
+                container?.setBackgroundResource(R.drawable.chip_rd_outline)
+                chipSub?.text = "EMITIENDO"
+                chipSub?.setTextColor(android.graphics.Color.parseColor("#E53035"))
+                dot?.visibility = View.VISIBLE
+            } else {
+                dot?.visibility = View.GONE
+                container?.setBackgroundResource(R.drawable.chip_ambar)
+                chipSub?.text = "SIN CALIBRAR"
+                chipSub?.setTextColor(android.graphics.Color.parseColor("#F0A02A"))
+            }
         }
     }
 
@@ -1784,123 +2384,42 @@ class MainActivity : AppCompatActivity() {
         if (!forzar && ahora - diagUltimo < 2000) return
         diagUltimo = ahora
 
-        val sis = findViewById<LinearLayout>(R.id.diag_sistema)
-        sis.removeAllViews()
-        val bm = getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
-        val bat = bm?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
-        fila(sis, "Batería", if (bat in 0..100) "$bat%" else "no disponible",
-            if (bat < 0) R.color.dim else si(bat > 25))
-        val micOn = ServicioSos.oyeEscuchando || ServicioSos.mallaEscuchando
-        fila(sis, "Micrófono", if (micOn) "activo" else "inactivo", if (micOn) R.color.gr else R.color.dim)
-        fila(sis, "Acelerómetro", if (ServicioSos.armado) "leyendo · armado" else "leyendo · desarmado",
-            if (ServicioSos.armado) R.color.gr else R.color.dim)
-        fila(sis, "Malla acústica", if (ServicioSos.mallaEscuchando) "escuchando" else "apagada",
-            if (ServicioSos.mallaEscuchando) R.color.gr else R.color.dim)
-        fila(sis, "Frecuencia de muestreo",
-            if (ServicioSos.micSr > 0) "${ServicioSos.micSr} Hz" else "al abrir el micrófono",
-            if (ServicioSos.micSr > 0) R.color.gr else R.color.dim)
-        fila(sis, "Fuente sin procesar", if (ServicioSos.micCrudo) "sí" else "no: voice_recognition",
-            if (ServicioSos.micCrudo) R.color.gr else R.color.dim)
-        val rt = Runtime.getRuntime()
-        val librePct = (100 - (rt.totalMemory() - rt.freeMemory()) * 100 / rt.maxMemory()).toInt()
-        fila(sis, "Memoria libre", "$librePct%", si(librePct > 20))
-        val rok = ServicioSos.radioEmitiendo
-        fila(sis, "Baliza de radio", if (rok) "emitiendo" else ServicioSos.radioMotivo,
-            if (rok) R.color.gr else if (ServicioSos.radioMotivo.startsWith("ENCIENDE")) R.color.rd else R.color.dim)
-        fila(sis, "Partes en espera", ServicioSos.enCola.toString(),
-            if (ServicioSos.enCola > 0) R.color.dim else R.color.gr)
-        fila(sis, "Red usada", if (op.envio) "solo partes, si la activas" else "NINGUNA",
-            if (op.envio) R.color.dim else R.color.gr)
-        /* Antes decía «GPS usado: NINGUNO» y era verdad. Sigue siéndolo en lo que
-           importa —la app no enciende el GPS ni una vez—, pero ahora lee la
-           última posición que dejó otra app, así que la fila tiene que decir eso
-           y no una media verdad más cómoda. */
-        /* SOLO LEER. `refrescar()` pregunta al servicio de ubicación del sistema,
-           que es una llamada al otro lado de un binder y puede tardar; metida en
-           el repintado del diagnóstico —que corre varias veces por segundo en el
-           hilo de la interfaz— colgó la app entera: «Input dispatching timed out,
-           MainActivity is not responding». Quien refresca es el servicio, al
-           arrancar y en cada suceso. Aquí se pinta lo que ya hay. */
-        val ubi = ubicacion ?: Ubicacion(this).also { ubicacion = it }
-        /* El canal que fallaba en silencio: si el chip filtra la difusión o no
-           hay Wi-Fi, aquí se lee en vez de quedarse esperando una ficha que no
-           va a llegar nunca. */
-        val fl = ServicioSos.fichaLanEstado
-        fila(sis, "Ficha por Wi-Fi", fl,
-            if (fl.startsWith("escuchando") || fl.startsWith("emitiendo")) R.color.gr else R.color.dim)
-        fila(sis, "GPS encendido por la app", "NUNCA", R.color.gr)
-        fila(sis, "Última posición conocida", ubi.resumen(),
-            if (ubi.hay() && ubi.hayPermiso()) R.color.dim else R.color.ctl)
+        val micOk = hayMicro()
+        val bleOk = faltanPermisosDeRadio().isEmpty()
+        val camOk = Linterna(this).hay()
+        val ubiOk = Ubicacion(this).hayPermiso()
 
-        val cap = findViewById<LinearLayout>(R.id.diag_capacidades)
-        cap.removeAllViews()
-        val sm = getSystemService(Context.SENSOR_SERVICE) as SensorManager
-        fila(cap, "Acelerómetro", quiza(sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) != null),
-            si(sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) != null))
-        val hayLinterna = Linterna(this).hay()
-        fila(cap, "Linterna", quiza(hayLinterna), si(hayLinterna))
-        val vib = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
-        } else {
-            @Suppress("DEPRECATION") getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        findViewById<View>(R.id.banner_falta_permiso)?.visibility =
+            if (!micOk || !bleOk || !ubiOk) View.VISIBLE else View.GONE
+
+        findViewById<View>(R.id.permiso_micro_dot)?.setBackgroundResource(if (micOk) R.drawable.punto_verde else R.drawable.punto_rojo)
+        findViewById<TextView>(R.id.permiso_micro_txt)?.let {
+            it.text = if (micOk) "CONCEDIDO" else "CONCEDER"
+            it.setTextColor(getColor(if (micOk) R.color.gr else R.color.rd))
         }
-        fila(cap, "Vibración", quiza(vib.hasVibrator()), si(vib.hasVibrator()))
-        fila(cap, "Permiso de micrófono", if (hayMicro()) "concedido" else "SIN CONCEDER", si(hayMicro()))
-        val teclas = teclasActivas(this)
-        fila(cap, "Atajo de volumen", if (teclas) "activo" else "SIN ACTIVAR", si(teclas))
-        val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
-        val exenta = pm.isIgnoringBatteryOptimizations(packageName)
-        fila(cap, "Batería exenta", quiza(exenta), si(exenta))
-        val notif = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-        fila(cap, "Notificaciones", if (notif) "concedidas" else "SIN CONCEDER", si(notif))
-        val radioOk = faltanPermisosDeRadio().isEmpty()
-        fila(cap,
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) "Permiso de bluetooth" else "Permiso para buscar",
-            if (radioOk) "concedido" else "SIN CONCEDER", si(radioOk))
-        /* En Android 11 y anteriores no basta el permiso: si la ubicación del
-           sistema está apagada, el escaneo de radio devuelve cero resultados sin
-           dar ningún error. Es la trampa que deja una búsqueda muda sin motivo. */
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-            val lm = getSystemService(Context.LOCATION_SERVICE) as android.location.LocationManager
-            val ubi = try { androidx.core.location.LocationManagerCompat.isLocationEnabled(lm) } catch (_: Exception) { false }
-            fila(cap, "Ubicación del sistema", if (ubi) "encendida" else "APÁGALA NO, ENCIÉNDELA", si(ubi))
+
+        findViewById<View>(R.id.permiso_ble_dot)?.setBackgroundResource(if (bleOk) R.drawable.punto_verde else R.drawable.punto_rojo)
+        findViewById<TextView>(R.id.permiso_ble_txt)?.let {
+            it.text = if (bleOk) "CONCEDIDO" else "CONCEDER"
+            it.setTextColor(getColor(if (bleOk) R.color.gr else R.color.rd))
         }
-        val bt = try {
-            (getSystemService(Context.BLUETOOTH_SERVICE) as? android.bluetooth.BluetoothManager)?.adapter?.isEnabled == true
-        } catch (_: Exception) { false }
-        fila(cap, "Bluetooth encendido", quiza(bt), si(bt))
-        /* Lo que decide si esta app sirve de algo con la pantalla guardada. En
-           HyperOS, deslizarla fuera de recientes la mata aunque esté vigilando
-           (`OneKeyClean` en el registro del sistema) — y la app no puede
-           impedirlo, solo enterarse. Aquí se ve sin tener que provocarlo. */
-        val vivo = servicioVivo()
-        /* Mismo criterio que el aviso: un hueco en el latido, no la foto de este
-           instante. Si no, al abrir la app la fila salía en rojo un segundo
-           aunque todo estuviera bien. */
-        val hueco = System.currentTimeMillis() - op.latido
-        val murio = op.deberiaVigilar && !op.apagada && !vivo && op.latido > 0 &&
-            hueco in 120_000L..(6 * 3600_000L)
-        fila(cap, "Sigue vigilando con la app cerrada",
-            when {
-                murio -> "NO: tu móvil la mató"
-                vivo -> "sí"
-                op.apagada -> "apagada por ti"
-                else -> "sin comprobar todavía"
-            },
-            if (murio) R.color.rd else if (vivo) R.color.gr else R.color.dim)
-        /* Si esto está en NO, «¿estás bien?» no puede salir a pantalla completa
-           con el móvil bloqueado y llega como aviso normal. Se sigue pudiendo
-           contestar, pero hay que verlo, así que tiene que estar dicho. */
-        val pc = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-            try {
-                (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
-                    .canUseFullScreenIntent()
-            } catch (_: Exception) { false }
-        else true
-        fila(cap, "Preguntar con el móvil bloqueado",
-            if (pc) "sí" else "NO: llegará como aviso", si(pc))
-        fila(cap, "Funciona sin conexión", "sí, entera", R.color.gr)
+
+        findViewById<View>(R.id.permiso_cam_dot)?.setBackgroundResource(if (camOk) R.drawable.punto_verde else R.drawable.punto_rojo)
+        findViewById<TextView>(R.id.permiso_cam_txt)?.let {
+            it.text = if (camOk) "CONCEDIDO" else "CONCEDER"
+            it.setTextColor(getColor(if (camOk) R.color.gr else R.color.rd))
+        }
+
+        findViewById<View>(R.id.permiso_ubi_dot)?.setBackgroundResource(if (ubiOk) R.drawable.punto_verde else R.drawable.punto_rojo)
+        findViewById<TextView>(R.id.permiso_ubi_txt)?.let {
+            it.text = if (ubiOk) "CONCEDIDO" else "CONCEDER"
+            it.setTextColor(getColor(if (ubiOk) R.color.gr else R.color.rd))
+        }
+
+        val teclasOk = teclasActivas(this)
+        findViewById<View>(R.id.sw_atajo_volumen_dot)?.setBackgroundResource(if (teclasOk) R.drawable.punto_verde else R.drawable.punto_ambar)
+        findViewById<View>(R.id.sw_confirmar_sirena_dot)?.setBackgroundResource(if (op.confirmarAntesDeSirena) R.drawable.punto_verde else R.drawable.punto_ambar)
+        findViewById<View>(R.id.sw_servicio_arrancar_dot)?.setBackgroundResource(if (op.arrancarAlIniciar) R.drawable.punto_verde else R.drawable.punto_ambar)
     }
 
     private fun quiza(b: Boolean) = if (b) "sí" else "no"
