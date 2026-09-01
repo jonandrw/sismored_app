@@ -139,6 +139,14 @@ class ServicioSos : Service() {
         /** Balizas confirmadas por salto: es lo que dibuja el radar. */
         @Volatile var mallaPorSalto = IntArray(MallaAcustica.MAX_HOP); private set
 
+        /* El espectro de la banda que ve el decodificador, para la pantalla de
+           la malla. Se copia en cada refresco en vez de dejar que la vista lea
+           el array del motor: lo escribe el hilo del microfono cada 42 ms. */
+        @Volatile var mallaNiveles = DoubleArray(1 + MallaAcustica.TONOS.size) { -120.0 }; private set
+        @Volatile var mallaSuelo = -80.0; private set
+        /** Las frecuencias de `mallaNiveles`, en el mismo orden. */
+        val mallaFrecuencias = doubleArrayOf(MallaAcustica.MARK) + MallaAcustica.TONOS
+
         /**
          * Hay alguien usando la vista de Búsqueda con el rastreo encendido.
          *
@@ -789,6 +797,7 @@ class ServicioSos : Service() {
         malla?.let {
             mallaRx = it.rx; mallaTx = it.tx; mallaSalto = it.ultimoSalto
             mallaPorSalto = it.porSalto.copyOf()
+            mallaNiveles = it.niveles.copyOf(); mallaSuelo = it.sueloDb
         }
         
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
@@ -1922,6 +1931,7 @@ class ServicioSos : Service() {
                 malla?.let {
                     mallaRx = it.rx; mallaTx = it.tx; mallaSalto = it.ultimoSalto
                     mallaPorSalto = it.porSalto.copyOf()
+                    mallaNiveles = it.niveles.copyOf(); mallaSuelo = it.sueloDb
                     mallaEscuchando = it.escuchando
                 }
                 mic?.let { if (it.abierto) { micSr = it.sr; micCrudo = it.fuenteCruda } }

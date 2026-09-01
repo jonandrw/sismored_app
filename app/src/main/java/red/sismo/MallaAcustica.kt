@@ -224,6 +224,17 @@ class MallaAcustica(
     }
 
     /* ---------- estado observable ---------- */
+    /* ---------- lo que se está oyendo ahora mismo ----------
+       Nivel en dB de cada tono de la malla —MARK primero y detrás los de
+       `TONOS`— y el suelo por encima del cual un tono cuenta. Lo rellena
+       `decodificar` en cada marco, o sea cada 42 ms.
+
+       Existe porque la pantalla de la malla enseñaba una banda dibujada con un
+       «17,4 kHz» que no es la portadora de nada: el espectro estaba medido en
+       el motor desde el principio y no se sacaba a ninguna parte. */
+    val niveles = DoubleArray(1 + TONOS.size) { -120.0 }
+    @Volatile var sueloDb = SUELO_ABS_DB; private set
+
     @Volatile var escuchando = false; private set
     @Volatile var rx = 0; private set
     @Volatile var tx = 0; private set
@@ -352,10 +363,22 @@ class MallaAcustica(
 
     private fun decodificar(x: ShortArray): Int {
         val umbral = maxOf(dB(ruidoFondo(x)) + MARGEN_DB, SUELO_ABS_DB)
-        if (dB(pico(x, MARK)) < umbral) { tonoCrudo = false; confirma = 0; return 0 }
+        val vMark = dB(pico(x, MARK))
+        /* El espectro que ve la pantalla. No es un adorno ni una FFT aparte:
+           son exactamente los valores con los que este decodificador acaba de
+           decidir, medidos en los bins de los tonos que la malla escucha. Se
+           publica siempre, incluso en los marcos que se descartan, porque
+           «aquí no hay nada» también es una lectura y es la que más se ve. */
+        niveles[0] = vMark
+        sueloDb = umbral
+        if (vMark < umbral) {
+            for (i in TONOS.indices) niveles[i + 1] = dB(pico(x, TONOS[i]))
+            tonoCrudo = false; confirma = 0; return 0
+        }
         var mejor = 0; var mejorV = -999.0; var segundoV = -999.0
         for (hop in 1..TONOS.size) {
             val v = dB(pico(x, TONOS[hop - 1]))
+            niveles[hop] = v
             if (v > mejorV) { segundoV = mejorV; mejorV = v; mejor = hop }
             else if (v > segundoV) { segundoV = v }
         }

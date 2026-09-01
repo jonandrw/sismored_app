@@ -1722,3 +1722,129 @@ class VistaInterfonoVu @JvmOverloads constructor(
 
 
 
+
+/**
+ * El espectro de la banda de la malla, en vivo.
+ *
+ * Una barra por tono de los que el decodificador escucha —MARK a 16 kHz, los
+ * cuatro saltos entre 16,8 y 18, la llamada, el silencio y la alerta— con el
+ * nivel que se mide en ese bin ahora mismo, y una línea de puntos en el suelo
+ * por encima del cual un tono cuenta como presente.
+ *
+ * Es la respuesta a «¿me está oyendo alguien, o es que no hay nada?»: si las
+ * barras se mueven, el micrófono llega a la banda; si están pegadas al fondo,
+ * la banda está muerta. Un tono que asoma por encima de la línea se pinta
+ * entero, porque eso es lo que el motor acaba de contar como señal.
+ *
+ * No hay FFT nueva: son los valores que `MallaAcustica.decodificar` ya calcula
+ * en cada marco de 42 ms para tomar su decisión. Dibujar otra cosa aquí sería
+ * enseñar un espectro que no es el que decide.
+ */
+class VistaEspectroMalla @JvmOverloads constructor(
+    ctx: Context, attrs: AttributeSet? = null
+) : View(ctx, attrs) {
+
+    private val pBarra = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val pSuelo = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        color = 0xFF7C858D.toInt()
+        pathEffect = DashPathEffect(floatArrayOf(6f, 6f), 0f)
+    }
+    private val pRotulo = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFF7C858D.toInt()
+        textAlign = Paint.Align.CENTER
+    }
+    private val rect = RectF()
+
+    /* Escala en dB. Por debajo de -95 no hay nada que enseñar y por encima de
+       -20 el tono está saturando el micro. */
+    private val dbMin = -95.0
+    private val dbMax = -20.0
+
+    private var niveles = DoubleArray(0)
+    private var frecuencias = DoubleArray(0)
+    private var suelo = -80.0
+    private var viva = false
+
+    /** Picos que caen despacio, para que un tono de 42 ms se llegue a ver. */
+    private var picos = DoubleArray(0)
+
+    fun pintar(niveles: DoubleArray, frecuencias: DoubleArray, suelo: Double, viva: Boolean) {
+        this.niveles = niveles
+        this.frecuencias = frecuencias
+        this.suelo = suelo
+        this.viva = viva
+        if (picos.size != niveles.size) picos = DoubleArray(niveles.size) { dbMin }
+        for (i in niveles.indices) if (niveles[i] > picos[i]) picos[i] = niveles[i]
+        invalidate()
+    }
+
+    private fun alto(db: Double, h: Float): Float =
+        (h * ((db - dbMin) / (dbMax - dbMin)).coerceIn(0.0, 1.0)).toFloat()
+
+    private var ultimoDibujo = 0L
+
+    override fun onDraw(c: Canvas) {
+        val w = width.toFloat(); val h = height.toFloat()
+        if (w <= 0 || h <= 0 || niveles.isEmpty()) return
+
+        /* El pico cae 20 dB por segundo, contra el reloj y no contra el número
+           de repintados: la pantalla se alimenta dos veces por segundo pero se
+           dibuja a 60, y atar la caída al repintado hacía que el mismo tono
+           bajase a distinta velocidad según lo ocupada que estuviera la app.
+           Cae despacio a propósito — una ráfaga de la malla son seis tonos de
+           250 ms, y sin rastro no daría tiempo a leerla. */
+        val ahora = android.os.SystemClock.uptimeMillis()
+        val dt = if (ultimoDibujo == 0L) 0.0 else (ahora - ultimoDibujo) / 1000.0
+        ultimoDibujo = ahora
+        for (i in picos.indices) picos[i] = maxOf(niveles[i], picos[i] - 20.0 * dt)
+
+        val pie = px(this, 14f)          // sitio para los rótulos de kHz
+        val alto = h - pie
+        val n = niveles.size
+        val hueco = px(this, 5f)
+        val ancho = (w - (n - 1) * hueco) / n
+        val r = px(this, 1.5f)
+        pRotulo.textSize = px(this, 8f)
+
+        // el suelo de decisión, que es lo que separa «hay tono» de «hay ruido»
+        val ySuelo = alto - alto(suelo, alto)
+        c.drawLine(0f, ySuelo, w, ySuelo, pSuelo)
+
+        for (i in 0 until n) {
+            val x = i * (ancho + hueco)
+            val db = niveles[i]
+            val pasa = viva && db > suelo
+
+            /* Barra apagada de fondo hasta el pico que va cayendo, y encima la
+               lectura de ahora. Así se ve a la vez lo que hay y lo que hubo. */
+            val yPico = alto - alto(picos[i], alto)
+            if (picos[i] > dbMin) {
+                rect.set(x, yPico, x + ancho, alto)
+                pBarra.color = 0xFF1E252A.toInt()
+                pBarra.alpha = 255
+                c.drawRoundRect(rect, r, r, pBarra)
+            }
+
+            val y = alto - alto(db, alto)
+            rect.set(x, y, x + ancho, alto)
+            /* Verde cuando el tono pasa el suelo —eso es señal de la malla— y
+               gris cuando es solo el ruido de la sala. El rojo se reserva para
+               lo que sale de este móvil, y aquí no sale nada. */
+            pBarra.color = if (pasa) 0xFF90CA50.toInt() else 0xFF39424A.toInt()
+            pBarra.alpha = if (viva) 255 else 90
+            c.drawRoundRect(rect, r, r, pBarra)
+
+            if (i == 0 || i == n - 1) {
+                val khz = frecuencias.getOrElse(i) { 0.0 } / 1000.0
+                c.drawText(String.format(java.util.Locale.US, "%.1f", khz),
+                    x + ancho / 2, h - px(this, 3f), pRotulo)
+            }
+        }
+
+        /* Se sigue repintando solo mientras la malla escuche: es lo que hace
+           que el pico baje suave. Con la malla parada no hay nada que caer y
+           el lienzo se queda quieto. */
+        if (isShown && viva) postInvalidateOnAnimation() else ultimoDibujo = 0L
+    }
+}

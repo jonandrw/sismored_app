@@ -929,68 +929,15 @@
                         </LinearLayout>
 
                         <!-- Spectrum Slider Track with Needle -->
-                        <FrameLayout
+                        <!-- El espectro de la banda, en vivo. Aqui habia una barra de
+                             progreso al 70 % con una aguja roja fija: un dibujo que
+                             no medía nada y que ademas rotulaba la portadora en
+                             17,4 kHz, que no es la de la malla. -->
+                        <red.sismo.VistaEspectroMalla
+                            android:id="@+id/malla_espectro"
                             android:layout_width="match_parent"
-                            android:layout_height="12dp"
-                            android:layout_marginTop="12dp">
-
-                            <!-- Base Track (4dp) -->
-                            <View
-                                android:layout_width="match_parent"
-                                android:layout_height="4dp"
-                                android:layout_gravity="center_vertical"
-                                android:background="@drawable/barra_pista_frecuencia" />
-
-                            <!-- Active Progress (70%) -->
-                            <LinearLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent"
-                                android:gravity="center_vertical"
-                                android:orientation="horizontal">
-
-                                <View
-                                    android:layout_width="0dp"
-                                    android:layout_height="4dp"
-                                    android:layout_weight="0.7"
-                                    android:background="@drawable/barra_progreso_frecuencia" />
-
-                                <!-- Red Needle Indicator (3dp x 12dp) -->
-                                <View
-                                    android:layout_width="3dp"
-                                    android:layout_height="12dp"
-                                    android:background="#E53035" />
-
-                                <View
-                                    android:layout_width="0dp"
-                                    android:layout_height="4dp"
-                                    android:layout_weight="0.3" />
-                            </LinearLayout>
-                        </FrameLayout>
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="6dp"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal">
-
-                            <TextView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:fontFamily="@font/mono"
-                                android:text="16 kHz"
-                                android:textColor="#7C858D"
-                                android:textSize="10sp" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:fontFamily="@font/mono"
-                                android:text="18 kHz"
-                                android:textColor="#7C858D"
-                                android:textSize="10sp" />
-                        </LinearLayout>
+                            android:layout_height="88dp"
+                            android:layout_marginTop="10dp" />
                     </LinearLayout>
 
                     <!-- Metrics Row: SALTOS MÁX & REEMITIDAS -->

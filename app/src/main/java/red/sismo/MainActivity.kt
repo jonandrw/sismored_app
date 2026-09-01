@@ -2302,6 +2302,9 @@ class MainActivity : AppCompatActivity() {
            en MARK a 16,0 y los saltos entre 16,8 y 18. */
         findViewById<TextView>(R.id.malla_portadora)?.text =
             String.format(Locale.US, "%.1f", MallaAcustica.MARK / 1000.0)
+        findViewById<VistaEspectroMalla>(R.id.malla_espectro)?.pintar(
+            ServicioSos.mallaNiveles, ServicioSos.mallaFrecuencias, ServicioSos.mallaSuelo, viva
+        )
         findViewById<VistaRadar>(R.id.radar)?.pintar(viva, ServicioSos.mallaPorSalto, ServicioSos.mallaTx)
     }
 
