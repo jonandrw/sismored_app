@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/swt_pista"
+    android:layout_width="44dp"
+    android:layout_height="26dp"
+    android:clickable="false"
+    android:focusable="false"
+    android:background="@drawable/sw_tactico_pista_on">
+
+    <View
+        android:id="@+id/swt_pomo"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_gravity="center_vertical|start"
+        android:layout_marginStart="3dp"
+        android:clickable="false"
+        android:focusable="false"
+        android:background="@drawable/sw_tactico_pomo_on" />
+</FrameLayout>

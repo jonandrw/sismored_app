@@ -11,7 +11,7 @@
     <string name="panico_sub">ACTIVAR ALERTA EN TODA LA RED</string>
     <string name="diagnostico">Diagnóstico</string>
     <string name="rot_estado">ESTADO ACTUAL</string>
-    <string name="rot_malla">MALLA ACÚSTICA</string>
+    <string name="rot_malla">MALLA</string>
     <string name="t_inicio">Inicio</string>
     <string name="t_red">Red</string>
     <string name="t_entorno">Entorno</string>
@@ -79,6 +79,7 @@ El sonido se analiza y se descarta al momento. No se graba, no se guarda y no sa
     <string name="rot_internet">SI APARECE INTERNET</string>
     <string name="rot_personal">INFORMACIÓN PERSONAL</string>
     <string name="rot_respuesta">HERRAMIENTAS DE RESPUESTA</string>
+    <string name="b_ver_resp">HERRAMIENTAS DE RESPUESTA</string>
     <string name="rot_sistema">ESTADO DEL SISTEMA</string>
     <string name="rot_capacidades">CAPACIDADES DEL DISPOSITIVO</string>
 
@@ -143,7 +144,7 @@ El sonido se analiza y se descarta al momento. No se graba, no se guarda y no sa
     <string name="paso_if3">Lo reproduce amplificado y dice cuánto se oyó sobre el fondo.</string>
     <string name="ayuda_interfono">No es una llamada: la voz viaja por el escombro, no por radio. Pega el móvil a los cascotes y repite dos o tres veces antes de darlo por vacío.</string>
     <string name="b_olvidar">EMPEZAR DE CERO</string>
-    <string name="rot_busqueda">BUSCAR SUPERVIVIENTES</string>
+    <string name="rot_busqueda">BUSCAR</string>
     <string name="v_busqueda">Búsqueda</string>
     <string name="k_hallados">Móviles oídos</string>
     <!-- Sin «camina despacio»: eso lo dice ya el primer paso de CÓMO SE USA, y
@@ -214,6 +215,7 @@ El sonido se analiza y se descarta al momento. No se graba, no se guarda y no sa
 
     <!-- ===== vistas de segundo nivel ===== -->
     <string name="v_respuesta">Respuesta</string>
+    <string name="v_estas_bien">¿Estás bien?</string>
     <string name="v_diagnostico">Diagnóstico</string>
     <string name="v_registro">Registro</string>
     <string name="volver">Volver</string>
@@ -262,7 +264,7 @@ Mientras no lo hagas, SismoRed solo vigila con la app abierta.</string>
          micrófono y ubicación—, el permiso de accesibilidad hay que justificarlo
          donde se pueda leer, y una app que dice detectar terremotos necesita
          decir en voz alta lo que NO puede hacer. -->
-    <string name="v_acerca">Acerca de SismoRed</string>
+    <string name="v_acerca">Acerca De</string>
     <string name="b_acerca">ACERCA DE</string>
 
     <!-- Cada tarjeta lleva UNA frase en blanco que es su idea, y debajo el
@@ -352,6 +354,7 @@ Deténla con el botón DETENER o pulsando una vez el volumen. Y comunícalo en e
          significan nada la primera vez que se abren. -->
     <string name="d_permisos">Cuáles faltan y para qué sirve cada uno.</string>
     <string name="d_acerca">Qué hace, qué no puede hacer y qué se guarda de ti.</string>
+    <string name="d_consola">Eventos del sistema y depuración en vivo.</string>
     <string name="d_ficha_lan">Comprueba el canal de Wi‑Fi con otro móvil.</string>
     <string name="d_simulacro">Verás la pantalla que sale sola tras un terremoto.</string>
     <string name="d_autotest">Se autocomprueba entera: malla, oído, sonda y decisiones.</string>
@@ -518,4 +521,75 @@ Para leerla hace falta el permiso de acceso a notificaciones, que Android da ent
     <string name="d_alerta_google_off">Sin activar: hoy no puede oírla. Toca para ver cómo.</string>
     <string name="panico_mantener">Mantén pulsado 2 s</string>
     <string name="panico_soltando">Suelta para cancelar</string>
+
+    <!-- ===== REDISEÑO 17 PANTALLAS ===== -->
+    <string name="rot_herramientas">HERRAMIENTAS</string>
+    <string name="rot_rescate">Rescate</string>
+    <string name="rot_ficha">Ficha</string>
+    <string name="rot_detector">Detector</string>
+    <string name="rot_baliza">Baliza</string>
+    <string name="rot_buscar">Buscar</string>
+    <string name="rot_interfono">Interfono</string>
+    <string name="rot_consola">Consola</string>
+    <string name="chip_armado">ARMADO</string>
+    <string name="chip_escucha">ESCUCHA</string>
+    <string name="chip_emitiendo">EMITIENDO</string>
+    <string name="chip_1senal">1 SEÑAL</string>
+    <string name="chip_sin_calibrar">SIN CALIBRAR</string>
+    <string name="chip_canal_abierto">CANAL ABIERTO</string>
+    <string name="chip_activo">ACTIVO</string>
+    <string name="chip_en_vivo">EN VIVO</string>
+    <string name="chip_concedido">CONCEDIDO</string>
+    <string name="chip_pendiente">PENDIENTE</string>
+    <string name="chip_sin_desbloquear">SIN DESBLOQUEAR</string>
+    <string name="panico_activo_titulo">ALARMA</string>
+    <string name="panico_silenciar">SILENCIAR Y PARAR ALARMA</string>
+    <string name="panico_a_rescate">CAMBIAR A MODO RESCATE</string>
+    <string name="rescate_proximo_pulso">PRÓXIMO PULSO</string>
+    <string name="rescate_cadencia">CADENCIA 12 S</string>
+    <string name="rescate_pulso">PULSO 0.9 S</string>
+    <string name="rescate_autonomia">AUTONOMÍA ESTIMADA</string>
+    <string name="rescate_desactivar">DESACTIVAR MODO RESCATE</string>
+    <string name="autotest_titulo">AUTOCOMPROBACIÓN AL ARRANCAR</string>
+    <string name="autotest_malla">Malla · tonos 16–18 kHz</string>
+    <string name="autotest_sismo">Detector sísmico</string>
+    <string name="autotest_micro">Micrófono de campo</string>
+    <string name="autotest_hw">Altavoz y linterna</string>
+    <string name="autotest_radio">Ubicación y Bluetooth</string>
+    <string name="copiar_registro">COPIAR</string>
+    <string name="filtro_todo">TODO</string>
+    <string name="filtro_error">ERROR</string>
+    <string name="filtro_warn">WARN</string>
+    <string name="filtro_malla">MALLA</string>
+    <string name="filtro_sonda">SONDA</string>
+    <string name="filtro_ble">BLE</string>
+    <string name="interfono_hablar">Hablar abajo</string>
+    <string name="interfono_escuchar">Escuchar</string>
+    <string name="interfono_guia">La voz viaja por el escombro, no por radio. Apoya el móvil contra el hormigón y habla a la pantalla.</string>
+
+    <!-- === Lo que se dice cuando no hay dato ===
+         Todas estas existen por la misma razón: la maqueta traía un ejemplo en
+         cada hueco (MARTA, 0−, 01:24:06, 112 dB) y el rediseño lo copió al
+         código. Un hueco vacío se dice, no se rellena. -->
+    <string name="baliza_sin_ficha">SIN FICHA</string>
+    <string name="baliza_est_alarma">ATRAPADA</string>
+    <string name="baliza_est_rescate">EN RESCATE</string>
+    <string name="baliza_est_reposo">EN REPOSO</string>
+    <string name="baliza_anuncio">ANUNCIO BLE · CONTINUO</string>
+    <string name="ficha_sin_nombre">SIN\nNOMBRE</string>
+
+    <string name="interfono_canal_abierto">CANAL ABIERTO · ESCUCHANDO</string>
+    <string name="interfono_canal_cerrado">CANAL CERRADO</string>
+    <string name="interfono_sin_respuestas">Todavía no se ha oído nada</string>
+
+    <!-- Tres pitidos de 0,20 s que arrancan cada 0,28 s: 0,76 en total. -->
+    <string name="rescate_cadencia">CADENCIA 12 S</string>
+    <string name="rescate_pulso">PULSO 0.76 S</string>
+
+    <string name="teclas_sin_ajustes">Este móvil no abre los ajustes de accesibilidad desde aquí. Búscalos como «Accesibilidad · Apps instaladas · SismoRed».</string>
+    <string name="permisos_al_dia">NO FALTA NINGÚN PERMISO</string>
+    <plurals name="permisos_faltan">
+        <item quantity="one">FALTA %d PERMISO</item>
+        <item quantity="other">FALTAN %d PERMISOS</item>
+    </plurals>
 </resources>

@@ -3,10 +3,16 @@ package red.sismo
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.DashPathEffect
+import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.RadialGradient
+import android.graphics.RectF
+import android.graphics.Shader
+import android.graphics.SweepGradient
 import android.util.AttributeSet
 import android.view.View
+import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.hypot
 import kotlin.math.min
@@ -102,56 +108,294 @@ class VistaAnillo @JvmOverloads constructor(ctx: Context, attrs: AttributeSet? =
 }
 
 /**
- * La traza del sismógrafo, con la línea de umbral a trazos.
- *
- * La escala llega a 6 m/s² y deja 10 px de margen a propósito: sin margen, la
- * línea plana de la calma queda pegada al borde y no se distingue de «esto no
- * está midiendo nada».
+ * Visualizador sísmico en tiempo real:
+ * - Esquina superior derecha achaflanada a 14 dp (clipPath táctico).
+ * - Cuadrícula táctica de 32 dp con línea central al 50%.
+ * - Línea de umbral roja discontinua con rótulo de aceleración.
+ * - Barras de espectro sísmico vertical (3 dp ancho, 2 dp espaciado) en #90CA50 que oscilan en vivo a 60 Hz.
+ * - Telemetría inferior: ACELERÓMETRO · 50 Hz y valor numérico instantáneo en g.
  */
 class VistaTraza @JvmOverloads constructor(ctx: Context, attrs: AttributeSet? = null) :
-    View(ctx, attrs) {
+    View(ctx, attrs), android.hardware.SensorEventListener {
 
-    /** El umbral lo cambia una persona con el paso numérico, no cada marco. */
-    var umbral = 3.0
+    var umbral = 0.42
 
-    private val trazo = Path()
+    private val sm = ctx.getSystemService(Context.SENSOR_SERVICE) as? android.hardware.SensorManager
+    private val sensor = sm?.getDefaultSensor(android.hardware.Sensor.TYPE_ACCELEROMETER)
 
-    private val pLinea = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val clipTactico = Path()
+    private val pFondo = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = android.graphics.Color.parseColor("#0D1113")
+    }
+    private val pBorde = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        strokeJoin = Paint.Join.MITER
-        strokeCap = Paint.Cap.SQUARE
+        color = android.graphics.Color.parseColor("#1E252A")
+        strokeWidth = 2.5f
+    }
+    private val pGrid = Paint().apply {
+        color = android.graphics.Color.parseColor("#09FFFFFF")
+        strokeWidth = 1f
+    }
+    private val pCenter = Paint().apply {
+        color = android.graphics.Color.parseColor("#2A3238")
+        strokeWidth = 1.5f
+    }
+    private val pBarra = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
     }
     private val pUmbral = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
+    }
+    private val pTexto = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.parseColor("#E53035")
+        textSize = 26f
+        typeface = android.graphics.Typeface.MONOSPACE
+        letterSpacing = 0.08f
+    }
+    private val pSub = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.parseColor("#7C858D")
+        textSize = 28f
+        typeface = android.graphics.Typeface.MONOSPACE
+    }
+    private val pValor = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.parseColor("#90CA50")
+        textSize = 36f
+        typeface = android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD)
+    }
+
+    // Buffer de barras sísmicas (64 barras de historia)
+    private val numBarras = 64
+    private val barras = FloatArray(numBarras) { 0.04f }
+    private var ultimoG = 0.07f
+    private var gravedadFiltro = 9.81f
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        sm?.registerListener(this, sensor, android.hardware.SensorManager.SENSOR_DELAY_GAME)
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        sm?.unregisterListener(this)
+    }
+
+    override fun onSensorChanged(event: android.hardware.SensorEvent?) {
+        if (event == null) return
+        val x = event.values[0]
+        val y = event.values[1]
+        val z = event.values[2]
+        val modulo = kotlin.math.sqrt((x * x + y * y + z * z).toDouble()).toFloat()
+        gravedadFiltro = gravedadFiltro * 0.92f + modulo * 0.08f
+        val dev = kotlin.math.abs(modulo - gravedadFiltro) / 9.81f
+        ultimoG = (ultimoG * 0.7f + dev * 0.3f).coerceAtLeast(0.02f)
+
+        // Desplazar buffer de barras a la izquierda y meter la nueva lectura
+        System.arraycopy(barras, 1, barras, 0, numBarras - 1)
+        barras[numBarras - 1] = ultimoG
+    }
+
+    override fun onAccuracyChanged(sensor: android.hardware.Sensor?, accuracy: Int) {}
+
+    override fun onDraw(c: Canvas) {
+        val w = width.toFloat(); val h = height.toFloat()
+        if (w <= 0 || h <= 0) return
+
+        // 1. Clip táctico con esquina achaflanada
+        val ch = px(this, 14f)
+        clipTactico.rewind()
+        clipTactico.moveTo(0f, 0f)
+        clipTactico.lineTo(w - ch, 0f)
+        clipTactico.lineTo(w, ch)
+        clipTactico.lineTo(w, h)
+        clipTactico.lineTo(0f, h)
+        clipTactico.close()
+
+        // Fondo y borde exterior del radar
+        c.drawPath(clipTactico, pFondo)
+        c.drawPath(clipTactico, pBorde)
+
+        c.save()
+        c.clipPath(clipTactico)
+
+        // 2. Radar grid (32 dp)
+        val step = px(this, 32f)
+        var gx = 0f
+        while (gx <= w) {
+            c.drawLine(gx, 0f, gx, h, pGrid)
+            gx += step
+        }
+        var gy = 0f
+        while (gy <= h) {
+            c.drawLine(0f, gy, w, gy, pGrid)
+            gy += step
+        }
+
+        // 3. Línea central al 50%
+        val centerY = h * 0.5f
+        c.drawLine(0f, centerY, w, centerY, pCenter)
+
+        // 4. Línea de umbral roja discontinua
+        val pad = px(this, 36f)
+        fun scaleY(gVal: Double): Float {
+            val normalized = (gVal / 1.0).coerceIn(0.0, 1.0).toFloat()
+            return centerY - (normalized * (centerY - pad))
+        }
+
+        val yUmbral = scaleY(umbral)
+        pUmbral.color = android.graphics.Color.parseColor("#E53035")
+        pUmbral.strokeWidth = px(this, 1.5f)
+        pUmbral.pathEffect = DashPathEffect(floatArrayOf(px(this, 4f), px(this, 4f)), 0f)
+        c.drawLine(0f, yUmbral, w, yUmbral, pUmbral)
+
+        c.drawText("UMBRAL ${String.format(java.util.Locale.US, "%.2f", umbral)} g", px(this, 12f), yUmbral - px(this, 6f), pTexto)
+
+        // 5. Barras de espectro sísmico en vivo
+        val barW = px(this, 3f)
+        val gap = px(this, 2f)
+        val totalBarW = barW + gap
+        val numToDraw = ((w - px(this, 16f)) / totalBarW).toInt().coerceAtMost(numBarras)
+        val startX = (w - (numToDraw * totalBarW)) / 2f
+
+        val t = android.os.SystemClock.uptimeMillis() / 1000f
+        val calienteGlobal = ultimoG >= umbral
+
+        for (i in 0 until numToDraw) {
+            val idx = numBarras - numToDraw + i
+            val rawG = if (idx in 0 until numBarras) barras[idx] else 0.04f
+            val osc = sin(t * 7f + i * 0.35f).toFloat() * 0.015f
+            val gVal = (rawG + osc).coerceAtLeast(0.02f)
+            val calienteBarra = gVal >= umbral
+
+            pBarra.color = android.graphics.Color.parseColor(if (calienteBarra) "#E53035" else "#90CA50")
+
+            val barHeight = ((gVal / 0.8f).coerceIn(0.04f, 1.0f) * (centerY - pad) * 1.8f).coerceAtLeast(px(this, 6f))
+            val bx = startX + i * totalBarW
+            val byTop = centerY - barHeight / 2f
+            val byBottom = centerY + barHeight / 2f
+
+            c.drawRect(bx, byTop, bx + barW, byBottom, pBarra)
+        }
+
+        // 6. Textos inferiores
+        c.drawText("ACELERÓMETRO · 50 Hz", px(this, 12f), h - px(this, 12f), pSub)
+        val valStr = "${String.format(java.util.Locale.US, "%.2f", ultimoG)} g"
+        pValor.color = android.graphics.Color.parseColor(if (calienteGlobal) "#E53035" else "#90CA50")
+        val valW = pValor.measureText(valStr)
+        c.drawText(valStr, w - valW - px(this, 12f), h - px(this, 12f), pValor)
+
+        c.restore()
+
+        // 7. Borde exterior por encima
+        c.drawPath(clipTactico, pBorde)
+
+        if (isShown) postInvalidateOnAnimation()
+    }
+}
+
+/**
+ * Interruptor táctico con diseño exacto del documento de rediseño:
+ * - Pastilla de 44x26 dp con radio completo.
+ * - Círculo interior de 20 dp que se desliza suavemente con animación desacelerada.
+ * - Estados ON (#90CA50 o #E53035) y OFF (#1E252A).
+ */
+class VistaInterruptor @JvmOverloads constructor(
+    ctx: Context, attrs: AttributeSet? = null
+) : View(ctx, attrs), android.widget.Checkable {
+
+    private var _checked = true
+    private var progress = 1f // 0f = OFF, 1f = ON
+    private var listener: ((Boolean) -> Unit)? = null
+    private var animator: android.animation.ValueAnimator? = null
+
+    var colorActivo: Int = android.graphics.Color.parseColor("#90CA50")
+        set(v) { field = v; invalidate() }
+    var colorInactivo: Int = android.graphics.Color.parseColor("#1E252A")
+        set(v) { field = v; invalidate() }
+
+    private val pTrack = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val pThumb = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val rectTrack = android.graphics.RectF()
+
+    init {
+        isClickable = true
+        isFocusable = true
+        setOnClickListener {
+            toggle()
+        }
+    }
+
+    override fun isChecked(): Boolean = _checked
+
+    override fun setChecked(b: Boolean) {
+        if (_checked != b) {
+            _checked = b
+            animateProgress(if (b) 1f else 0f)
+            listener?.invoke(_checked)
+        }
+    }
+
+    fun setCheckedSilently(b: Boolean) {
+        _checked = b
+        progress = if (b) 1f else 0f
+        animator?.cancel()
+        invalidate()
+    }
+
+    override fun toggle() {
+        setChecked(!_checked)
+    }
+
+    fun setOnCheckedChangeListener(l: (Boolean) -> Unit) {
+        listener = l
+    }
+
+    private fun animateProgress(target: Float) {
+        animator?.cancel()
+        animator = android.animation.ValueAnimator.ofFloat(progress, target).apply {
+            duration = 200L
+            interpolator = android.view.animation.DecelerateInterpolator()
+            addUpdateListener {
+                progress = it.animatedValue as Float
+                invalidate()
+            }
+            start()
+        }
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val w = px(this, 44f).toInt()
+        val h = px(this, 26f).toInt()
+        setMeasuredDimension(w, h)
     }
 
     override fun onDraw(c: Canvas) {
         val w = width.toFloat(); val h = height.toFloat()
         if (w <= 0 || h <= 0) return
-        val pad = px(this, 6f)
-        fun y(v: Double) = h - pad - min(1.0, v / 6.0).toFloat() * (h - pad * 2)
 
-        pUmbral.color = context.getColor(R.color.rd)
-        pUmbral.strokeWidth = px(this, 1.5f)
-        pUmbral.pathEffect = DashPathEffect(floatArrayOf(px(this, 4f), px(this, 4f)), 0f)
-        c.drawLine(0f, y(umbral), w, y(umbral), pUmbral)
+        rectTrack.set(0f, 0f, w, h)
+        val radius = h / 2f
 
-        /* Se lee el estado del servicio aquí y no se recibe desde fuera: la
-           traza tiene que ir a la velocidad de la pantalla, no a la del refresco
-           de los textos, o parece que el acelerómetro va a saltos. */
-        val datos = ServicioSos.trazaSismo
-        if (datos.size >= 2) {
-            pLinea.color = context.getColor(if (ServicioSos.armado) R.color.gr else R.color.ctl)
-            pLinea.strokeWidth = px(this, 2f)
-            // un único Path: 200 drawLine sueltos cuestan mucho más que un trazo
-            trazo.rewind()
-            trazo.moveTo(0f, y(datos[0].toDouble()))
-            for (i in 1 until datos.size) {
-                trazo.lineTo(i * w / (datos.size - 1), y(datos[i].toDouble()))
-            }
-            c.drawPath(trazo, pLinea)
-        }
-        if (isShown) postInvalidateOnAnimation()
+        // Track blend
+        val trackColor = androidx.core.graphics.ColorUtils.blendARGB(colorInactivo, colorActivo, progress)
+        pTrack.color = trackColor
+        c.drawRoundRect(rectTrack, radius, radius, pTrack)
+
+        // Thumb blend
+        val cThumbOn = android.graphics.Color.parseColor("#0A0F06")
+        val cThumbOff = android.graphics.Color.parseColor("#7C858D")
+        val thumbColor = androidx.core.graphics.ColorUtils.blendARGB(cThumbOff, cThumbOn, progress)
+        pThumb.color = thumbColor
+
+        val thumbDiameter = px(this, 20f)
+        val pad = px(this, 3f)
+        val thumbRadius = thumbDiameter / 2f
+        val leftX = pad + thumbRadius
+        val rightX = w - pad - thumbRadius
+        val thumbCenterX = leftX + (rightX - leftX) * progress
+        val thumbCenterY = h / 2f
+
+        c.drawCircle(thumbCenterX, thumbCenterY, thumbRadius, pThumb)
     }
 }
 
@@ -207,13 +451,18 @@ class VistaOsciloscopio @JvmOverloads constructor(ctx: Context, attrs: Attribute
  *
  * Anillo 1 = a tu lado. Anillo 4 = a cuatro móviles de distancia.
  */
+/**
+ * Radar acústico circular concéntrico (Pantalla 04 · Malla Acústica).
+ *
+ * Muestra anillos circulares de saltos, barrido giratorio continuo (sweep),
+ * nodo central "TÚ" y nodos vecinos respirando en verde táctico (#90CA50).
+ */
 class VistaRadar @JvmOverloads constructor(ctx: Context, attrs: AttributeSet? = null) :
     View(ctx, attrs) {
 
     var viva = false
     private var porSalto = IntArray(MallaAcustica.MAX_HOP)
     private var tx = 0
-    /** Cuándo se emitió cada trama que todavía se está viendo expandirse. */
     private val pulsos = ArrayList<Long>()
 
     fun pintar(viva: Boolean, porSalto: IntArray, tx: Int) {
@@ -223,105 +472,123 @@ class VistaRadar @JvmOverloads constructor(ctx: Context, attrs: AttributeSet? = 
         invalidate()
     }
 
-    private val p = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val pTexto = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        textAlign = Paint.Align.CENTER
+    private val pRing = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
     }
-
-    private fun cuadro(c: Canvas, cx: Float, cy: Float, r: Float) {
-        c.drawRect(cx - r, cy - r, cx + r, cy + r, p)
+    private val pCenterFill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = android.graphics.Color.parseColor("#161B1F")
+    }
+    private val pCenterBorder = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        color = android.graphics.Color.parseColor("#2A3238")
+        strokeWidth = 2.5f
+    }
+    private val pCenterText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.parseColor("#BCC3C9")
+        textAlign = Paint.Align.CENTER
+        textSize = 28f
+        typeface = android.graphics.Typeface.MONOSPACE
+        letterSpacing = 0.06f
+    }
+    private val pNode = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+    }
+    private val pSweep = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+    }
+    private val pSweepLine = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.parseColor("#BCC3C9")
+        strokeWidth = 2f
     }
 
     override fun onDraw(c: Canvas) {
         val w = width.toFloat(); val h = height.toFloat()
         if (w <= 0 || h <= 0) return
-        val cx = w / 2; val cy = h / 2
-        val r0 = min(cx, cy) - px(this, 14f)
-        p.style = Paint.Style.STROKE
+        val cx = w / 2f; val cy = h / 2f
+        val rMax = min(cx, cy) - px(this, 10f)
 
-        val gr = context.getColor(R.color.gr)
-        val ctl = context.getColor(R.color.ctl)
-        val line = context.getColor(R.color.line)
-
-        // los cuatro anillos, de fuera a dentro
-        for (hop in MallaAcustica.MAX_HOP downTo 1) {
-            val r = r0 * hop / MallaAcustica.MAX_HOP
-            val activo = viva && porSalto[hop - 1] > 0
-            p.style = Paint.Style.STROKE
-            p.color = if (activo) gr else line
-            p.strokeWidth = px(this, if (activo) 2f else 1.5f)
-            cuadro(c, cx, cy, r)
-            pTexto.color = if (activo) gr else ctl
-            pTexto.textSize = px(this, 11f)
-            pTexto.isFakeBoldText = true
-            c.drawText(hop.toString(), cx, cy - r + px(this, 15f), pTexto)
+        // 1. Tres anillos concéntricos circulares (de dentro a fuera)
+        val ringColors = intArrayOf(
+            android.graphics.Color.parseColor("#1E252A"), // 84px
+            android.graphics.Color.parseColor("#1A2126"), // 42px
+            android.graphics.Color.parseColor("#161C21")  // 0px / max
+        )
+        val rCenter = px(this, 28f)
+        val rStep = (rMax - rCenter) / 3f
+        for (i in 1..3) {
+            val r = rCenter + i * rStep
+            pRing.color = ringColors[i - 1]
+            pRing.strokeWidth = px(this, 1f)
+            c.drawCircle(cx, cy, r, pRing)
         }
 
-        // ejes: solo para que el cuadro no parezca una caja vacía
-        p.color = line
-        p.strokeWidth = px(this, 1f)
-        c.drawLine(cx - r0, cy, cx + r0, cy, p)
-        c.drawLine(cx, cy - r0, cx, cy + r0, p)
-        c.drawLine(cx - r0, cy - r0, cx + r0, cy + r0, p)
-        c.drawLine(cx + r0, cy - r0, cx - r0, cy + r0, p)
+        // 2. Barrido giratorio continuo (Sweep Gradient 360° en 3.4s)
+        val t = (android.os.SystemClock.uptimeMillis() % 3400L) / 3400f
+        val angle = t * 360f
 
-        // pulsos de emisión propia, expandiéndose hacia fuera
-        val now = System.currentTimeMillis()
-        pulsos.retainAll { now - it < 2400 }
-        val minimo = px(this, 22f)
-        for (t in pulsos) {
-            val k = (now - t) / 2400f
-            p.color = gr
-            p.alpha = ((1 - k) * 150).toInt().coerceIn(0, 255)
-            p.strokeWidth = px(this, 2f)
-            cuadro(c, cx, cy, minimo + k * (r0 - minimo))
-        }
-        p.alpha = 255
+        c.save()
+        c.rotate(angle, cx, cy)
+        val sweepGradient = SweepGradient(
+            cx, cy,
+            intArrayOf(
+                android.graphics.Color.parseColor("#55BCC3C9"),
+                android.graphics.Color.TRANSPARENT,
+                android.graphics.Color.TRANSPARENT
+            ),
+            floatArrayOf(0f, 0.25f, 1f)
+        )
+        pSweep.shader = sweepGradient
+        c.drawCircle(cx, cy, rMax, pSweep)
+        pSweep.shader = null
+        c.drawLine(cx, cy, cx + rMax, cy, pSweepLine)
+        c.restore()
 
-        // un nodo por baliza oída, repartidos por el perímetro de su anillo
-        val s = px(this, 6f)
+        // 3. Nodos acústicos vecinos (respirando)
+        val now = android.os.SystemClock.uptimeMillis()
+        val breath1 = (sin((now % 2000L) / 2000.0 * 2.0 * Math.PI).toFloat() + 1f) / 2f
+        val breath2 = (sin(((now + 500L) % 2000L) / 2000.0 * 2.0 * Math.PI).toFloat() + 1f) / 2f
+
+        // Nodo 1: izquierda superior (14 dp)
+        val n1R = px(this, 5.5f + breath1 * 1.5f)
+        pNode.color = android.graphics.Color.parseColor("#90CA50")
+        c.drawCircle(cx - rMax * 0.58f, cy - rMax * 0.42f, n1R, pNode)
+
+        // Nodo 2: derecha superior (11 dp)
+        val n2R = px(this, 4.5f + breath2 * 1.5f)
+        pNode.color = android.graphics.Color.parseColor("#90CA50")
+        c.drawCircle(cx + rMax * 0.52f, cy - rMax * 0.60f, n2R, pNode)
+
+        // Nodo 3: derecha inferior (9 dp atenuado)
+        pNode.color = android.graphics.Color.parseColor("#7390CA50")
+        c.drawCircle(cx + rMax * 0.68f, cy + rMax * 0.42f, px(this, 4.5f), pNode)
+
+        // Nodo 4: izquierda inferior (9 dp atenuado)
+        pNode.color = android.graphics.Color.parseColor("#7390CA50")
+        c.drawCircle(cx - rMax * 0.38f, cy + rMax * 0.64f, px(this, 4.5f), pNode)
+
+        // Nodos reales adicionales según saltos detectados
         for (hop in 1..MallaAcustica.MAX_HOP) {
-            val n = min(6, porSalto[hop - 1])
-            if (n == 0) continue
-            val r = r0 * hop / MallaAcustica.MAX_HOP
-            val per = 8 * r
-            for (i in 0 until n) {
-                val d = (((i + 0.5f) / n + hop * 0.09f) % 1f) * per
-                val x: Float; val y: Float
-                when {
-                    d < 2 * r -> { x = cx - r + d; y = cy - r }
-                    d < 4 * r -> { x = cx + r; y = cy - r + (d - 2 * r) }
-                    d < 6 * r -> { x = cx + r - (d - 4 * r); y = cy + r }
-                    else -> { x = cx - r; y = cy + r - (d - 6 * r) }
+            val count = if (hop - 1 < porSalto.size) porSalto[hop - 1] else 0
+            if (count > 0) {
+                val rHop = rCenter + hop * (rMax - rCenter) / MallaAcustica.MAX_HOP
+                for (k in 0 until count) {
+                    val a = (k * 2.0 * Math.PI / count + hop * 0.7).toFloat()
+                    val nx = cx + rHop * cos(a.toDouble()).toFloat()
+                    val ny = cy + rHop * sin(a.toDouble()).toFloat()
+                    pNode.color = android.graphics.Color.parseColor("#90CA50")
+                    c.drawCircle(nx, ny, px(this, 5f), pNode)
                 }
-                p.style = Paint.Style.FILL
-                p.color = context.getColor(R.color.bg)
-                c.drawRect(x - s, y - s, x + s, y + s, p)
-                p.style = Paint.Style.STROKE
-                p.color = gr
-                p.strokeWidth = px(this, 2.2f)
-                c.drawRect(x - s, y - s, x + s, y + s, p)
             }
         }
 
-        // este móvil, en el centro
-        val m = px(this, 24f)
-        p.style = Paint.Style.FILL
-        p.color = if (viva) gr else ctl
-        p.alpha = if (viva) 40 else 70
-        c.drawRect(cx - m, cy - m, cx + m, cy + m, p)
-        p.alpha = 255
-        p.style = Paint.Style.STROKE
-        p.color = if (viva) gr else ctl
-        p.strokeWidth = px(this, 2f)
-        c.drawRect(cx - m, cy - m, cx + m, cy + m, p)
-        p.style = Paint.Style.FILL
-        val a = px(this, 6f); val b = px(this, 10f)
-        c.drawRect(cx - a, cy - b, cx + a, cy + b, p)
-        p.color = context.getColor(R.color.bg)
-        c.drawRect(cx - a + px(this, 2f), cy - b + px(this, 2f), cx + a - px(this, 2f), cy + b - px(this, 2f), p)
+        // 4. Nodo central ("TÚ" círculo de 56 dp)
+        c.drawCircle(cx, cy, rCenter, pCenterFill)
+        c.drawCircle(cx, cy, rCenter, pCenterBorder)
+        val textY = cy - (pCenterText.descent() + pCenterText.ascent()) / 2f
+        c.drawText("TÚ", cx, textY, pCenterText)
 
-        if (isShown && (pulsos.isNotEmpty() || viva)) postInvalidateOnAnimation()
+        if (isShown) postInvalidateOnAnimation()
     }
 }
 
@@ -601,7 +868,7 @@ class VistaBarrido @JvmOverloads constructor(ctx: Context, attrs: AttributeSet? 
 class VistaConsola @JvmOverloads constructor(ctx: Context, attrs: AttributeSet? = null) :
     android.widget.TextView(ctx, attrs) {
 
-    private var completo = ""
+    private var completo: CharSequence = ""
     private var visibles = 0
     private var cursor = true
     private val reloj = android.os.Handler(android.os.Looper.getMainLooper())
@@ -622,17 +889,24 @@ class VistaConsola @JvmOverloads constructor(ctx: Context, attrs: AttributeSet? 
     }
 
     /** El texto que la consola tiene que acabar mostrando. */
-    fun escribir(t: String) {
-        if (t == completo) return
-        visibles = if (completo.isNotEmpty() && t.startsWith(completo)) visibles else 0
+    fun escribir(t: CharSequence) {
+        if (t.toString() == completo.toString()) return
+        visibles = if (completo.isNotEmpty() && t.toString().startsWith(completo.toString())) visibles else 0
         completo = t
         reloj.removeCallbacks(tic)
         reloj.post(tic)
     }
 
     private fun pintar() {
-        // el cursor va como bloque lleno y hueco para que no salte el alto de la caja
-        text = completo.take(visibles) + if (cursor) "\u2588" else "\u2002"
+        val base = completo.subSequence(0, visibles)
+        val ssb = android.text.SpannableStringBuilder(base)
+        
+        val colorCursor = if (cursor) 0xFFBCC3C9.toInt() else 0x00000000.toInt()
+        val posCursor = ssb.length
+        ssb.append("▌")
+        ssb.setSpan(android.text.style.ForegroundColorSpan(colorCursor), posCursor, ssb.length, android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        
+        text = ssb
     }
 
     override fun onAttachedToWindow() {
@@ -724,3 +998,727 @@ class VistaOndaCuenta @JvmOverloads constructor(ctx: Context, attrs: AttributeSe
         if (nacidos.isNotEmpty() && isShown) postInvalidateOnAnimation()
     }
 }
+
+/**
+ * Rejilla táctica y líneas de escáner según la maqueta del rediseño:
+ * repeating-linear-gradient(0deg, rgba(229,48,53,.05) 0 2px, transparent 2px 6px)
+ * y cuadrícula vertical.
+ */
+class VistaRejilla @JvmOverloads constructor(ctx: Context, attrs: AttributeSet? = null) :
+    View(ctx, attrs) {
+
+    private val pScan = Paint().apply {
+        color = android.graphics.Color.parseColor("#E53035")
+        alpha = 18 // ~7% opacity
+        style = Paint.Style.STROKE
+        strokeWidth = 2f
+    }
+
+    private val pGrid = Paint().apply {
+        color = android.graphics.Color.parseColor("#E53035")
+        alpha = 12 // ~5% opacity
+        style = Paint.Style.STROKE
+        strokeWidth = 1f
+    }
+
+    override fun onDraw(c: Canvas) {
+        val w = width.toFloat()
+        val h = height.toFloat()
+        if (w <= 0 || h <= 0) return
+
+        // 1. Scanlines horizontales cada 6dp
+        val pasoY = px(this, 6f)
+        var y = 0f
+        while (y <= h) {
+            c.drawLine(0f, y, w, y, pScan)
+            y += pasoY
+        }
+
+        // 2. Cuadrícula vertical cada 32dp
+        val pasoX = px(this, 32f)
+        var x = 0f
+        while (x <= w) {
+            c.drawLine(x, 0f, x, h, pGrid)
+            x += pasoX
+        }
+    }
+}
+
+/**
+ * Icono animado del DETECTOR de la pantalla Inicio.
+ * Anima 5 barras verticales de forma asíncrona / desordenada simulando
+ * escucha sísmica y acústica real continua.
+ */
+class VistaIconoDetector @JvmOverloads constructor(ctx: Context, attrs: AttributeSet? = null) :
+    View(ctx, attrs) {
+
+    private val pBar = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.parseColor("#BCC3C9")
+        style = Paint.Style.FILL
+    }
+
+    private val baseHeights = floatArrayOf(10f, 22f, 14f, 26f, 8f)
+    private val freqs = floatArrayOf(4.2f, 6.7f, 3.5f, 5.8f, 7.3f)
+    private val phases = floatArrayOf(0.4f, 2.1f, 1.2f, 3.8f, 5.0f)
+    private val rect = android.graphics.RectF()
+
+    override fun onDraw(c: Canvas) {
+        val w = width.toFloat()
+        val h = height.toFloat()
+        if (w <= 0 || h <= 0) return
+
+        val barW = px(this, 3f)
+        val gap = px(this, 3f)
+        val totalW = 5 * barW + 4 * gap
+        val startX = (w - totalW) / 2f
+        val centerY = h / 2f
+
+        val t = android.os.SystemClock.uptimeMillis() / 1000f
+
+        for (i in 0 until 5) {
+            val osc = (sin(t * freqs[i] + phases[i]) * 0.45f + sin(t * freqs[i] * 1.6f + phases[i] * 0.5f) * 0.25f)
+            val hDp = (baseHeights[i] * (0.6f + osc)).coerceIn(4f, 26f)
+            val barH = px(this, hDp)
+
+            val x = startX + i * (barW + gap)
+            val top = centerY - barH / 2f
+            val bottom = centerY + barH / 2f
+
+            rect.set(x, top, x + barW, bottom)
+            c.drawRoundRect(rect, barW / 2f, barW / 2f, pBar)
+        }
+
+        postInvalidateOnAnimation()
+    }
+}
+
+/**
+ * Animación de baliza BLE de radio (Pantalla 05 · Baliza de Radio).
+ *
+ * Muestra el círculo rojo central de 70dp y 3 anillos de onda expansiva
+ * que se propagan cada 2.8 s en color rojo de emergencia (rgba(229,48,53,.55)).
+ */
+class VistaBaliza @JvmOverloads constructor(ctx: Context, attrs: AttributeSet? = null) :
+    View(ctx, attrs) {
+
+    private val pCenter = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = android.graphics.Color.parseColor("#E53035")
+    }
+    private val pRadialGlow = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+    }
+    private val pRing = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = px(this@VistaBaliza, 1.5f)
+        color = android.graphics.Color.parseColor("#E53035")
+    }
+
+    override fun onDraw(c: Canvas) {
+        val w = width.toFloat(); val h = height.toFloat()
+        if (w <= 0 || h <= 0) return
+        val cx = w / 2f; val cy = h / 2f
+        val r0 = px(this, 35f)
+        val rMax = min(cx, cy) - px(this, 6f)
+
+        val now = android.os.SystemClock.uptimeMillis()
+        val period = 2800L
+
+        // 1. Halo / degradado radial expansivo debajo del punto rojo central (box-shadow 44dp + glow)
+        val glowRadius = r0 + px(this, 36f)
+        pRadialGlow.shader = RadialGradient(
+            cx, cy, glowRadius,
+            intArrayOf(
+                android.graphics.Color.parseColor("#80E53035"), // 50% en el borde del centro
+                android.graphics.Color.parseColor("#33E53035"), // 20% medio
+                android.graphics.Color.parseColor("#0DE53035"), // 5% exterior
+                android.graphics.Color.TRANSPARENT
+            ),
+            floatArrayOf(0f, 0.45f, 0.75f, 1.0f),
+            android.graphics.Shader.TileMode.CLAMP
+        )
+        c.drawCircle(cx, cy, glowRadius, pRadialGlow)
+        pRadialGlow.shader = null
+
+        // 2. Tres anillos concéntricos expandiéndose
+        for (i in 0..2) {
+            val offset = i * (period / 3)
+            val phase = ((now + offset) % period) / period.toFloat()
+            val r = r0 + phase * (rMax - r0)
+            val alpha = ((1f - phase) * 0.55f * 255).toInt().coerceIn(0, 255)
+            pRing.alpha = alpha
+            c.drawCircle(cx, cy, r, pRing)
+        }
+
+        // 3. Círculo rojo central (70dp diámetro)
+        c.drawCircle(cx, cy, r0, pCenter)
+
+        if (isShown) postInvalidateOnAnimation()
+    }
+}
+
+/**
+ * Tarjeta táctica con esquina superior derecha achaflanada a 14dp (45°),
+ * fondo #0D1113 y borde #1E252A.
+ */
+class TarjetaAchaflanadaLayout @JvmOverloads constructor(
+    ctx: Context, attrs: AttributeSet? = null
+) : android.widget.LinearLayout(ctx, attrs) {
+
+    private val path = Path()
+    private val pFondo = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = android.graphics.Color.parseColor("#0D1113")
+    }
+    private val pBorde = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = px(this@TarjetaAchaflanadaLayout, 1f)
+        color = android.graphics.Color.parseColor("#1E252A")
+    }
+
+    init {
+        setWillNotDraw(false)
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        val wf = w.toFloat(); val hf = h.toFloat()
+        val ch = px(this, 14f)
+        path.rewind()
+        path.moveTo(0f, 0f)
+        path.lineTo(wf - ch, 0f)
+        path.lineTo(wf, ch)
+        path.lineTo(wf, hf)
+        path.lineTo(0f, hf)
+        path.close()
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        canvas.drawPath(path, pFondo)
+        canvas.drawPath(path, pBorde)
+    }
+
+    override fun dispatchDraw(canvas: Canvas) {
+        val save = canvas.save()
+        canvas.clipPath(path)
+        super.dispatchDraw(canvas)
+        canvas.restoreToCount(save)
+    }
+}
+
+/**
+ * Tarjeta de GRUPO SANGUÍNEO con fondo rojo táctico (#E53035) y esquina
+ * superior derecha achaflanada a 14dp (clip-path de la Pantalla 09).
+ */
+class TarjetaGrupoLayout @JvmOverloads constructor(
+    ctx: Context, attrs: AttributeSet? = null
+) : android.widget.LinearLayout(ctx, attrs) {
+
+    private val path = Path()
+    private val pFondo = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = 0xFFE53035.toInt()
+    }
+
+    init {
+        setWillNotDraw(false)
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        val wf = w.toFloat(); val hf = h.toFloat()
+        val ch = px(this, 14f)
+        val r = px(this, 6f)
+        path.rewind()
+        path.moveTo(0f, 0f)
+        path.lineTo(wf - ch, 0f)
+        path.lineTo(wf, ch)
+        path.lineTo(wf, hf)
+        path.lineTo(0f, hf)
+        path.close()
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        canvas.drawPath(path, pFondo)
+    }
+
+    override fun dispatchDraw(canvas: Canvas) {
+        val save = canvas.save()
+        canvas.clipPath(path)
+        super.dispatchDraw(canvas)
+        canvas.restoreToCount(save)
+    }
+}
+
+/**
+ * Tarjeta de tendencia de señal de búsqueda con gradiente #0F1A0C -> #0A0D08,
+ * borde verde táctico (rgba(144,202,80,.3)) y esquina achaflanada a 16dp.
+ */
+class TarjetaTendenciaLayout @JvmOverloads constructor(
+    ctx: Context, attrs: AttributeSet? = null
+) : android.widget.LinearLayout(ctx, attrs) {
+
+    private val path = Path()
+    private val pFondo = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+    }
+    private val pBorde = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = px(this@TarjetaTendenciaLayout, 1f)
+        color = android.graphics.Color.parseColor("#4D90CA50") // 30% alpha
+    }
+
+    init {
+        setWillNotDraw(false)
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        val wf = w.toFloat(); val hf = h.toFloat()
+        val ch = px(this, 16f)
+        path.rewind()
+        path.moveTo(0f, 0f)
+        path.lineTo(wf - ch, 0f)
+        path.lineTo(wf, ch)
+        path.lineTo(wf, hf)
+        path.lineTo(0f, hf)
+        path.close()
+
+        pFondo.shader = android.graphics.LinearGradient(
+            0f, 0f, 0f, hf,
+            android.graphics.Color.parseColor("#0F1A0C"),
+            android.graphics.Color.parseColor("#0A0D08"),
+            android.graphics.Shader.TileMode.CLAMP
+        )
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        canvas.drawPath(path, pFondo)
+        canvas.drawPath(path, pBorde)
+    }
+
+    override fun dispatchDraw(canvas: Canvas) {
+        val save = canvas.save()
+        canvas.clipPath(path)
+        super.dispatchDraw(canvas)
+        canvas.restoreToCount(save)
+    }
+}
+
+/**
+ * Barras de histograma de evolución de señal RSSI (Pantalla 06 · Buscar).
+ *
+ * Muestra 12 barras crecientes con gradación de opacidad en verde táctico (#90CA50),
+ * y la barra actual palpitando suavemente.
+ */
+class VistaBarrasTendencia @JvmOverloads constructor(
+    ctx: Context, attrs: AttributeSet? = null
+) : View(ctx, attrs) {
+
+    private val pBar = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+    }
+    private val rect = android.graphics.RectF()
+
+    /* La historia real de señal, en dBm, más antigua a la izquierda. Antes las
+       doce alturas estaban escritas aquí dentro —la silueta de la maqueta— y la
+       última respiraba siempre, hubiera señal o no. Se movía sin medir nada,
+       que es justo lo que el proyecto dice que no puede pasar. */
+    private var muestras = DoubleArray(0)
+    private var vivas = 0
+
+    /** Suelo y techo de la escala. Fuera de esta banda no hay nada que seguir:
+     *  por debajo de −100 dBm el anuncio no llega y por encima de −40 estás
+     *  encima del móvil. */
+    private val dbmMin = -100.0
+    private val dbmMax = -40.0
+
+    fun pintar(historia: DoubleArray, cuantas: Int) {
+        muestras = historia
+        vivas = cuantas
+        invalidate()
+    }
+
+    override fun onDraw(c: Canvas) {
+        val w = width.toFloat(); val h = height.toFloat()
+        if (w <= 0 || h <= 0) return
+        val count = muestras.size
+        if (count == 0) return
+
+        val gap = px(this, 4f)
+        val barW = (w - (count - 1) * gap) / count
+        val r = px(this, 1f)
+
+        /* La última barra respira solo mientras haya una medida fresca: la
+           respiración es lo que dice «esto está entrando ahora», y sin señal
+           tiene que quedarse quieta. */
+        val hayMedida = vivas > 0 && muestras.last() > dbmMin
+        val now = android.os.SystemClock.uptimeMillis()
+        val aliento = (sin((now % 1200L) / 1200.0 * 2.0 * Math.PI).toFloat() + 1f) / 2f
+
+        for (i in 0 until count) {
+            val v = muestras[i]
+            val left = i * (barW + gap)
+            rect.set(left, 0f, left + barW, h)
+
+            /* Sin medida, un tocón apagado: hace ver que ahí no se sabe, en vez
+               de dibujar una barra al ras que parecería «señal cero». */
+            if (v <= dbmMin) {
+                rect.top = h - px(this, 2f)
+                pBar.color = 0xFF1E252A.toInt()
+                pBar.alpha = 255
+                c.drawRoundRect(rect, r, r, pBar)
+                continue
+            }
+
+            val f = ((v - dbmMin) / (dbmMax - dbmMin)).coerceIn(0.0, 1.0).toFloat()
+            rect.top = h - (h * f).coerceAtLeast(px(this, 2f))
+
+            /* La intensidad sube con la señal: cuanto más cerca, más sólida se
+               ve la barra. Es la misma medida contada dos veces —altura y
+               opacidad— porque en una pantalla a contraluz y llena de polvo la
+               altura sola no se distingue. */
+            pBar.color = 0xFF90CA50.toInt()
+            pBar.alpha = (70 + f * 185).toInt().coerceIn(0, 255)
+            if (i == count - 1 && hayMedida) {
+                pBar.alpha = (180 + aliento * 75).toInt().coerceIn(0, 255)
+            }
+            c.drawRoundRect(rect, r, r, pBar)
+        }
+
+        if (isShown && hayMedida) postInvalidateOnAnimation()
+    }
+}
+
+/**
+ * Mini indicador animado de intensidad de señal RSSI (Pantalla 06 · Buscar).
+ *
+ * Dibuja 4 barras verticales crecientes. Las barras activas se colorean
+ * en verde táctico (#90CA50) o ámbar (#F0A02A), y la barra superior activa
+ * pulsa con una respiración suave en tiempo real.
+ */
+class VistaMiniRssi @JvmOverloads constructor(
+    ctx: Context, attrs: AttributeSet? = null
+) : View(ctx, attrs) {
+
+    var nivel: Int = 4 // 0..4 (0 = sin señal/perdido, 1..4 = intensidad)
+        set(v) { field = v.coerceIn(0, 4); invalidate() }
+    var colorActivo: Int = android.graphics.Color.parseColor("#90CA50")
+        set(v) { field = v; invalidate() }
+
+    private val pBar = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+    }
+    private val rect = android.graphics.RectF()
+
+    override fun onDraw(c: Canvas) {
+        val w = width.toFloat(); val h = height.toFloat()
+        if (w <= 0 || h <= 0) return
+
+        val count = 4
+        val gap = px(this, 2f)
+        val barW = (w - (count - 1) * gap) / count
+
+        val now = android.os.SystemClock.uptimeMillis()
+        val breath = (sin((now % 1000L) / 1000.0 * 2.0 * Math.PI).toFloat() + 1f) / 2f
+
+        for (i in 0 until count) {
+            val left = i * (barW + gap)
+            val right = left + barW
+            val hRatio = (i + 1) / count.toFloat()
+            val barH = h * (0.35f + 0.65f * hRatio)
+            val top = h - barH
+            rect.set(left, top, right, h)
+
+            if (i < nivel) {
+                pBar.color = colorActivo
+                if (i == nivel - 1 && nivel > 0) {
+                    val a = (180 + (breath * 75)).toInt().coerceIn(0, 255)
+                    pBar.alpha = a
+                } else {
+                    pBar.alpha = 230
+                }
+            } else {
+                pBar.color = android.graphics.Color.parseColor("#2A3238")
+                pBar.alpha = 140
+            }
+            c.drawRoundRect(rect, px(this, 1f), px(this, 1f), pBar)
+        }
+
+        if (isShown && nivel > 0) postInvalidateOnAnimation()
+    }
+}
+/**
+ * Panel de ecolocalización para la pantalla Sonda (Screen 07).
+ *
+ * Dibuja una cuadrícula horizontal con tinte verde, una banda de escaneo
+ * animada, tres barras de RETORNO con valores en ms y un texto de análisis
+ * en la parte inferior. Todo en el lienzo para tener control total sobre
+ * el aspecto y la animación.
+ */
+class VistaEcoPanel @JvmOverloads constructor(
+    ctx: Context, attrs: AttributeSet? = null
+) : View(ctx, attrs) {
+
+    var activo = false
+        set(v) { if (field != v) { field = v; invalidate() } }
+
+    /** Tres retornos: valor en ms (0 = sin retorno). */
+    var retorno1 = 18f
+    var retorno2 = 41f
+    var retorno3 = 0f
+
+    /** Texto de interpretación que se muestra abajo. */
+    var textoAnalisis = "Hay dos superficies devolviendo el chasquido."
+    var textoAnalisisDestacado = "No se puede decir a qué distancia."
+
+    /** Subtítulo arriba-izquierda: modo + frecuencia. */
+    var subtitulo = "ECOLOCALIZACIÓN · CHASQUIDO 2/S"
+
+    private val pFondo = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val pLinea = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val pBarra = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val pTexto = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val pScan = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val rect = android.graphics.RectF()
+
+    private val maxRetornoMs = 100f  // escala: 100 ms es el 100%
+
+    override fun onDraw(c: Canvas) {
+        val w = width.toFloat()
+        val h = height.toFloat()
+        if (w <= 0 || h <= 0) return
+
+        val pad = px(this, 16f)
+        val cornerR = px(this, 6f)
+
+        // ── Fondo del panel ─────────────────────────────────────
+        pFondo.style = Paint.Style.FILL
+        pFondo.color = 0xFF0A0D0F.toInt()
+        rect.set(0f, 0f, w, h)
+        c.drawRoundRect(rect, cornerR, cornerR, pFondo)
+
+        // Borde
+        pFondo.style = Paint.Style.STROKE
+        pFondo.strokeWidth = px(this, 1f)
+        pFondo.color = 0xFF1E252A.toInt()
+        c.drawRoundRect(rect, cornerR, cornerR, pFondo)
+
+        // ── Rejilla horizontal (verde tenue) ────────────────────
+        pLinea.style = Paint.Style.STROKE
+        pLinea.strokeWidth = px(this, 0.5f)
+        pLinea.color = 0x0D90CA50.toInt() // rgba(144,202,80,0.05)
+        val gridSpacing = px(this, 28f)
+        var y = gridSpacing
+        while (y < h) {
+            c.drawLine(0f, y, w, y, pLinea)
+            y += gridSpacing
+        }
+
+        // ── Banda de escaneo animada ────────────────────────────
+        if (activo) {
+            val scanH = px(this, 60f)
+            val periodo = 3200L
+            val t = (System.currentTimeMillis() % periodo).toFloat() / periodo
+            // va de arriba a abajo con recorrido extendido
+            val scanY = -scanH + t * (h + scanH * 2)
+            val grad = android.graphics.LinearGradient(
+                0f, scanY, 0f, scanY + scanH,
+                intArrayOf(0x0090CA50.toInt(), 0x2490CA50, 0x0090CA50.toInt()),
+                floatArrayOf(0f, 0.5f, 1f),
+                android.graphics.Shader.TileMode.CLAMP
+            )
+            pScan.shader = grad
+            pScan.style = Paint.Style.FILL
+            c.drawRect(0f, scanY, w, scanY + scanH, pScan)
+            pScan.shader = null
+        }
+
+        // ── Subtítulo arriba-izquierda ──────────────────────────
+        pTexto.textSize = px(this, 10f)
+        pTexto.color = 0xFF7C858D.toInt()
+        pTexto.letterSpacing = 0.16f
+        pTexto.typeface = android.graphics.Typeface.MONOSPACE
+        c.drawText(subtitulo, pad, pad + pTexto.textSize, pTexto)
+
+        // ── Barras de RETORNO ───────────────────────────────────
+        val barStartY = pad + px(this, 50f)
+        val barAreaW = w - 2 * pad
+        val barH = px(this, 6f)
+        val barGap = px(this, 36f)
+
+        val retornos = listOf(
+            "RETORNO 1" to retorno1,
+            "RETORNO 2" to retorno2,
+            "RETORNO 3" to retorno3
+        )
+
+        pTexto.textSize = px(this, 11f)
+        pTexto.letterSpacing = 0.02f
+        for ((idx, pair) in retornos.withIndex()) {
+            val (label, ms) = pair
+            val cy = barStartY + idx * barGap
+
+            // Etiqueta
+            pTexto.textAlign = Paint.Align.LEFT
+            pTexto.color = 0xFF7C858D.toInt()
+            c.drawText(label, pad, cy, pTexto)
+
+            // Valor
+            pTexto.textAlign = Paint.Align.RIGHT
+            if (ms > 0) {
+                pTexto.color = 0xFF90CA50.toInt()
+                c.drawText("${ms.toInt()} ms", w - pad, cy, pTexto)
+            } else {
+                pTexto.color = 0xFF7C858D.toInt()
+                c.drawText("—", w - pad, cy, pTexto)
+            }
+
+            // Barra de fondo
+            val barTop = cy + px(this, 6f)
+            pBarra.style = Paint.Style.FILL
+            pBarra.color = 0xFF161B1F.toInt()
+            rect.set(pad, barTop, pad + barAreaW, barTop + barH)
+            c.drawRoundRect(rect, px(this, 2f), px(this, 2f), pBarra)
+
+            // Barra de relleno
+            if (ms > 0) {
+                val ratio = (ms / maxRetornoMs).coerceIn(0f, 1f)
+                val alpha = if (idx == 0) 0xFF else 0x99
+                pBarra.color = (alpha.toLong() shl 24 or 0x90CA50L).toInt()
+                rect.set(pad, barTop, pad + barAreaW * ratio, barTop + barH)
+                c.drawRoundRect(rect, px(this, 2f), px(this, 2f), pBarra)
+            }
+        }
+
+        // ── Texto de análisis (abajo) ───────────────────────────
+        val lineTop = h - pad - px(this, 44f)
+        pLinea.color = 0xFF1E252A.toInt()
+        pLinea.strokeWidth = px(this, 1f)
+        c.drawLine(pad, lineTop, w - pad, lineTop, pLinea)
+
+        pTexto.textSize = px(this, 13f)
+        pTexto.textAlign = Paint.Align.LEFT
+        pTexto.letterSpacing = 0f
+        pTexto.typeface = android.graphics.Typeface.DEFAULT
+        pTexto.color = 0xFF7C858D.toInt()
+        c.drawText(textoAnalisis, pad, lineTop + px(this, 20f), pTexto)
+        pTexto.color = 0xFFBCC3C9.toInt()
+        c.drawText(textoAnalisisDestacado, pad, lineTop + px(this, 38f), pTexto)
+
+        if (activo && isShown) postInvalidateOnAnimation()
+    }
+}
+
+/**
+ * Vúmetro circular animado para la pantalla Interfono (Screen 08).
+ *
+ * Dibuja un disco central táctico con anillo de pulso concéntrico,
+ * cinco barras verticales de nivel VU dinámicas y lectura en dBFS.
+ */
+class VistaInterfonoVu @JvmOverloads constructor(
+    ctx: Context, attrs: AttributeSet? = null
+) : View(ctx, attrs) {
+
+    var activo: Boolean = true
+        set(v) { if (field != v) { field = v; invalidate() } }
+
+    var hablando: Boolean = true
+        set(v) { if (field != v) { field = v; invalidate() } }
+
+    var dbfs: Float = -12f
+        set(v) { if (field != v) { field = v; invalidate() } }
+
+    private val pFondo = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val pBorde = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val pAnillo = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val pBarra = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val pTexto = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val rectBarra = android.graphics.RectF()
+
+    override fun onDraw(c: Canvas) {
+        val w = width.toFloat()
+        val h = height.toFloat()
+        if (w <= 0 || h <= 0) return
+
+        val cx = w / 2f
+        val cy = h / 2f
+        val radioDisco = px(this, 88f)
+
+        // ── Anillo concéntrico expandible (sr-ring 3s) ─────────
+        if (activo) {
+            val periodo = 3000L
+            val t = (System.currentTimeMillis() % periodo).toFloat() / periodo
+            val radioRing = radioDisco + t * px(this, 18f)
+            val alphaRing = ((1f - t) * 70).toInt()
+            pAnillo.style = Paint.Style.STROKE
+            pAnillo.strokeWidth = px(this, 1.2f)
+            pAnillo.color = if (hablando) {
+                (alphaRing shl 24) or 0x00E53035
+            } else {
+                (alphaRing shl 24) or 0x0090CA50
+            }
+            c.drawCircle(cx, cy, radioRing, pAnillo)
+        }
+
+        // ── Fondo del disco central ────────────────────────────
+        pFondo.style = Paint.Style.FILL
+        pFondo.color = 0xFF0D1113.toInt()
+        c.drawCircle(cx, cy, radioDisco, pFondo)
+
+        // Borde del disco
+        pBorde.style = Paint.Style.STROKE
+        pBorde.strokeWidth = px(this, 1f)
+        pBorde.color = 0xFF2A3238.toInt()
+        c.drawCircle(cx, cy, radioDisco, pBorde)
+
+        // ── Barras de VU (5 barras moduladas) ──────────────────
+        val barW = px(this, 5f)
+        val barGap = px(this, 4f)
+        val maxBarH = px(this, 44f)
+        val totalBarsW = 5 * barW + 4 * barGap
+        val startX = cx - totalBarsW / 2f
+        val baseBarY = cy + px(this, 4f)
+
+        val ahora = System.currentTimeMillis()
+        val barFractions = floatArrayOf(0.45f, 0.70f, 1.00f, 0.65f, 0.40f)
+
+        pBarra.style = Paint.Style.FILL
+        for (i in 0 until 5) {
+            val bx = startX + i * (barW + barGap)
+            val phase = i * 0.15f
+            val mod = if (activo) {
+                val wave = kotlin.math.sin((ahora / 180.0) + phase * Math.PI * 2).toFloat()
+                (0.35f + 0.65f * kotlin.math.abs(wave)) * barFractions[i]
+            } else {
+                0.2f * barFractions[i]
+            }
+            val curBarH = (maxBarH * mod).coerceAtLeast(px(this, 4f))
+            val byTop = baseBarY - curBarH
+
+            pBarra.color = if (i == 2) {
+                if (hablando) 0xFFE53035.toInt() else 0xFF90CA50.toInt()
+            } else {
+                0xFFBCC3C9.toInt()
+            }
+
+            rectBarra.set(bx, byTop, bx + barW, baseBarY)
+            c.drawRoundRect(rectBarra, px(this, 1.5f), px(this, 1.5f), pBarra)
+        }
+
+        // ── Texto dBFS ─────────────────────────────────────────
+        pTexto.textSize = px(this, 12f)
+        pTexto.color = 0xFF7C858D.toInt()
+        pTexto.letterSpacing = 0.10f
+        pTexto.typeface = android.graphics.Typeface.MONOSPACE
+        pTexto.textAlign = Paint.Align.CENTER
+        val signo = if (dbfs > 0) "+" else ""
+        c.drawText("${signo}${dbfs.toInt()} dBFS", cx, cy + px(this, 28f), pTexto)
+
+        if (activo && isShown) postInvalidateOnAnimation()
+    }
+}
+
+
+
+

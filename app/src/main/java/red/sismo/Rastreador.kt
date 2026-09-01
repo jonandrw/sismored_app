@@ -37,7 +37,9 @@ class Rastreador(private val ctx: Context) {
          *  quedado sin batería, y decir que sigue ahí sería mentir. */
         private const val CADUCA_MS = 20000L
         /** Cada cuánto se guarda una foto de la señal para medir la tendencia. */
-        private const val HISTORIA_MS = 2500L
+        const val HISTORIA_MS = 2500L
+        /** Doce cortes: los treinta segundos que caben en la gráfica. */
+        const val HISTORIA_N = 12
         /* ---------- la barra ----------
            La escala era lineal de −100 a −40 dBm, y eso la hacía inútil justo
            donde importa: a un metro o dos llega del orden de −70 dBm, que en una
@@ -80,6 +82,24 @@ class Rastreador(private val ctx: Context) {
         /** Potencia hace unos segundos, para saber si nos acercamos. */
         @Volatile var antes = -127.0
         @Volatile var marcaHistoria = 0L
+
+        /* Los últimos doce cortes de señal, uno cada 2,5 s: medio minuto de
+           historia. Es lo que dibuja la gráfica de tendencia de la pantalla de
+           búsqueda, que hasta ahora tenía las doce alturas escritas a mano en
+           la vista y se movía igual sin señal ninguna.
+           A -127 se entiende «todavía no hay medida», y así la barra no se
+           dibuja en vez de dibujarse en el suelo, que parecería una lectura. */
+        val historia = DoubleArray(HISTORIA_N) { -127.0 }
+        @Volatile var historiaN = 0
+
+        fun apuntar(v: Double) {
+            System.arraycopy(historia, 1, historia, 0, HISTORIA_N - 1)
+            historia[HISTORIA_N - 1] = v
+            if (historiaN < HISTORIA_N) historiaN++
+        }
+
+        /** Cuánto hace que se tomó el corte más antiguo que ya tiene medida. */
+        fun antiguedadSeg(): Int = (historiaN.coerceAtMost(HISTORIA_N) - 1) * (HISTORIA_MS / 1000).toInt()
         /** Potencia con la que el otro dice que emite, si la anuncia. */
         @Volatile var txPower = 127
 
@@ -230,6 +250,7 @@ class Rastreador(private val ctx: Context) {
         if (ahora - h.marcaHistoria > HISTORIA_MS) {
             h.antes = h.suave
             h.marcaHistoria = ahora
+            h.apuntar(h.suave)
         }
         alCambiar?.invoke()
     }

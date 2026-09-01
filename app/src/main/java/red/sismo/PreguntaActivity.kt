@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.View
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.TextView
@@ -79,7 +80,7 @@ class PreguntaActivity : Activity() {
 
         setContentView(R.layout.pregunta)
 
-        findViewById<Button>(R.id.pr_bien).setOnClickListener {
+        findViewById<View>(R.id.pr_bien).setOnClickListener {
             enviar(ServicioSos.ACCION_ESTOY_BIEN)
             /* Acuse de recibo inmediato, y no del servicio: de la propia pulsación.
                Si el servicio estuviera muerto —en algunos móviles el sistema lo
@@ -91,7 +92,7 @@ class PreguntaActivity : Activity() {
         }
         /* El segundo botón no es «cancelar»: es el atajo para quien está bien
            pero ve que hay alguien que no. Se salta la espera. */
-        findViewById<Button>(R.id.pr_ayuda).setOnClickListener {
+        findViewById<View>(R.id.pr_ayuda).setOnClickListener {
             enviar(ServicioSos.ACCION_PANICO)
             finish()
         }

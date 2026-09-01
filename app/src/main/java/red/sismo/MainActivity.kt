@@ -1477,16 +1477,29 @@ class MainActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.hz_dbm_anterior)?.typeface = monoTypeface
         findViewById<TextView>(R.id.hz_dbm_actual)?.typeface = monoTypeface
 
+        /* La gráfica de tendencia, con la historia real del hallazgo más
+           fuerte. Las barras no se referenciaban desde aquí ni una vez: la
+           vista dibujaba una silueta fija y respiraba sola, con señal o sin
+           ella. Los dos pies («−90 dBm hace 40 s» y «−58 dBm ahora») también
+           venían escritos en el XML. */
+        val barras = findViewById<VistaBarrasTendencia>(R.id.hz_barras_tendencia)
         if (hs.isNotEmpty()) {
             val topH = hs.first()
             findViewById<TextView>(R.id.hz_tendencia_rotulo)?.text = when (topH.tendencia) {
                 1 -> "TE ACERCAS"
                 -1 -> "TE ALEJAS"
-                else -> "BUSCANDO SEÑAL"
+                else -> "SIN CAMBIO"
             }
+            barras?.pintar(topH.historia, topH.historiaN)
+            val seg = topH.antiguedadSeg()
+            findViewById<TextView>(R.id.hz_dbm_anterior)?.text =
+                if (topH.historiaN > 1) "${topH.historia[Rastreador.HISTORIA_N - topH.historiaN].toInt()} dBm hace $seg s"
+                else "sin historia todavía"
             findViewById<TextView>(R.id.hz_dbm_actual)?.text = "${topH.suave.toInt()} dBm ahora"
         } else {
-            findViewById<TextView>(R.id.hz_tendencia_rotulo)?.text = "BUSCANDO SEÑAL"
+            findViewById<TextView>(R.id.hz_tendencia_rotulo)?.text =
+                if (ServicioSos.buscando) "BUSCANDO SEÑAL" else "BÚSQUEDA PARADA"
+            barras?.pintar(DoubleArray(Rastreador.HISTORIA_N) { -127.0 }, 0)
             findViewById<TextView>(R.id.hz_dbm_anterior)?.text = ""
             findViewById<TextView>(R.id.hz_dbm_actual)?.text = ""
         }
@@ -1608,6 +1621,19 @@ class MainActivity : AppCompatActivity() {
         findViewById<View>(R.id.permiso_ble)?.setOnClickListener { pedirRadio() }
         findViewById<View>(R.id.permiso_cam)?.setOnClickListener { pedirPermisos() }
         findViewById<View>(R.id.permiso_ubi)?.setOnClickListener { pedirPermisos() }
+
+        /* El atajo de volumen era la única fila de Ajustes sin listener: se
+           veía, se pulsaba y no pasaba nada. Y es el control que más falta hace
+           con la pantalla bloqueada, porque es el único que funciona a ciegas.
+           No se puede activar desde aquí —es un servicio de accesibilidad y eso
+           lo concede la persona en Ajustes del sistema—, así que lleva allí. */
+        findViewById<View>(R.id.fila_atajo_volumen)?.setOnClickListener {
+            try {
+                startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            } catch (_: Exception) {
+                Toast.makeText(this, R.string.teclas_sin_ajustes, Toast.LENGTH_LONG).show()
+            }
+        }
 
         findViewById<View>(R.id.fila_confirmar_sirena)?.setOnClickListener {
             op.confirmarAntesDeSirena = !op.confirmarAntesDeSirena
@@ -1823,6 +1849,7 @@ class MainActivity : AppCompatActivity() {
             R.id.v_interfono -> pintarInterfono()
             R.id.v_consola -> pintarConsola()
             R.id.v_ficha -> pintarFicha()
+            R.id.v_acerca -> pintarAcerca()
             R.id.v_registro -> {
                 if (lineas.isEmpty() && ServicioSos.ultimoRegistro.isNotEmpty()) anotar(ServicioSos.ultimoRegistro)
                 pintarRegistro()
@@ -2184,16 +2211,24 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun pintarRescate() {
+        /* La autonomía. Había aquí `pct * 0,65`, o sea 65 h con la batería
+           llena: un número inventado sobre la pregunta «¿cuánto voy a seguir
+           pidiendo ayuda?». Nadie ha medido el consumo del modo rescate en un
+           móvil real, así que se enseña lo único que sí se mide —la carga— y
+           se dice que las horas no están medidas. */
         val bm = getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
-        val pct = bm?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: 50
-        findViewById<TextView>(R.id.rescate_horas_autonomia)?.text = "${(pct * 0.65).toInt()}"
+        val pct = bm?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
+        findViewById<TextView>(R.id.rescate_horas_autonomia)?.text =
+            if (pct in 0..100) "$pct" else "—"
 
-        val tiempoEnCiclo = (System.currentTimeMillis() % 12_000L)
-        val restanteSeg = (12_000L - tiempoEnCiclo) / 1000L
-        val progresoPct = ((12_000L - tiempoEnCiclo) * 100 / 12_000L).toInt()
-        val tvCuenta = findViewById<TextView>(R.id.rescate_cuenta_pulso)
-        tvCuenta?.text = String.format(java.util.Locale.US, "%02d", restanteSeg)
-        findViewById<ProgressBar>(R.id.rescate_barra_pulso)?.progress = progresoPct
+        /* La cuenta atrás, contra el reloj del servicio y no contra el del
+           sistema. Fuera del modo rescate no hay pulso que contar. */
+        val falta = ServicioSos.proximoPulso - System.currentTimeMillis()
+        val activo = ServicioSos.enRescate && ServicioSos.proximoPulso > 0
+        findViewById<TextView>(R.id.rescate_cuenta_pulso)?.text =
+            if (activo) String.format(Locale.US, "%02d", (falta / 1000).coerceIn(0, 99)) else "--"
+        findViewById<ProgressBar>(R.id.rescate_barra_pulso)?.progress =
+            if (activo) (falta * 100 / ServicioSos.RESCATE_MS).toInt().coerceIn(0, 100) else 0
 
         actualizarSwTactico(R.id.sw_rescate_sonoro, op.sirena)
         actualizarSwTactico(R.id.sw_rescate_radio, op.baliza)
@@ -2203,7 +2238,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun formatearNombreEnDosLineas(nombre: String): String {
         val limpio = nombre.trim().uppercase()
-        if (limpio.isEmpty()) return "MARTA\nFERRÁN"
+        /* Sin nombre no hay nombre. Devolvía «MARTA FERRÁN», el de la maqueta,
+           en la tarjeta que lee quien te encuentra inconsciente. */
+        if (limpio.isEmpty()) return getString(R.string.ficha_sin_nombre)
         if (limpio.contains("\n")) {
             val lineas = limpio.lines().filter { it.isNotBlank() }
             return if (lineas.size <= 2) lineas.joinToString("\n")
@@ -2255,10 +2292,22 @@ class MainActivity : AppCompatActivity() {
     private fun pintarRed() {
         val viva = ServicioSos.mallaEscuchando
         val rx = ServicioSos.mallaRx
-        findViewById<TextView>(R.id.malla_sub)?.text = "$rx NODOS OÍDOS EN LOS ÚLTIMOS 90 S"
-        val tx = ServicioSos.mallaTx
-        findViewById<TextView>(R.id.txt_malla_reemitidas)?.text = "$tx"
+        findViewById<TextView>(R.id.malla_sub)?.text =
+            if (rx > 0) "$rx ${if (rx == 1) "NODO OÍDO" else "NODOS OÍDOS"} EN LOS ÚLTIMOS 90 S"
+            else if (viva) "ESCUCHANDO · NADIE EN LOS ÚLTIMOS 90 S"
+            else "MALLA PARADA"
+        findViewById<TextView>(R.id.txt_malla_reemitidas)?.text = "${ServicioSos.mallaTx}"
+        /* La portadora que dice la pantalla tiene que ser la que emite el
+           motor. La maqueta puso 17,4 kHz y el rediseño lo copió; la baliza va
+           en MARK a 16,0 y los saltos entre 16,8 y 18. */
+        findViewById<TextView>(R.id.malla_portadora)?.text =
+            String.format(Locale.US, "%.1f", MallaAcustica.MARK / 1000.0)
         findViewById<VistaRadar>(R.id.radar)?.pintar(viva, ServicioSos.mallaPorSalto, ServicioSos.mallaTx)
+    }
+
+    /** Pantalla 16. La versión sale del build, no de un literal. */
+    private fun pintarAcerca() {
+        findViewById<TextView>(R.id.acerca_version)?.text = "v${BuildConfig.VERSION_NAME}"
     }
 
     private fun pintarEntorno() {
@@ -2389,8 +2438,15 @@ class MainActivity : AppCompatActivity() {
         val camOk = Linterna(this).hay()
         val ubiOk = Ubicacion(this).hayPermiso()
 
+        /* El banner decía «FALTA 1 PERMISO» fijo en el XML: con tres denegados
+           seguía diciendo uno, y con todos concedidos se escondía el aviso pero
+           el rótulo seguía puesto por debajo. Ahora cuenta. */
+        val faltan = listOf(micOk, bleOk, camOk, ubiOk).count { !it }
         findViewById<View>(R.id.banner_falta_permiso)?.visibility =
-            if (!micOk || !bleOk || !ubiOk) View.VISIBLE else View.GONE
+            if (faltan > 0) View.VISIBLE else View.GONE
+        findViewById<TextView>(R.id.banner_falta_titulo)?.text =
+            if (faltan > 0) resources.getQuantityString(R.plurals.permisos_faltan, faltan, faltan)
+            else getString(R.string.permisos_al_dia)
 
         findViewById<View>(R.id.permiso_micro_dot)?.setBackgroundResource(if (micOk) R.drawable.punto_verde else R.drawable.punto_rojo)
         findViewById<TextView>(R.id.permiso_micro_txt)?.let {

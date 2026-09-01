@@ -911,7 +911,8 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/mono"
-                                android:text="17.4"
+                                android:id="@+id/malla_portadora"
+                                android:text="16.0"
                                 android:textColor="#FFFFFF"
                                 android:textSize="30sp"
                                 android:textStyle="bold" />
@@ -1109,7 +1110,7 @@
                             android:layout_marginTop="8dp"
                             android:fontFamily="@font/mono"
                             android:letterSpacing="0.12"
-                            android:text="ANUNCIO BLE · CADA 2 S"
+                            android:text="@string/baliza_anuncio"
                             android:textColor="#7C858D"
                             android:textSize="11sp" />
                     </LinearLayout>
@@ -1895,7 +1896,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:fontFamily="@font/mono"
-                                android:text="CADENCIA 12 S"
+                                android:text="@string/rescate_cadencia"
                                 android:textColor="#7C858D"
                                 android:textSize="10sp" />
 
@@ -1903,7 +1904,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/mono"
-                                android:text="PULSO 0.9 S"
+                                android:text="@string/rescate_pulso"
                                 android:textColor="#7C858D"
                                 android:textSize="10sp" />
                         </LinearLayout>
@@ -2362,7 +2363,8 @@
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/saira"
                                 android:letterSpacing="0.03"
-                                android:text="FALTA 1 PERMISO"
+                                android:id="@+id/banner_falta_titulo"
+                                android:text="@string/permisos_al_dia"
                                 android:textColor="#FF7B7E"
                                 android:textSize="19sp"
                                 android:textStyle="bold" />
@@ -2849,7 +2851,8 @@
                                 android:paddingEnd="11dp"
                                 android:paddingTop="5dp"
                                 android:paddingBottom="5dp"
-                                android:text="v0.9.4"
+                                android:id="@+id/acerca_version"
+                                android:text="@string/app_name"
                                 android:textColor="@color/tx_sec"
                                 android:textSize="11sp" />
 

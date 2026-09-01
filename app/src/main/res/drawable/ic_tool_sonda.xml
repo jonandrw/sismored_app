@@ -1,0 +1,14 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="26dp"
+    android:height="26dp"
+    android:viewportWidth="26"
+    android:viewportHeight="26">
+    <!-- Sonda Target Bullseye from Mockup 01 -->
+    <path
+        android:strokeColor="#BCC3C9"
+        android:strokeWidth="2"
+        android:pathData="M13,2a11,11 0 1,0 0.001,0" />
+    <path
+        android:fillColor="#BCC3C9"
+        android:pathData="M12,12h2v2h-2z" />
+</vector>

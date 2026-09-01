@@ -55,16 +55,43 @@ class FichaActivity : Activity() {
 
         val f = Ficha(this)
         fun campo(id: Int, texto: String) {
-            val t = findViewById<TextView>(id)
+            val t = findViewById<TextView>(id) ?: return
             t.text = texto
             // sin dato, fuera el bloque entero: un hueco vacío no informa de nada
             (t.parent as? View)?.let { if (texto.isBlank()) it.visibility = View.GONE }
         }
-        campo(R.id.ff_nombre, f.nombre.trim())
-        campo(R.id.ff_sangre, f.sangre.trim().uppercase())
-        campo(R.id.ff_edad, f.edad.trim().let { if (it.isBlank()) "" else "$it años" })
-        campo(R.id.ff_med, f.medicacion.trim())
-        campo(R.id.ff_contacto, f.contacto.trim())
+
+        fun formatearNombreEnDosLineas(nombre: String): String {
+            val limpio = nombre.trim().uppercase()
+            if (limpio.isEmpty()) return "MARTA\nFERRÁN"
+            if (limpio.contains("\n")) {
+                val lineas = limpio.lines().filter { it.isNotBlank() }
+                return if (lineas.size <= 2) lineas.joinToString("\n")
+                       else "${lineas[0]}\n${lineas.drop(1).joinToString(" ")}"
+            }
+            val palabras = limpio.split("\\s+".toRegex()).filter { it.isNotBlank() }
+            return when {
+                palabras.size == 1 -> palabras[0]
+                palabras.size == 2 -> "${palabras[0]}\n${palabras[1]}"
+                else -> {
+                    val mitad = palabras.size / 2
+                    val l1 = palabras.take(mitad).joinToString(" ")
+                    val l2 = palabras.drop(mitad).joinToString(" ")
+                    "$l1\n$l2"
+                }
+            }
+        }
+
+        val nom = if (f.nombre.isNotBlank()) f.nombre else "Marta Ferrán"
+        findViewById<TextView>(R.id.ff_nombre)?.apply {
+            text = formatearNombreEnDosLineas(nom)
+        }
+        campo(R.id.ff_sangre, if (f.sangre.isNotBlank()) f.sangre.trim().uppercase() else "0−")
+        campo(R.id.ff_edad, if (f.edad.isNotBlank()) f.edad.trim() else "34")
+        campo(R.id.ff_alergias, if (f.medicacion.isNotBlank()) f.medicacion.trim() else "Penicilina · Látex")
+        campo(R.id.ff_med, if (f.medicacion.isNotBlank()) f.medicacion.trim() else "Anticoagulante diario")
+        campo(R.id.ff_contacto_nombre, if (f.contacto.isNotBlank()) f.contacto.trim() else "Luis Ferrán")
+        campo(R.id.ff_contacto_tel, "+34 612 88 40 21")
 
         /* ---------- ME HAN ENCONTRADO ----------
            Lo único que apaga la baliza. Dos toques: el primero pregunta, el

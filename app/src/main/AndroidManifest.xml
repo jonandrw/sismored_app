@@ -135,6 +135,11 @@
             android:taskAffinity=""
             android:turnScreenOn="true" />
 
+        <activity
+            android:name=".HistorialActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
         <!-- stopWithTask=false es lo que hace que la vigilancia sobreviva a que
              alguien deslice la app fuera de recientes por error. Sin esto,
              cerrar la pantalla mataba el servicio y con él la sirena, la malla y

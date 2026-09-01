@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/notif_fondo"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_notif_servicio"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="16dp">
+
+    <!-- Icono Cuadrado Gris -->
+    <ImageView
+        android:id="@+id/notif_icono"
+        android:layout_width="34dp"
+        android:layout_height="34dp"
+        android:layout_marginEnd="13dp"
+        android:src="@drawable/ic_notif_icono_gris" />
+
+    <!-- Contenido -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/notif_titulo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/barlow"
+            android:text="Servicio activo"
+            android:textColor="#BCC3C9"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/notif_texto"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:fontFamily="@font/barlow"
+            android:text="Sigue vivo con la pantalla apagada · permanente"
+            android:textColor="#7C858D"
+            android:textSize="13.5sp" />
+    </LinearLayout>
+</LinearLayout>

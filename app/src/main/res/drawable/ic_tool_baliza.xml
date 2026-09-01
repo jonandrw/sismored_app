@@ -1,0 +1,24 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="30dp"
+    android:height="30dp"
+    android:viewportWidth="30"
+    android:viewportHeight="30">
+    <!-- Baliza Icon strictly matching Section 04:
+         Center dot (15,15) r=3 + top-right concentric radio emission arcs -->
+    <!-- Solid center dot at (15, 15) -->
+    <path
+        android:fillColor="#BCC3C9"
+        android:pathData="M15,12a3,3 0 1,0 0.001,0" />
+    <!-- Arc 1 (radius 10): from top (15, 5) to right (25, 15) -->
+    <path
+        android:strokeColor="#8CBCC3C9"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M15,5A10,10 0 0,1 25,15" />
+    <!-- Arc 2 (radius 15): from top (15, 0) to right (30, 15) -->
+    <path
+        android:strokeColor="#40BCC3C9"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M15,0A15,15 0 0,1 30,15" />
+</vector>

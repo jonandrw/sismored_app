@@ -19,27 +19,30 @@
     <!-- === superficies, de atrás hacia delante === -->
     <color name="bg">#050708</color>
     <color name="card">#0D1113</color>
-    <color name="card2">#16181F</color>
+    <color name="card2">#161B1F</color>
     <color name="line">#1E252A</color>
+    <color name="line_dark">#161C21</color>
+    <color name="borde_control">#2A3238</color>
 
     <!-- Control apagado: un gris que se ve pero no compite con el dato. -->
-    <color name="ctl">#39424A</color>
+    <color name="ctl">#2A3238</color>
 
     <!-- === texto === -->
-    <!-- Etiqueta corta, de tres palabras. Para leer de corrido está `lectura`. -->
+    <!-- Subtítulos, rótulos cortos, unidades y labels mono (104 apariciones en rediseño) -->
     <color name="dim">#7C858D</color>
-    <color name="tx">#E8EBED</color>
-    <!-- Gris de LECTURA: el blanco de `tx` bajado lo justo para no deslumbrar en
-         una pantalla negra pero leerse de corrido. -->
+    <color name="tx">#FFFFFF</color>
+    <color name="tx_sec">#E8EBED</color>
+    <!-- Gris de LECTURA / Números mono y texto suave (87 apariciones en rediseño) -->
     <color name="lectura">#BCC3C9</color>
+    <!-- Texto oscuro de contraste para botones de acción rojos (#E53035) -->
+    <color name="tx_sobre_rojo">#0A0405</color>
 
     <!-- === estado === -->
-    <!-- Emitiendo. Nunca decorativo. -->
+    <!-- Emitiendo / Alarma activa / Peligro. Nunca meramente decorativo (40 apariciones). -->
     <color name="rd">#E53035</color>
     <color name="rd_d">#A81F23</color>
-    <!-- Verificado, medido, comprobado. -->
+    <!-- Vigilando / Medido / Nodo detectado / Verificado (100 apariciones). -->
     <color name="gr">#90CA50</color>
-    <!-- Sin calibrar: ni bien ni mal, «esto todavía no se ha medido». Faltaba un
-         color para eso y se estaba usando el rojo, que decía otra cosa. -->
+    <!-- Precaución / Estado atrapada / Doppler (17 apariciones). -->
     <color name="ambar">#F0A02A</color>
 </resources>

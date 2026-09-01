@@ -1,188 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- La ficha a pantalla completa: lo que lee quien te encuentra inconsciente.
-
-     Antes era un solo TextView con todo el texto seguido, arriba a la izquierda y
-     con media pantalla en negro debajo. Aquí no sobra pantalla: quien lee esto lo
-     hace agachado, con casco, con polvo y con prisa, y necesita el grupo sanguíneo
-     de un vistazo desde medio metro.
-
-     Cada bloque tiene `layout_height="0dp"` y su peso, así que la ficha SE REPARTE
-     la pantalla entera en cualquier tamaño y resolución en vez de amontonarse
-     arriba. Los pesos son la jerarquía: el grupo sanguíneo pesa más que el
-     contacto porque es lo que decide lo que se le puede dar a alguien.
-
-     Los valores se autoescalan: un nombre largo o tres alergias bajan la letra en
-     vez de recortarse con puntos suspensivos. Perder una palabra aquí puede
-     significar administrar algo que mata. -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- FICHA MÉDICA a pantalla completa (Maqueta 09).
+     Fondo claro #F2F4F5 y máximo contraste para legibilidad en luz de día, polvo y escombros. -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg"
-    android:orientation="vertical"
-    android:paddingStart="20dp"
-    android:paddingEnd="20dp"
-    android:paddingTop="16dp"
-    android:paddingBottom="16dp">
+    android:background="#F2F4F5"
+    android:fillViewport="true"
+    android:scrollbars="none">
 
-    <TextView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:fontFamily="@font/barlow"
-        android:letterSpacing="0.14"
-        android:text="@string/ff_titulo"
-        android:textColor="@color/rd"
-        android:textSize="12sp" />
-
-    <!-- nombre -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="2"
         android:orientation="vertical"
-        android:paddingTop="14dp">
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingTop="20dp"
+        android:paddingBottom="28dp">
 
-        <TextView style="@style/FfEtiqueta" android:text="@string/f_nombre" />
+        
+        <include layout="@layout/ficha_campos" />
+
+        <!-- Botón ME HAN ENCONTRADO -->
+        <Button
+            android:id="@+id/ff_encontrado"
+            style="@style/Boton.UnaLinea"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:backgroundTint="#0B0D0F"
+            android:minHeight="60dp"
+            android:text="@string/ff_encontrado"
+            android:textColor="@color/gr"
+            android:textSize="16sp" />
 
         <TextView
-            android:id="@+id/ff_nombre"
-            style="@style/FfValor"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:textSize="34sp"
-            app:autoSizeMaxTextSize="34sp"
-            app:autoSizeMinTextSize="16sp" />
+            android:id="@+id/ff_pie"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:fontFamily="@font/barlow"
+            android:gravity="center"
+            android:lineSpacingMultiplier="1.3"
+            android:text="Estos datos se guardan solo en este móvil. Salen por radio únicamente con la alarma o el modo rescate activos."
+            android:textColor="#7C858D"
+            android:textSize="12sp" />
     </LinearLayout>
-
-    <View style="@style/FfLinea" />
-
-    <!-- grupo sanguíneo y edad, en la misma fila: los dos son cortos y los dos se
-         leen de un vistazo. El grupo ocupa el doble porque es el que decide. -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="3"
-        android:baselineAligned="false"
-        android:orientation="horizontal"
-        android:paddingTop="14dp">
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="2"
-            android:orientation="vertical">
-
-            <TextView style="@style/FfEtiqueta" android:text="@string/f_sangre" />
-
-            <TextView
-                android:id="@+id/ff_sangre"
-                style="@style/FfValor"
-                android:layout_height="0dp"
-                android:layout_weight="1"
-                android:textColor="@color/rd"
-                android:textSize="64sp"
-                app:autoSizeMaxTextSize="64sp"
-                app:autoSizeMinTextSize="28sp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:orientation="vertical">
-
-            <TextView style="@style/FfEtiqueta" android:text="@string/f_edad" />
-
-            <TextView
-                android:id="@+id/ff_edad"
-                style="@style/FfValor"
-                android:layout_height="0dp"
-                android:layout_weight="1"
-                android:textSize="34sp"
-                app:autoSizeMaxTextSize="34sp"
-                app:autoSizeMinTextSize="18sp" />
-        </LinearLayout>
-    </LinearLayout>
-
-    <View style="@style/FfLinea" />
-
-    <!-- alergias y medicación: el bloque más alto, porque es el más largo y el que
-         no se puede leer a medias -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="4"
-        android:orientation="vertical"
-        android:paddingTop="14dp">
-
-        <TextView style="@style/FfEtiqueta" android:text="@string/f_med" />
-
-        <TextView
-            android:id="@+id/ff_med"
-            style="@style/FfValor"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:maxLines="6"
-            android:textSize="22sp"
-            app:autoSizeMaxTextSize="22sp"
-            app:autoSizeMinTextSize="13sp" />
-    </LinearLayout>
-
-    <View style="@style/FfLinea" />
-
-    <!-- contacto -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="2"
-        android:orientation="vertical"
-        android:paddingTop="14dp">
-
-        <TextView style="@style/FfEtiqueta" android:text="@string/f_contacto" />
-
-        <TextView
-            android:id="@+id/ff_contacto"
-            style="@style/FfValor"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:textSize="24sp"
-            app:autoSizeMaxTextSize="24sp"
-            app:autoSizeMinTextSize="14sp" />
-    </LinearLayout>
-
-    <!-- ME HAN ENCONTRADO.
-
-         Es lo único que apaga la baliza, y va aquí porque esta es la pantalla
-         que se abre sola cuando el rescate ya está encima: quien la está viendo
-         es la persona atrapada, con alguien delante.
-
-         Que la ficha aparezca NO puede cancelar nada por sí sola. Si el
-         rescatista se equivoca de hueco y el móvil deja de emitir por haber
-         mostrado una pantalla, se pierde a la persona. Hace falta que alguien lo
-         diga a propósito, y por eso hay dos toques: el botón primero pregunta y
-         solo el segundo apaga. Dos toques grandes y sin diálogo — quien está
-         debajo puede estar herido y a oscuras, y un cuadro con dos botones
-         pequeños ahí no lo pulsa nadie. -->
-    <Button
-        android:id="@+id/ff_encontrado"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="14dp"
-        android:background="@drawable/fila_op"
-        android:fontFamily="@font/barlow"
-        android:letterSpacing="0.06"
-        android:minHeight="64dp"
-        android:text="@string/ff_encontrado"
-        android:textColor="@color/gr"
-        android:textSize="16sp" />
-
-    <TextView
-        android:id="@+id/ff_pie"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:paddingTop="10dp"
-        android:text="@string/ff_cerrar"
-        android:textColor="@color/ctl"
-        android:textSize="11sp" />
-</LinearLayout>
+</ScrollView>

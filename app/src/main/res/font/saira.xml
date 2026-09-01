@@ -1,14 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Saira Condensed: los titulares, y solo ellos.
-
-     Hereda la inclinación y la condensación del propio logotipo, así que un
-     titular y la marca se leen como la misma voz. Va SIEMPRE en 700 y en
-     versales; la cursiva la sintetiza Android inclinando el trazo, igual que
-     hacía el navegador en la maqueta —la familia no trae itálica propia—.
-
-     Nunca para texto corrido: condensada y en versales cansa a las tres
-     líneas. -->
-<font-family xmlns:android="http://schemas.android.com/apk/res/android">
-    <font android:fontStyle="normal" android:fontWeight="400" android:font="@font/saira_regular" />
-    <font android:fontStyle="normal" android:fontWeight="700" android:font="@font/saira_bold" />
+<font-family xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <font
+        android:font="@font/saira_regular"
+        android:fontStyle="normal"
+        android:fontWeight="400"
+        app:font="@font/saira_regular"
+        app:fontStyle="normal"
+        app:fontWeight="400" />
+    <font
+        android:font="@font/saira_bold"
+        android:fontStyle="normal"
+        android:fontWeight="700"
+        app:font="@font/saira_bold"
+        app:fontStyle="normal"
+        app:fontWeight="700" />
 </font-family>

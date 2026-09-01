@@ -41,6 +41,18 @@ class Opciones(ctx: Context) {
     var sirena: Boolean
         get() = leer("op_sirena", true); set(v) = poner("op_sirena", v)
 
+    var confirmarAntesDeSirena: Boolean
+        get() = leer("op_confirmar_sirena", false); set(v) = poner("op_confirmar_sirena", v)
+
+    var arrancarAlIniciar: Boolean
+        get() = leer("op_arrancar_iniciar", true); set(v) = poner("op_arrancar_iniciar", v)
+
+    var descartarCaidas: Boolean
+        get() = leer("op_descartar_caidas", true); set(v) = poner("op_descartar_caidas", v)
+
+    var avisarMallaAlDisparar: Boolean
+        get() = leer("op_avisar_malla_disparo", true); set(v) = poner("op_avisar_malla_disparo", v)
+
     /** Vigilancia sísmica automática. Arranca armada: es la razón de existir de
      *  la versión nativa, que es la que puede vigilar con la pantalla apagada. */
     var armado: Boolean

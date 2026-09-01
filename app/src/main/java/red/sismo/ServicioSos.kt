@@ -22,10 +22,14 @@ import android.util.Log
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.widget.RemoteViews
 import kotlin.concurrent.thread
 import kotlin.math.abs
 import kotlin.math.PI
 import kotlin.math.sin
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
  * El servicio en primer plano: lo que mantiene todo vivo con la pantalla
@@ -246,7 +250,18 @@ class ServicioSos : Service() {
         /** Silenciar la alarma calla este móvil, no la propagación. */
         private const val SILENCIO_MS = 60000L
         /** Un pulso cada 12 s: de una hora de sirena a muchas horas de baliza. */
-        private const val RESCATE_MS = 12000L
+        const val RESCATE_MS = 12000L
+
+        /* Cuánto dura de verdad el tramo sonoro: tres pitidos de 0,20 s que
+           arrancan cada 0,28 s. La maqueta ponía «PULSO 0.9 S» y la pantalla lo
+           copió; son 0,76. */
+        const val PULSO_MS = 760L
+
+        /** Cuándo toca el siguiente pulso. La cuenta atrás de la pantalla de
+         *  rescate la sacaba de `currentTimeMillis() % 12000`, o sea de un reloj
+         *  que no tiene nada que ver con cuándo suena: bajaba a cero sin que
+         *  sonase nada, y sonaba con la cuenta a mitad. */
+        @Volatile var proximoPulso = 0L; private set
         /** Cuánto suena la sirena de llamada del que busca. */
         private const val LLAMADA_MS = 5000L
         /** Baliza acelerada mientras dura la respuesta a una llamada. */
@@ -775,6 +790,21 @@ class ServicioSos : Service() {
             mallaRx = it.rx; mallaTx = it.tx; mallaSalto = it.ultimoSalto
             mallaPorSalto = it.porSalto.copyOf()
         }
+        
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            try {
+                val db = red.sismo.data.SismoDatabase.getDatabase(this@ServicioSos)
+                val evento = red.sismo.data.EventoBD(
+                    tipo = 1,
+                    fechaMs = System.currentTimeMillis(),
+                    mensaje = m
+                )
+                db.eventoDao().insertar(evento)
+            } catch (e: Exception) {
+                // Ignore errors
+            }
+        }
+        
         try {
             sendBroadcast(Intent(ACCION_REGISTRO).setPackage(packageName).putExtra("texto", m))
         } catch (_: Exception) {}
@@ -1559,7 +1589,11 @@ class ServicioSos : Service() {
         // el rescate no se silencia a sí mismo
         try { malla?.silenciadoHasta = 0 } catch (_: Exception) {}
         val tarea = object : Runnable {
-            override fun run() { pulsoRescate(); reloj.postDelayed(this, RESCATE_MS) }
+            override fun run() {
+                pulsoRescate()
+                proximoPulso = System.currentTimeMillis() + RESCATE_MS
+                reloj.postDelayed(this, RESCATE_MS)
+            }
         }
         rescateTarea = tarea
         reloj.post(tarea)
@@ -2122,33 +2156,70 @@ class ServicioSos : Service() {
             this, 0, Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+
+        val esAlarma = alarma || enRescate || preguntaHasta > System.currentTimeMillis()
+        val esMalla = !esAlarma && (mallaRx > 0 || mallaTx > 0)
+
+        val layoutId = when {
+            esAlarma -> R.layout.notif_alarma
+            esMalla -> R.layout.notif_malla
+            else -> R.layout.notif_servicio
+        }
+
+        val rv = RemoteViews(packageName, layoutId)
+
+        if (esAlarma) {
+            val tit = if (enRescate) "SISMORED · MODO RESCATE" else "SISMORED · ALARMA ACTIVA"
+            val sub = if (enRescate) "Pulso de bajo consumo cada 12 s · linterna y baliza"
+                      else "Sirena y linterna en marcha · baliza emitiendo"
+            rv.setTextViewText(R.id.notif_titulo, tit)
+            rv.setTextViewText(R.id.notif_texto, sub)
+            rv.setTextViewText(R.id.notif_tiempo, "ahora")
+            rv.setOnClickPendingIntent(R.id.btn_notif_parar, pi(ACCION_PARAR))
+            rv.setOnClickPendingIntent(R.id.btn_notif_rescate, pi(if (enRescate) ACCION_PANICO else ACCION_RESCATE))
+            if (enRescate) {
+                rv.setTextViewText(R.id.btn_notif_rescate, "PÁNICO")
+            }
+        } else if (esMalla) {
+            val salto = if (mallaSalto > 0) mallaSalto else 3
+            val tit = "Alerta de la malla · salto $salto de 4"
+            val sub = if (mallaTx > 0) "Retransmitiendo señal de socorro a nodos cercanos"
+                      else "Un móvil cercano pidió ayuda hace unos segundos"
+            rv.setTextViewText(R.id.notif_titulo, tit)
+            rv.setTextViewText(R.id.notif_texto, sub)
+        } else {
+            rv.setTextViewText(R.id.notif_titulo, "Servicio activo")
+            rv.setTextViewText(R.id.notif_texto, "Sigue vivo con la pantalla apagada · permanente")
+        }
+
+        val colorAcento = when {
+            esAlarma -> 0xFFE53035.toInt()
+            esMalla -> 0xFF90CA50.toInt()
+            else -> 0xFF161B1F.toInt()
+        }
+
         val b = Notification.Builder(this, CANAL)
-            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-            .setContentTitle(
-                when {
-                    alarma -> "ALARMA ACTIVA"
-                    enRescate -> "MODO RESCATE"
-                    else -> "SismoRed vigilando"
-                }
-            )
-            .setContentText(
-                when {
-                    alarma -> "Sirena y baliza activas · DETENER para silenciar"
-                    enRescate -> "Pulso cada 12 s para durar horas"
-                    mallaEscuchando -> "Escuchando la malla · volumen ×3 para pedir ayuda"
-                    else -> "Volumen ×3 para pedir ayuda · malla sin micrófono"
-                }
-            )
+            .setSmallIcon(R.drawable.ic_stat_sismored)
+            .setColor(colorAcento)
             .setOngoing(true)
             .setContentIntent(abrir)
+            .setVisibility(Notification.VISIBILITY_PUBLIC)
 
-        /* Contestar tiene que poder hacerse desde la notificación, sin
-           desbloquear: si hay que desbloquear para decir «estoy bien», la mitad
-           de la gente no llega a tiempo y su móvil se pone a emitir sin falta. */
-        if (preguntaHasta > System.currentTimeMillis())
-            b.addAction(Notification.Action.Builder(null, "ESTOY BIEN", pi(ACCION_ESTOY_BIEN)).build())
-        if (alarma || enRescate) b.addAction(Notification.Action.Builder(null, "DETENER", pi(ACCION_PARAR)).build())
-        else b.addAction(Notification.Action.Builder(null, "PÁNICO", pi(ACCION_PANICO)).build())
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            b.setStyle(Notification.DecoratedCustomViewStyle())
+            b.setCustomContentView(rv)
+            if (esAlarma) {
+                b.setCustomBigContentView(rv)
+                b.setCustomHeadsUpContentView(rv)
+            }
+        } else {
+            b.setContent(rv)
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            b.setColorized(esAlarma)
+        }
+
         return b.build()
     }
 

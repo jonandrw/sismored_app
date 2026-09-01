@@ -1,0 +1,27 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="30dp"
+    android:height="30dp"
+    android:viewportWidth="30"
+    android:viewportHeight="30">
+    <!-- Section 04: Detector (5 centered bars: 10, 22, 14, 26, 8) -->
+    <!-- Bar 1 (x=2.5, y=10..20, h=10) -->
+    <path
+        android:fillColor="#BCC3C9"
+        android:pathData="M2.5,10h3v10h-3z" />
+    <!-- Bar 2 (x=8.5, y=4..26, h=22) -->
+    <path
+        android:fillColor="#BCC3C9"
+        android:pathData="M8.5,4h3v22h-3z" />
+    <!-- Bar 3 (x=14.5, y=8..22, h=14) -->
+    <path
+        android:fillColor="#BCC3C9"
+        android:pathData="M14.5,8h3v14h-3z" />
+    <!-- Bar 4 (x=20.5, y=2..28, h=26) -->
+    <path
+        android:fillColor="#BCC3C9"
+        android:pathData="M20.5,2h3v26h-3z" />
+    <!-- Bar 5 (x=26.5, y=11..19, h=8) -->
+    <path
+        android:fillColor="#BCC3C9"
+        android:pathData="M26.5,11h3v8h-3z" />
+</vector>

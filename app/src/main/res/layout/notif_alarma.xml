@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/notif_fondo"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_notif_alarma"
+    android:orientation="horizontal"
+    android:padding="16dp">
+
+    <!-- Icono Cuadrado Rojo 34dp -->
+    <ImageView
+        android:id="@+id/notif_icono"
+        android:layout_width="34dp"
+        android:layout_height="34dp"
+        android:layout_marginEnd="13dp"
+        android:src="@drawable/ic_notif_icono_rojo" />
+
+    <!-- Contenido -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <!-- Cabecera: Título + "ahora" -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/notif_titulo"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="@font/saira"
+                android:text="SISMORED · ALARMA ACTIVA"
+                android:textColor="#FFFFFF"
+                android:textSize="17sp"
+                android:textStyle="bold|italic" />
+
+            <TextView
+                android:id="@+id/notif_tiempo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/mono"
+                android:text="ahora"
+                android:textColor="#FFB4B6"
+                android:textSize="10sp" />
+        </LinearLayout>
+
+        <!-- Subtítulo / Detalle -->
+        <TextView
+            android:id="@+id/notif_texto"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:fontFamily="@font/barlow"
+            android:text="Sirena y linterna en marcha · baliza emitiendo"
+            android:textColor="#F0D4D5"
+            android:textSize="13.5sp" />
+
+        <!-- Botones de Acción: PARAR | MODO RESCATE -->
+        <LinearLayout
+            android:id="@+id/notif_acciones"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/btn_notif_parar"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/btn_notif_parar"
+                android:fontFamily="@font/mono"
+                android:gravity="center"
+                android:letterSpacing="0.08"
+                android:paddingTop="9dp"
+                android:paddingBottom="9dp"
+                android:text="PARAR"
+                android:textColor="#FFFFFF"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/btn_notif_rescate"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@drawable/btn_notif_rescate"
+                android:fontFamily="@font/mono"
+                android:gravity="center"
+                android:letterSpacing="0.08"
+                android:paddingTop="9dp"
+                android:paddingBottom="9dp"
+                android:text="MODO RESCATE"
+                android:textColor="#F0D4D5"
+                android:textSize="11sp" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

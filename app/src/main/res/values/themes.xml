@@ -2,6 +2,7 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
 
     <style name="Theme.SismoRed" parent="Theme.MaterialComponents.NoActionBar">
+        <item name="android:forceDarkAllowed">false</item>
         <item name="android:statusBarColor">@color/bg</item>
         <item name="android:navigationBarColor">@color/bg</item>
         <item name="android:windowBackground">@color/bg</item>
@@ -412,8 +413,8 @@
         <item name="android:layout_height">wrap_content</item>
         <item name="android:orientation">vertical</item>
         <item name="android:gravity">center</item>
-        <item name="android:paddingTop">12dp</item>
-        <item name="android:paddingBottom">12dp</item>
+        <item name="android:paddingTop">8dp</item>
+        <item name="android:paddingBottom">8dp</item>
         <!-- La pestaña activa se marca con el color, no con un fondo: en la PWA
              la barra es de una pieza y solo cambia el rojo del icono. -->
         <item name="android:background">?android:attr/selectableItemBackground</item>
