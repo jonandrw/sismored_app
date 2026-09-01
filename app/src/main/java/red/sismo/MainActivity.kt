@@ -1203,8 +1203,18 @@ class MainActivity : AppCompatActivity() {
         findViewById<View>(R.id.sw_rescate_linterna)?.setOnClickListener {
             op.linterna = !op.linterna; pintar()
         }
+        /* El cuarto interruptor manda el DESTELLO DE PANTALLA, que es lo que
+           hace parpadear el movil en morse, y no `mantener`.
+           Aqui estuvo el fallo: antes del rediseno esta fila movia `op.pantalla`
+           y quedo movida a `op.mantener` —dos opciones distintas—, asi que
+           `op.pantalla` se quedo SIN NINGUN CONTROL en toda la app. En un movil
+           donde ya estuviera apagada no habia forma de volver a encenderla, y la
+           pantalla no parpadeaba en la alarma por mucho que se buscara. */
         findViewById<View>(R.id.sw_rescate_pantalla)?.setOnClickListener {
-            op.mantener = !op.mantener; pintar()
+            op.pantalla = !op.pantalla
+            arrancarServicio(ServicioSos.ACCION_OPCIONES)
+            anotar(if (op.pantalla) "destello de pantalla encendido" else "destello de pantalla apagado")
+            pintar()
         }
     }
 
@@ -1676,12 +1686,20 @@ class MainActivity : AppCompatActivity() {
            concede en Android 14. En MIUI el permiso propio de ventanas
            emergentes está en otro sitio y por eso el texto lo dice. */
         findViewById<View>(R.id.aviso_pantalla_completa)?.setOnClickListener {
-            try {
-                startActivity(
-                    Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                        .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
-                )
-            } catch (_: Exception) { abrirAjustesDeLaApp() }
+            /* Android 14 trae una pantalla propia para este permiso y solo
+               para este: se va derecho al interruptor en vez de dejar a alguien
+               buscandolo entre las notificaciones de la app. */
+            val directo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+                Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+                    android.net.Uri.parse("package:$packageName"))
+            else Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+            try { startActivity(directo) } catch (_: Exception) {
+                try {
+                    startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                        .putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
+                } catch (_: Exception) { abrirAjustesDeLaApp() }
+            }
         }
 
         findViewById<View>(R.id.fila_atajo_volumen)?.setOnClickListener {
@@ -1766,8 +1784,20 @@ class MainActivity : AppCompatActivity() {
         /* Siete campos, uno por dato. Eran cinco, con alergias y medicación
            metidas en el mismo y el teléfono sin campo ninguno — por eso no
            había manera de editar la medicación. */
-        val etNombre = EditText(this).apply { hint = "Nombres"; setText(f.nombre) }
-        val etApellidos = EditText(this).apply { hint = "Apellidos"; setText(f.apellidos) }
+        /* Fichas de antes de separar el campo: todo estaba en `nombre` y
+           `apellidos` vacio. Se parte con la regla de `Nombres` para llenar los
+           dos cuadros, PERO no se guarda a la espalda de nadie: se enseña ya
+           partido y quien mira lo corrige de un toque si el reparto no es el
+           suyo. Con «Juan Andres Torres» no hay forma de saber si Andres es
+           segundo nombre o primer apellido, y adivinarlo en silencio es como
+           volver a inventarse el dato. */
+        val partido = if (f.apellidos.isBlank() && f.nombre.isNotBlank())
+            Nombres.enDosLineas(f.nombre).lines() else emptyList()
+        val nomIni = if (partido.size == 2) partido[0] else f.nombre
+        val apeIni = if (partido.size == 2) partido[1] else f.apellidos
+
+        val etNombre = EditText(this).apply { hint = "Nombres"; setText(nomIni) }
+        val etApellidos = EditText(this).apply { hint = "Apellidos"; setText(apeIni) }
         val etSangre = EditText(this).apply { hint = "Grupo sanguíneo (ej: 0−, A+)"; setText(f.sangre) }
         val etEdad = EditText(this).apply {
             hint = "Edad"; setText(f.edad); inputType = android.text.InputType.TYPE_CLASS_NUMBER
@@ -1982,6 +2012,8 @@ class MainActivity : AppCompatActivity() {
            que representa esté midiendo o emitiendo; parado, se queda quieto y
            a media opacidad, que es la diferencia entre «esto está en marcha» y
            «esto está ahí». */
+        pintarEstadoInicio(alarma, rescate)
+
         latido(R.id.panico_anillo_pulso, ServicioSos.armado || alarma)
         latido(R.id.img_tool_malla, ServicioSos.mallaEscuchando)
         latido(R.id.img_tool_buscar, ServicioSos.buscando)
@@ -1995,6 +2027,45 @@ class MainActivity : AppCompatActivity() {
        que trajera el XML — que era el relleno de la maqueta. Por eso la baliza
        enseñaba «MARTA · 0− · 01:24:06» a quien no había rellenado la ficha.
        Cada pantalla se pinta ahora desde su propia rama de `pintar`. */
+
+    /**
+     * La línea de estado del pie de Inicio.
+     *
+     * Dice tres cosas y ninguna se deduce: qué está vigilando, desde cuándo, y
+     * si ha pasado algo. Todo sale de lo que el servicio mide de verdad, y lo
+     * que no se sabe no se escribe — sin hora de arranque no se pone una hora.
+     */
+    private fun pintarEstadoInicio(alarma: Boolean, rescate: Boolean) {
+        val texto = findViewById<TextView>(R.id.estado_texto) ?: return
+        val punto = findViewById<View>(R.id.estado_punto)
+
+        val partes = ArrayList<String>()
+        when {
+            alarma -> partes.add("EMITIENDO ALARMA")
+            rescate -> partes.add("MODO RESCATE")
+            ServicioSos.armado -> partes.add("VIGILANDO")
+            else -> partes.add("VIGILANCIA DESARMADA")
+        }
+        /* Desde cuándo. `oyeDesde` es la marca de cuando arrancó la escucha; si
+           vale cero es que no ha arrancado, y entonces no se dice ninguna hora
+           en vez de inventarse la de ahora. */
+        val desde = ServicioSos.oyeDesde
+        if (desde > 0) partes.add("DESDE LAS ${hora.format(Date(desde)).substring(0, 5)}")
+        if (ServicioSos.mallaEscuchando) partes.add("MALLA EN ESCUCHA")
+        if (ServicioSos.mallaRx > 0) partes.add("${ServicioSos.mallaRx} EN LA MALLA")
+        if (ServicioSos.radioEmitiendo) partes.add("BALIZA EMITIENDO")
+
+        val rotulo = partes.joinToString(" · ")
+        if (!cambio(R.id.estado_texto, rotulo)) return
+        texto.text = rotulo
+        val color = when {
+            alarma || rescate -> R.color.rd
+            !ServicioSos.armado -> R.color.ambar
+            else -> R.color.gr
+        }
+        punto?.background?.mutate()?.setTint(getColor(color))
+        texto.setTextColor(getColor(if (alarma || rescate) R.color.rd else R.color.dim))
+    }
 
     /** Pantalla 05. Lo que sale del móvil, y solo eso. */
     private fun pintarBaliza() {
@@ -2419,7 +2490,7 @@ class MainActivity : AppCompatActivity() {
         actualizarSwTactico(R.id.sw_rescate_sonoro, op.sirena)
         actualizarSwTactico(R.id.sw_rescate_radio, op.baliza)
         actualizarSwTactico(R.id.sw_rescate_linterna, op.linterna)
-        actualizarSwTactico(R.id.sw_rescate_pantalla, op.mantener)
+        actualizarSwTactico(R.id.sw_rescate_pantalla, op.pantalla)
     }
 
     /* `pintarFicha` era una tercera copia de lo mismo, con su propio juego de

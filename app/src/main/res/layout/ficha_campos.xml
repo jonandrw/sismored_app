@@ -40,6 +40,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
+            android:breakStrategy="simple"
+            android:hyphenationFrequency="none"
             android:fontFamily="@font/saira"
             android:letterSpacing="-0.015"
             android:lineSpacingMultiplier="0.92"

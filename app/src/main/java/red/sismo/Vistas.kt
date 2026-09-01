@@ -882,10 +882,44 @@ class VistaConsola @JvmOverloads constructor(ctx: Context, attrs: AttributeSet? 
             val escribiendo = visibles < completo.length
             if (escribiendo) visibles = min(completo.length, visibles + porMarco)
             cursor = if (escribiendo) true else !cursor
+            val abajo = alFinal()
             pintar()
+            post { bajarSiTocaba(abajo) }
             // mientras escribe, a ritmo de pantalla; luego, solo el parpadeo
             if (isShown) reloj.postDelayed(this, if (escribiendo) 16L else 520L)
         }
+    }
+
+    init {
+        /* La consola tiene alto fijo y el texto crece sin parar: lo que no
+           cabia se quedaba recortado y no habia forma de leerlo. Se hace
+           desplazable por dentro, y como esta metida en el scroll de la
+           pantalla hay que pedirle al padre que no le robe el gesto — si no,
+           arrastrar dentro de la consola mueve la pantalla entera. */
+        movementMethod = android.text.method.ScrollingMovementMethod()
+        isVerticalScrollBarEnabled = true
+        setOnTouchListener { v, e ->
+            when (e.actionMasked) {
+                android.view.MotionEvent.ACTION_DOWN ->
+                    v.parent?.requestDisallowInterceptTouchEvent(true)
+                android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL ->
+                    v.parent?.requestDisallowInterceptTouchEvent(false)
+            }
+            false
+        }
+    }
+
+    /** Si el usuario esta leyendo mas arriba no se le arrastra al final. */
+    private fun alFinal(): Boolean {
+        val alto = layout?.height ?: return true
+        return scrollY >= alto - height - px(this, 24f)
+    }
+
+    private fun bajarSiTocaba(estaba: Boolean) {
+        if (!estaba) return
+        val alto = layout?.height ?: return
+        val max = (alto - height).coerceAtLeast(0)
+        if (scrollY != max) scrollTo(0, max)
     }
 
     /** El texto que la consola tiene que acabar mostrando. */

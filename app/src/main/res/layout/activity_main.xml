@@ -601,6 +601,37 @@
                     </LinearLayout>
                 </LinearLayout>
 
+                    <!-- LINEA DE ESTADO. El hueco entre la rejilla y las pestañas
+                         estaba en negro, y es lo unico que Inicio no decia: que
+                         esta vigilando ahora mismo y desde cuando. Todo lo de aqui
+                         sale medido; si algo no se sabe, no aparece la linea. -->
+                    <LinearLayout
+                        android:id="@+id/estado_inicio"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="18dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <View
+                            android:id="@+id/estado_punto"
+                            android:layout_width="6dp"
+                            android:layout_height="6dp"
+                            android:layout_marginEnd="10dp"
+                            android:background="@drawable/punto_verde" />
+
+                        <TextView
+                            android:id="@+id/estado_texto"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="@font/mono"
+                            android:letterSpacing="0.06"
+                            android:lineSpacingMultiplier="1.35"
+                            android:textColor="@color/dim"
+                            android:textSize="11sp" />
+                    </LinearLayout>
+
                 <!-- ==================== 03 DETECTOR SÍSMICO ==================== -->
                 <LinearLayout
                     android:id="@+id/v_detector"
@@ -2244,14 +2275,14 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:fontFamily="@font/barlow"
-                                    android:text="Pantalla apagada"
+                                    android:text="@string/rescate_destello"
                                     android:textColor="@color/tx"
                                     android:textSize="16sp" />
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:fontFamily="@font/barlow"
-                                    android:text="Sigue vivo con la app cerrada"
+                                    android:text="@string/rescate_destello_sub"
                                     android:textColor="#7C858D"
                                     android:textSize="13sp" />
                             </LinearLayout>
