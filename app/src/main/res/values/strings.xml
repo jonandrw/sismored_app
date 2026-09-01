@@ -584,6 +584,25 @@ Para leerla hace falta el permiso de acceso a notificaciones, que Android da ent
     <string name="rescate_cadencia">CADENCIA 12 S</string>
     <string name="rescate_pulso">PULSO 0.76 S</string>
 
+    <!-- === Bienvenida ===
+         Cuatro pasos. Los tres primeros no piden nada: cuentan qué es la app y
+         qué promete, para que cuando lleguen los permisos se entienda para qué
+         son. El cuarto es la ficha, que es lo único que la app no puede saber
+         sola. -->
+    <string name="ob1_tit">Sin internet\ny sin cuenta</string>
+    <string name="ob1_txt">Cuando tiembla, lo primero que cae es la cobertura. SismoRed no la necesita: la alerta salta de un móvil a otro <b>por el aire</b>, en tonos que casi nadie oye, y cada teléfono que la recibe la vuelve a lanzar hasta cuatro veces.\n\nNo hay servidor, no hay registro y no hay nada que configurar.</string>
+
+    <string name="ob2_tit">Vigila con la\npantalla apagada</string>
+    <string name="ob2_txt">Se queda escuchando en reposo. Si detecta una sacudida te pregunta <i>«¿estás bien?»</i>, y si no contestas enciende la sirena, la linterna y la baliza de radio para que te encuentren.\n\nTambién funciona al revés: si eres tú quien busca, oye a los que están debajo.</string>
+
+    <string name="ob3_tit">Dos reglas\nque no se rompen</string>
+    <string name="ob3_txt"><b>Ningún indicador se inventa nada.</b> Si un dato no se puede medir, la pantalla dice que no se puede medir. Preferimos un «no lo sé» a un número bonito que mande a cavar donde no es.\n\n<b>Nada sale del móvil sin que se vea.</b> No hay telemetría. Lo único que se emite es tu baliza y tu ficha, y solo con la alarma o el rescate activos.</string>
+
+    <string name="ob4_tit">Lo que hace falta\npara que funcione</string>
+    <string name="ob4_txt">Cada uno se pide para una cosa concreta y la app sigue funcionando sin los que deniegues. Toca cualquiera para concederlo.</string>
+
+    <string name="ob_siguiente">SIGUIENTE</string>
+
     <!-- === Sonda ===
          Un rótulo y una nota por herramienta. La nota dice siempre lo que la
          herramienta NO puede decir, que es lo que evita que alguien cave donde

@@ -3520,6 +3520,15 @@
     </FrameLayout>
 
     <!-- ===== ONBOARDING / BIENVENIDA ===== -->
+    <!-- ==================== BIENVENIDA ====================
+         Cuatro pasos, y los tres primeros no piden nada: qué es la app, qué
+         promete y qué no, y solo entonces los permisos. Antes esto era una
+         lista de permisos a pelo, que es pedir seis cosas serias —micrófono,
+         radio, batería, accesibilidad— a alguien que todavía no sabe para qué
+         sirven. Sin el porqué delante, lo normal es denegarlos todos y
+         quedarse con una app que no puede hacer su trabajo.
+         El último paso es la ficha médica, que es el único dato que la app no
+         puede conseguir sola. -->
     <LinearLayout
         android:id="@+id/v_onboard"
         android:layout_width="match_parent"
@@ -3535,14 +3544,30 @@
         android:visibility="gone">
 
         <TextView
-            style="@style/Display"
-            android:text="Antes de empezar"
-            android:textSize="32sp" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            android:id="@+id/ob_paso"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/mono"
+            android:letterSpacing="0.2"
+            android:text="01 / 04"
+            android:textColor="@color/dim"
+            android:textSize="10sp" />
 
         <TextView
+            android:id="@+id/ob_titulo"
+            style="@style/Display"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:textSize="34sp" />
+
+        <TextView
+            android:id="@+id/ob_cuerpo"
             style="@style/AjusteCuerpo"
-            android:layout_marginTop="8dp"
-            android:text="SismoRed necesita estos permisos para vigilar en reposo y responder sin tocar la pantalla." android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:lineSpacingMultiplier="1.4" />
 
         <ScrollView
             android:layout_width="match_parent"
@@ -3558,15 +3583,29 @@
                 android:orientation="vertical" />
         </ScrollView>
 
+        <!-- Cuatro rayas que dicen por dónde vas. Un punto por paso seria mas
+             pequeño que el area de toque minima y no se leeria a contraluz. -->
+        <LinearLayout
+            android:id="@+id/ob_progreso"
+            android:layout_width="match_parent"
+            android:layout_height="3dp"
+            android:layout_marginTop="16dp"
+            android:orientation="horizontal">
+
+            <View android:id="@+id/ob_p1" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginEnd="4dp" android:background="@color/ctl" />
+            <View android:id="@+id/ob_p2" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginEnd="4dp" android:background="@color/ctl" />
+            <View android:id="@+id/ob_p3" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginEnd="4dp" android:background="@color/ctl" />
+            <View android:id="@+id/ob_p4" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@color/ctl" />
+        </LinearLayout>
+
         <Button
             android:id="@+id/ob_listo"
             style="@style/Boton.UnaLinea"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="14dp"
             android:backgroundTint="@color/tx"
             android:minHeight="56dp"
-            android:text="@string/ob_listo"
             android:textColor="@color/bg" />
 
         <Button

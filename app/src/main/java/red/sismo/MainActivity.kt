@@ -104,6 +104,9 @@ class MainActivity : AppCompatActivity() {
     }
     private var vista = R.id.v_inicio
 
+    /** Si ya se saltó a la pantalla de pánico en esta alarma. Ver [pintar]. */
+    private var saltoAPanicoHecho = false
+
     /** Refresco de lo que cambia solo. */
     private val reloj = Handler(Looper.getMainLooper())
     private val tic = object : Runnable {
@@ -182,7 +185,7 @@ class MainActivity : AppCompatActivity() {
             reactivarSiEstabaApagada()
             avisarSiLoMataron()
         } else {
-            abrirListaPermisos()
+            abrirBienvenida()
         }
         arrancarServicio(null)   // deja la vigilancia corriendo desde el principio
         tratarIntent(intent)
@@ -246,6 +249,14 @@ class MainActivity : AppCompatActivity() {
      *  que quiere nadie. */
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
+        /* En la bienvenida, atrás retrocede un paso en vez de cerrar la app:
+           salirse en el paso 3 dejaría los permisos sin pedir y la app sin
+           poder hacer su trabajo. En el primero ya no hay nada detrás. */
+        if (enBienvenida && pasoBienvenida > 0) {
+            pasoBienvenida--
+            pintarPasoBienvenida()
+            return
+        }
         if (vista in subtitulos) ir(R.id.t_inicio) else @Suppress("DEPRECATION") super.onBackPressed()
     }
 
@@ -445,6 +456,16 @@ class MainActivity : AppCompatActivity() {
         return l
     }
 
+    /** Los cuatro pasos de la bienvenida: qué es, qué hace, qué promete y qué
+     *  permisos necesita. Solo el último pide algo. */
+    private val pasosBienvenida = listOf(
+        R.string.ob1_tit to R.string.ob1_txt,
+        R.string.ob2_tit to R.string.ob2_txt,
+        R.string.ob3_tit to R.string.ob3_txt,
+        R.string.ob4_tit to R.string.ob4_txt
+    )
+    private var pasoBienvenida = 0
+
     private fun montarBienvenida() {
         val lista = findViewById<LinearLayout>(R.id.ob_lista)
         lista.removeAllViews()
@@ -459,12 +480,56 @@ class MainActivity : AppCompatActivity() {
             f.setOnClickListener { if (!per.concedido()) per.pedir() }
             lista.addView(f)
         }
-        findViewById<Button>(R.id.ob_listo).let {
-            it.setText(if (Ficha(this).vacia()) R.string.ob_listo_ficha else R.string.ob_listo)
-            it.setOnClickListener { cerrarBienvenida() }
+        findViewById<Button>(R.id.ob_listo).setOnClickListener {
+            if (pasoBienvenida < pasosBienvenida.lastIndex) {
+                pasoBienvenida++
+                pintarPasoBienvenida()
+            } else cerrarBienvenida()
         }
-        findViewById<Button>(R.id.ob_saltar).setOnClickListener { cerrarBienvenida() }
+        /* «Saltar» salta la explicación, no los permisos: llevar directo a la
+           app a quien tiene prisa dejaría el micrófono y la radio sin conceder,
+           que es quedarse sin malla y sin baliza. */
+        findViewById<Button>(R.id.ob_saltar).setOnClickListener {
+            if (pasoBienvenida < pasosBienvenida.lastIndex) {
+                pasoBienvenida = pasosBienvenida.lastIndex
+                pintarPasoBienvenida()
+            } else cerrarBienvenida()
+        }
+        pintarPasoBienvenida()
         pintarBienvenida()
+    }
+
+    /** Qué se ve en cada paso. La lista de permisos solo sale en el último. */
+    private fun pintarPasoBienvenida() {
+        val (tit, txt) = pasosBienvenida[pasoBienvenida]
+        val ultimo = pasoBienvenida == pasosBienvenida.lastIndex
+        findViewById<TextView>(R.id.ob_paso)?.text =
+            String.format(Locale.US, "%02d / %02d", pasoBienvenida + 1, pasosBienvenida.size)
+        findViewById<TextView>(R.id.ob_titulo)?.setText(tit)
+        findViewById<TextView>(R.id.ob_cuerpo)?.text =
+            androidx.core.text.HtmlCompat.fromHtml(getString(txt), 0)
+        findViewById<View>(R.id.ob_lista)?.visibility = if (ultimo) View.VISIBLE else View.GONE
+        findViewById<Button>(R.id.ob_listo)?.setText(
+            when {
+                !ultimo -> R.string.ob_siguiente
+                Ficha(this).vacia() -> R.string.ob_listo_ficha
+                else -> R.string.ob_listo
+            }
+        )
+        findViewById<View>(R.id.ob_saltar)?.visibility = if (ultimo) View.GONE else View.VISIBLE
+        val rayas = listOf(R.id.ob_p1, R.id.ob_p2, R.id.ob_p3, R.id.ob_p4)
+        for ((i, r) in rayas.withIndex()) {
+            findViewById<View>(r)?.setBackgroundColor(
+                getColor(if (i <= pasoBienvenida) R.color.rd else R.color.ctl)
+            )
+        }
+        /* La misma entrada que el resto de la app: 160 ms y 10 dp. */
+        findViewById<View>(R.id.ob_titulo)?.let { v ->
+            v.alpha = 0f
+            v.translationY = 10f * resources.displayMetrics.density
+            v.animate().alpha(1f).translationY(0f)
+                .setDuration(160).setInterpolator(DecelerateInterpolator()).start()
+        }
     }
 
     /**
@@ -494,11 +559,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** La misma lista de la bienvenida, reabierta para revisarla cuando quieras.
-     *  Es la única pantalla que dice qué le falta a la app y por qué le hace
-     *  falta, así que no puede verse una sola vez y no volver nunca. */
-    private fun abrirListaPermisos() {
+    /** La bienvenida completa, con los tres pasos de explicación delante. Solo
+     *  la primera vez que se abre la app. */
+    private fun abrirBienvenida() {
         enBienvenida = true
+        pasoBienvenida = 0
         montarBienvenida()
         findViewById<View>(R.id.v_onboard).visibility = View.VISIBLE
     }
@@ -562,158 +627,6 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
-    private fun cabecera(id: Int, icono: Int, titulo: Int) {
-        val c = findViewById<View>(id) ?: return
-        c.findViewById<ImageView>(R.id.ch_icono)?.setImageResource(icono)
-        c.findViewById<TextView>(R.id.ch_titulo)?.setText(titulo)
-    }
-
-    /** Etiqueta de estado de una cabecera. `texto` null la esconde. */
-    private fun pill(id: Int, texto: String?, fondo: Int, color: Int) {
-        val p = vista(id).findViewById<TextView>(R.id.ch_pill)
-        if (texto == null) { p.visibility = View.GONE; return }
-        p.visibility = View.VISIBLE
-        // el texto sí cambia cada segundo (el cronómetro); el estilo, casi nunca
-        p.text = texto
-        if (!cambio(id, fondo)) return
-        p.setBackgroundResource(fondo)
-        p.setTextColor(getColor(color))
-    }
-
-    private fun kv(id: Int, clave: Int) {
-        vista(id).findViewById<TextView>(R.id.kv_clave).setText(clave)
-    }
-
-    private fun kvValor(id: Int, valor: String, color: Int = R.color.tx) {
-        val v = cacheValor.getOrPut(id) { vista(id).findViewById(R.id.kv_valor) }
-        v.text = valor
-        if (cambio(-id, color)) v.setTextColor(getColor(color))
-    }
-
-    private fun ghost(id: Int, icono: Int, texto: Int, alPulsar: () -> Unit) {
-        val b = findViewById<View>(id)
-        b.findViewById<ImageView>(R.id.g_icono).setImageResource(icono)
-        b.findViewById<TextView>(R.id.g_texto).setText(texto)
-        b.setOnClickListener { alPulsar() }
-    }
-
-    /**
-     * La segunda línea de un `ghost`: qué clase de botón es.
-     *
-     * Tres de estos encienden micrófono o radio —la malla, los detectores del
-     * entorno y el rastreo de búsqueda— y los tres se veían exactamente iguales.
-     * Con la misma pinta, nada distinguía el que hay que dejar encendido para
-     * siempre del que gasta batería a propósito y se apaga al terminar. La
-     * diferencia importa: si alguien apaga la vigilancia creyendo que apaga una
-     * herramienta, se queda sin la alerta de los demás móviles.
-     */
-    private fun ghostSub(id: Int, texto: Int) {
-        vista(id).findViewById<TextView>(R.id.g_sub).let {
-            it.visibility = View.VISIBLE
-            it.setText(texto)
-        }
-    }
-
-    /** Un `ghost` con estado: encendido se pone verde entero. */
-    private fun ghostEstado(id: Int, activo: Boolean) {
-        if (!cambio(id, activo)) return
-        val b = vista(id)
-        b.setBackgroundResource(if (activo) R.drawable.ghost_on else R.drawable.campo_fondo)
-        val c = getColor(if (activo) R.color.gr else R.color.dim)
-        b.findViewById<TextView>(R.id.g_texto).setTextColor(c)
-        b.findViewById<ImageView>(R.id.g_icono)
-            .setColorFilter(getColor(if (activo) R.color.gr else R.color.ctl))
-    }
-
-    private fun conmutador(id: Int, texto: Int, alPulsar: () -> Unit) {
-        val c = findViewById<View>(id)
-        c.findViewById<TextView>(R.id.cm_texto).setText(texto)
-        c.setOnClickListener { alPulsar() }
-    }
-
-    private fun conmutadorEstado(id: Int, activo: Boolean) {
-        if (!cambio(id, activo)) return
-        val c = vista(id)
-        c.findViewById<View>(R.id.cm_pista)
-            .setBackgroundResource(if (activo) R.drawable.sw_pista_on else R.drawable.sw_pista)
-        val pomo = c.findViewById<View>(R.id.cm_pomo)
-        pomo.setBackgroundColor(getColor(if (activo) R.color.gr else R.color.dim))
-        val lp = pomo.layoutParams as FrameLayout.LayoutParams
-        val d = resources.displayMetrics.density
-        lp.marginStart = ((if (activo) 25 else 4) * d).toInt()
-        pomo.layoutParams = lp
-    }
-
-    /** Interruptor ancho de una herramienta de la sonda. */
-    private fun conmutadorAncho(id: Int, texto: Int, alPulsar: () -> Unit) {
-        val c = findViewById<View>(id)
-        c.findViewById<TextView>(R.id.cm_texto).setText(texto)
-        c.setOnClickListener { alPulsar() }
-    }
-
-    /** [textoOn] deja cambiar lo que dice la linea de estado al estar encendido:
-     *  el rastreo de busqueda avisa ahi de que gasta bateria, que es el unico
-     *  momento en que ese aviso sirve para algo. */
-    private fun conmutadorAnchoEstado(id: Int, activo: Boolean, textoOn: Int = R.string.cm_on) {
-        if (!cambio(id, "$activo/$textoOn")) return
-        val c = vista(id)
-        c.findViewById<View>(R.id.cm_pista)
-            .setBackgroundResource(if (activo) R.drawable.sw_pista_on else R.drawable.sw_pista)
-        val col = getColor(if (activo) R.color.gr else R.color.dim)
-        val pomo = c.findViewById<View>(R.id.cm_pomo)
-        pomo.setBackgroundColor(col)
-        val lp = pomo.layoutParams as FrameLayout.LayoutParams
-        val d = resources.displayMetrics.density
-        lp.marginStart = ((if (activo) 26 else 4) * d).toInt()
-        pomo.layoutParams = lp
-        c.findViewById<TextView>(R.id.cm_estado).let {
-            it.setText(if (activo) textoOn else R.string.cm_off)
-            it.setTextColor(col)
-        }
-    }
-
-    /** Una salida de consola. Solo se toca si el texto cambio: son cuatro cajas y
-     *  reasignar el texto de un TextView remide y repinta su rama del arbol. */
-    private fun consola(id: Int, texto: String) {
-        if (!cambio(-id * 31, texto)) return
-        (vista(id) as VistaConsola).escribir(texto)
-    }
-
-    /**
-     * Una fila del centro de opciones.
-     *
-     * Solo hay dos aspectos, y es a propósito: todas iguales menos la que apaga
-     * la vigilancia entera. Si destacan dos, ninguna destaca — y la única que de
-     * verdad tiene que separarse del resto es la que deja el móvil sin hacer
-     * nada. Comprobar que funciona es una acción normal, no una decisión.
-     */
-    private fun opcion(id: Int, icono: Int, titulo: Int, desc: Int, apaga: Boolean = false,
-                       alPulsar: () -> Unit) {
-        val f = findViewById<View>(id) ?: return
-        f.findViewById<ImageView>(R.id.of_icono)?.setImageResource(icono)
-        f.findViewById<TextView>(R.id.of_titulo)?.setText(titulo)
-        f.findViewById<TextView>(R.id.of_desc)?.setText(desc)
-        f.setOnClickListener { alPulsar() }
-
-        f.setBackgroundResource(if (apaga) R.drawable.fila_op_rd else R.drawable.fila_op)
-        f.findViewById<View>(R.id.of_azulejo)?.setBackgroundResource(
-            if (apaga) R.drawable.azulejo_rd_claro else R.drawable.azulejo)
-        f.findViewById<ImageView>(R.id.of_icono)?.setColorFilter(getColor(R.color.tx))
-        f.findViewById<TextView>(R.id.of_titulo)?.setTextColor(getColor(R.color.tx))
-        f.findViewById<TextView>(R.id.of_desc)?.setTextColor(
-            getColor(if (apaga) R.color.tx else R.color.dim))
-        f.findViewById<ImageView>(R.id.of_flecha)?.setColorFilter(
-            getColor(if (apaga) R.color.tx else R.color.ctl))
-    }
-
-    /** ¿Nos ha dado Android el acceso a notificaciones? Se lee del ajuste del
-     *  sistema, que es la única fuente de verdad: el usuario puede quitarlo
-     *  desde Ajustes sin que la app se entere. */
-    private fun alertaGoogleActiva(): Boolean = try {
-        android.provider.Settings.Secure.getString(
-            contentResolver, "enabled_notification_listeners"
-        )?.contains(packageName) == true
-    } catch (_: Exception) { false }
 
     private fun casilla(id: Int, icono: Int, nombre: Int, que: Int, alPulsar: () -> Unit) {
         val c = findViewById<View>(id)
@@ -764,27 +677,6 @@ class MainActivity : AppCompatActivity() {
         s.findViewById<View>(R.id.st_menos).setOnClickListener { mover(-salto) }
         s.findViewById<View>(R.id.st_mas).setOnClickListener { mover(+salto) }
         v.text = formato(leer())
-    }
-
-    private fun detector(id: Int, icono: Int, rotulo: Int) {
-        val d = findViewById<View>(id)
-        d.findViewById<ImageView>(R.id.det_icono).setImageResource(icono)
-        d.findViewById<TextView>(R.id.det_rotulo).setText(rotulo)
-    }
-
-    private fun detectorEstado(id: Int, pct: Int, caliente: Boolean) {
-        val d = vista(id)
-        d.findViewById<TextView>(R.id.det_pct).text = "$pct%"
-        d.findViewById<VistaBarra>(R.id.det_barra).pintar(pct / 100f, caliente)
-        /* Cambiar el fondo y los tintes cuesta bastante más que cambiar un texto,
-           y solo cambian cuando el detector pasa de frío a caliente. Repetirlo
-           dos veces por segundo era gasto puro. */
-        if (!cambio(id, caliente)) return
-        d.setBackgroundResource(if (caliente) R.drawable.det_fondo_hot else R.drawable.det_fondo)
-        d.findViewById<TextView>(R.id.det_pct)
-            .setTextColor(getColor(if (caliente) R.color.rd else R.color.tx))
-        d.findViewById<ImageView>(R.id.det_icono)
-            .setColorFilter(getColor(if (caliente) R.color.rd else R.color.ctl))
     }
 
     /* ===================== montaje ===================== */
@@ -1501,18 +1393,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun conmutarBusqueda() {
-        if (rastreador.rastreando) {
-            rastreador.parar()
-            ServicioSos.buscando = false
-            pintar(); return
-        }
-        if (!pedirRadio()) return
-        rastreador.arrancar { }
-        ServicioSos.buscando = true
-        pintar()
-    }
-
     private fun pintarBusqueda() {
         val lista = findViewById<LinearLayout>(R.id.lista_hallazgos) ?: return
         val hs = rastreador.hallazgos().filter { it.estado != Baliza.BUSCANDO }
@@ -1762,63 +1642,6 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    /**
-     * La ficha a pantalla completa y con el brillo al máximo: se enseña a quien
-     * te atiende sin que tenga que desbloquear ni buscar nada.
-     */
-    /**
-     * La ficha a pantalla completa, que es lo que lee quien te encuentra.
-     *
-     * Era un TextView con todo el texto seguido pegado arriba a la izquierda, y
-     * media pantalla en negro debajo. Ahora es un layout con pesos: la ficha se
-     * reparte la pantalla ENTERA en cualquier tamano, el grupo sanguineo ocupa lo
-     * que tiene que ocupar y los valores se autoescalan en vez de recortarse.
-     *
-     * Los campos vacios se esconden y sueltan su peso, para que tres datos llenen
-     * la pantalla igual de bien que cinco.
-     */
-    private fun mostrarFicha(f: Ficha) {
-        val v = LayoutInflater.from(this).inflate(R.layout.ficha_full, null)
-
-        fun campo(id: Int, texto: String) {
-            val t = v.findViewById<TextView>(id)
-            t.text = texto
-            // el padre del valor es el bloque entero: si no hay dato, fuera el bloque
-            val bloque = t.parent as View
-            if (texto.isBlank()) bloque.visibility = View.GONE
-        }
-        campo(R.id.ff_nombre, f.nombre.trim())
-        campo(R.id.ff_sangre, f.sangre.trim().uppercase())
-        campo(R.id.ff_edad, f.edad.trim().let { if (it.isBlank()) "" else "$it años" })
-        campo(R.id.ff_alergias, f.medicacion.trim())
-        campo(R.id.ff_med, f.medicacion.trim())
-
-
-        campo(R.id.ff_contacto_nombre, f.contacto.trim())
-        campo(R.id.ff_contacto_tel, "+34 612 88 40 21")
-
-        /* Un `Dialog` pelado, NO un `AlertDialog`.
-           `AlertDialog.setView` mete la vista dentro de su propio contenedor, y ese
-           contenedor mide `wrap_content` en alto. Mis bloques van con
-           `layout_height="0dp"` y peso, y un peso contra un padre sin alto definido
-           colapsa: por eso la ficha salía preciosa pero ocupando media pantalla.
-           Con `setContentView` la vista ES la raíz, el alto es el de la ventana y
-           los pesos reparten la pantalla entera. */
-        val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
-        d.setContentView(v)
-        d.window?.setLayout(
-            android.view.WindowManager.LayoutParams.MATCH_PARENT,
-            android.view.WindowManager.LayoutParams.MATCH_PARENT
-        )
-        d.setOnDismissListener { brillo(-1f) }
-        /* Y el toque para cerrar va en la propia vista.
-           `setCanceledOnTouchOutside` no podía funcionar nunca aquí: cierra al tocar
-           FUERA de la ventana, y una ventana a pantalla completa no tiene fuera. */
-        v.setOnClickListener { d.dismiss() }
-        d.show()
-        brillo(1f)
-    }
-
     private fun brillo(v: Float) {
         window.attributes = window.attributes.apply { screenBrightness = v }
     }
@@ -1875,9 +1698,18 @@ class MainActivity : AppCompatActivity() {
 
         pintarPildora(alarma, rescate)
 
-        if (alarma && vista != R.id.v_panico_activo) {
-            ir(R.id.v_panico_activo)
+        /* Con la alarma sonando se salta a la pantalla de pánico, pero **una
+           sola vez**. Esto corría en cada tic, o sea dos veces por segundo:
+           mientras durase la alarma te devolvía a pánico desde donde
+           estuvieras, y no había forma de abrir la ficha médica, el registro ni
+           los ajustes — justo lo que alguien puede necesitar mirar con la
+           sirena encendida. Si te vas de la pantalla de pánico es porque
+           quieres irte. */
+        if (alarma && !saltoAPanicoHecho) {
+            saltoAPanicoHecho = true
+            if (vista != R.id.v_panico_activo) ir(R.id.v_panico_activo)
         }
+        if (!alarma) saltoAPanicoHecho = false
 
         when (vista) {
             R.id.v_inicio -> pintarInicio(alarma, rescate)
@@ -2477,25 +2309,6 @@ class MainActivity : AppCompatActivity() {
 
     /* ===================== diagnóstico ===================== */
 
-    /** Una fila de diagnóstico. Si un dato no se puede saber en este móvil se
-     *  dice «no disponible», nunca se rellena con algo verosímil. */
-    private fun fila(donde: LinearLayout, nombre: String, valor: String, color: Int) {
-        val f = LayoutInflater.from(this).inflate(R.layout.fila_kv, donde, false)
-        f.findViewById<TextView>(R.id.kv_clave).text = nombre
-        f.findViewById<TextView>(R.id.kv_valor).let {
-            /* La mayúscula va aquí y no en cada llamada: son veintidós filas y
-               la siguiente que alguien añada saldría en minúscula otra vez. Solo
-               toca la primera letra, así que las que ya van en mayúsculas —SIN
-               CONCEDER, NINGUNA— y las que empiezan por un número se quedan
-               como están. */
-            it.text = valor.replaceFirstChar { c -> c.titlecase(java.util.Locale.getDefault()) }
-            it.setTextColor(getColor(color))
-        }
-        donde.addView(f)
-    }
-
-    private fun si(b: Boolean) = if (b) R.color.gr else R.color.rd
-
     /** Las filas de diagnóstico se rehacen enteras, así que no pueden ir al
      *  ritmo del resto: inflar veinte layouts dos veces por segundo cuesta
      *  bastante más que cambiar veinte textos, y aquí nada cambia tan deprisa. */
@@ -2553,7 +2366,6 @@ class MainActivity : AppCompatActivity() {
         findViewById<View>(R.id.sw_servicio_arrancar_dot)?.setBackgroundResource(if (op.arrancarAlIniciar) R.drawable.punto_verde else R.drawable.punto_ambar)
     }
 
-    private fun quiza(b: Boolean) = if (b) "sí" else "no"
 
     /* ===================== envío por internet ===================== */
 

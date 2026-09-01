@@ -18,6 +18,10 @@
 <resources>
     <!-- === superficies, de atrás hacia delante === -->
     <color name="bg">#050708</color>
+    <!-- El fondo del icono adaptativo. Va aparte de `bg` a propósito: si algún
+         día la app aclara su fondo, el icono del lanzador no tiene por qué
+         moverse con él. -->
+    <color name="icono_fondo">#050708</color>
     <color name="card">#0D1113</color>
     <color name="card2">#161B1F</color>
     <color name="line">#1E252A</color>
