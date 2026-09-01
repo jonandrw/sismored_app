@@ -556,7 +556,20 @@ class MainActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.ob_titulo)?.setText(tit)
         findViewById<TextView>(R.id.ob_cuerpo)?.text =
             androidx.core.text.HtmlCompat.fromHtml(getString(txt), 0)
-        findViewById<View>(R.id.ob_lista)?.visibility = if (ultimo) View.VISIBLE else View.GONE
+        /* En los tres pasos de explicacion no hay lista, asi que el peso se lo
+           queda el parrafo: sin esto la pantalla quedaba con el texto arriba,
+           medio movil de negro en medio y los botones abajo del todo. */
+        findViewById<View>(R.id.ob_scroll)?.visibility = if (ultimo) View.VISIBLE else View.GONE
+        findViewById<TextView>(R.id.ob_cuerpo)?.let { cuerpo ->
+            val lp = cuerpo.layoutParams as LinearLayout.LayoutParams
+            lp.height = if (ultimo) LinearLayout.LayoutParams.WRAP_CONTENT else 0
+            lp.weight = if (ultimo) 0f else 1f
+            cuerpo.layoutParams = lp
+            /* Pegado al titulo, no centrado en su hueco: centrandolo, el
+               titulo se quedaba solo arriba con medio movil de negro debajo y
+               los dos dejaban de leerse como una misma cosa. */
+            cuerpo.gravity = android.view.Gravity.NO_GRAVITY
+        }
         findViewById<Button>(R.id.ob_listo)?.setText(
             when {
                 !ultimo -> R.string.ob_siguiente
@@ -2039,7 +2052,10 @@ class MainActivity : AppCompatActivity() {
             it.colorActivo = getColor(R.color.gr)
             if (it.isChecked != oyendo) it.isChecked = oyendo
         }
-        findViewById<VistaOnda>(R.id.oye_onda)?.pintar(ServicioSos.oyeOnda, oyendo)
+        findViewById<VistaOnda>(R.id.oye_onda)?.let {
+            it.fuente { ServicioSos.oyeOnda }
+            it.pintar(ServicioSos.oyeOnda, oyendo)
+        }
         pintarPatronesSonido(oyendo)
     }
 

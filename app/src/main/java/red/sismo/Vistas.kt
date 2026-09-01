@@ -1891,10 +1891,18 @@ class VistaOnda @JvmOverloads constructor(
      *  sesenta, y sin esto la onda va a tirones. */
     private var suave = FloatArray(0)
 
+    /* La onda se lee en cada fotograma, no cuando la pantalla se acuerda de
+       repintar. El servicio la publica dieciseis veces por segundo y el ciclo
+       de pintado de la actividad va a dos: la vista se quedaba diez fotogramas
+       convergiendo y otros veinte quieta, que es lo que se veia a tirones.
+       Con la fuente puesta, el lienzo pregunta el mismo por su cuenta. */
+    private var fuente: (() -> FloatArray)? = null
+
+    fun fuente(f: () -> FloatArray) { fuente = f }
+
     fun pintar(onda: FloatArray, viva: Boolean) {
         this.muestras = onda
         this.viva = viva
-        if (suave.size != onda.size) suave = FloatArray(onda.size)
         invalidate()
     }
 
@@ -1905,11 +1913,17 @@ class VistaOnda @JvmOverloads constructor(
         pBase.strokeWidth = px(this, 1f)
         c.drawLine(0f, medio, w, medio, pBase)
 
+        fuente?.let { muestras = it() }
         if (!viva || muestras.isEmpty()) return
 
         val n = muestras.size
+        if (suave.size != n) suave = FloatArray(n)
+        /* Sube deprisa y baja despacio: un golpe tiene que verse entero en el
+           fotograma en que llega, y la caida lenta es lo que deja leer que ha
+           pasado algo en vez de un parpadeo. */
         for (i in 0 until n) {
-            suave[i] += (muestras[i] - suave[i]) * 0.35f
+            val v = muestras[i]
+            suave[i] = if (v > suave[i]) v else suave[i] + (v - suave[i]) * 0.18f
         }
 
         /* El pico manda el color: verde mientras haya sitio y ámbar cuando la

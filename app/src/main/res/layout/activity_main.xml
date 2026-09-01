@@ -893,9 +893,8 @@
                             android:textColor="#D9C9A8"
                             android:textSize="13sp" />
                     </LinearLayout>
-                </LinearLayout>
 
-                                    <TextView
+                    <TextView
                         style="@style/RotuloInstr"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -1005,8 +1004,9 @@
                             android:layout_marginTop="12dp"
                             android:orientation="vertical" />
                     </LinearLayout>
+                </LinearLayout>
 
-                    <!-- ==================== 04 MALLA ACÚSTICA ==================== -->
+                <!-- ==================== 04 MALLA ACÚSTICA ==================== -->
                 <LinearLayout
                     android:id="@+id/v_red"
                     android:layout_width="match_parent"
@@ -3822,14 +3822,22 @@
             style="@style/AjusteCuerpo"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:lineSpacingMultiplier="1.4" />
+            android:layout_marginTop="14dp"
+            android:lineSpacingMultiplier="1.5"
+            android:textSize="17sp" />
 
+        <!-- El hueco va DEBAJO del texto y no entre el texto y los botones: en
+             los tres pasos de explicacion la lista esta vacia, y con el peso
+             sobre ella la pantalla quedaba con el parrafo arriba, medio movil
+             de negro en medio y los botones abajo del todo. Ahora el texto
+             respira y lo que sobra se queda al final. -->
         <ScrollView
+            android:id="@+id/ob_scroll"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="18dp"
             android:layout_weight="1"
+            android:fillViewport="true"
             android:scrollbars="none">
 
             <LinearLayout
