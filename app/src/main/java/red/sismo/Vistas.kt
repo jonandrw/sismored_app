@@ -1848,3 +1848,67 @@ class VistaEspectroMalla @JvmOverloads constructor(
         if (isShown && viva) postInvalidateOnAnimation() else ultimoDibujo = 0L
     }
 }
+
+/**
+ * La onda de lo que está entrando por el micrófono, ahora mismo.
+ *
+ * Es la envolvente que ya calcula `Escucha` —dos segundos y medio de niveles,
+ * tres o cuatro sílabas— y que hasta ahora no salía a ninguna pantalla. Sirve
+ * para lo más básico y lo más difícil de saber de otra forma: si el micrófono
+ * está llegando al aire o si la app se ha quedado sorda. Un trazo plano y un
+ * micrófono denegado se parecen mucho en una lista de texto, y no se parecen
+ * en nada aquí.
+ *
+ * Se dibuja simétrica respecto al centro porque es una envolvente, no una
+ * señal: lo que se mide es cuánta energía hay, no en qué sentido va.
+ */
+class VistaOnda @JvmOverloads constructor(
+    ctx: Context, attrs: AttributeSet? = null
+) : View(ctx, attrs) {
+
+    private val p = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val pLinea = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        color = 0xFF1E252A.toInt()
+    }
+    private val rect = RectF()
+
+    private var muestras = FloatArray(0)
+    private var viva = false
+
+    fun pintar(onda: FloatArray, viva: Boolean) {
+        this.muestras = onda
+        this.viva = viva
+        invalidate()
+    }
+
+    override fun onDraw(c: Canvas) {
+        val w = width.toFloat(); val h = height.toFloat()
+        if (w <= 0 || h <= 0) return
+        val medio = h / 2f
+        pLinea.strokeWidth = px(this, 1f)
+        c.drawLine(0f, medio, w, medio, pLinea)
+
+        /* Sin micrófono no se dibuja una línea plana: una línea plana es una
+           lectura —«silencio»— y esto es otra cosa, que es «no estoy oyendo».
+           La diferencia importa cuando lo que decides es si fiarte. */
+        if (!viva || muestras.isEmpty()) return
+
+        val n = muestras.size
+        val hueco = px(this, 2f)
+        val ancho = ((w - (n - 1) * hueco) / n).coerceAtLeast(px(this, 1f))
+        val r = px(this, 1f)
+        for (i in 0 until n) {
+            val v = muestras[i].coerceIn(0f, 1f)
+            val alto = (medio * v).coerceAtLeast(px(this, 1f))
+            val x = i * (ancho + hueco)
+            rect.set(x, medio - alto, x + ancho, medio + alto)
+            /* Verde mientras sea ruido de fondo y ámbar cuando el nivel se
+               acerca al techo: ahí es donde el micrófono empieza a recortar y
+               los patrones dejan de ser fiables. */
+            p.color = if (v > 0.85f) 0xFFF0A02A.toInt() else 0xFF90CA50.toInt()
+            p.alpha = (90 + v * 165).toInt().coerceIn(0, 255)
+            c.drawRoundRect(rect, r, r, p)
+        }
+    }
+}

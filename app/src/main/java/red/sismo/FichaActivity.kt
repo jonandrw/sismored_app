@@ -70,9 +70,9 @@ class FichaActivity : Activity() {
            Ahora cada hueco vacío desaparece —de eso se encarga `campo`— y lo
            que no se sabe no se dice. */
         findViewById<TextView>(R.id.ff_nombre)?.apply {
-            text = if (f.nombre.isBlank()) getString(R.string.ficha_sin_nombre)
-                   else Nombres.enDosLineas(f.nombre)
-            if (f.nombre.isBlank()) alpha = 0.45f
+            val vacio = f.nombre.isBlank() && f.apellidos.isBlank()
+            text = if (vacio) getString(R.string.ficha_sin_nombre) else f.nombreEnDosLineas()
+            if (vacio) alpha = 0.45f
         }
         campo(R.id.ff_sangre, f.sangre.trim().uppercase())
         campo(R.id.ff_edad, f.edad.trim())

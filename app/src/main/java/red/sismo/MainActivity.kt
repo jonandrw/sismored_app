@@ -135,10 +135,15 @@ class MainActivity : AppCompatActivity() {
     /* El destello de pantalla lo pide el servicio, que no puede pintar. */
     private val receptorDestello = object : BroadcastReceiver() {
         override fun onReceive(c: Context?, i: Intent?) {
+            /* «off» apaga y cualquier otro modo es un destello. Estaba escrito
+               al revés: solo «sos» y «uno» hacían algo y TODO lo demás caía en
+               el `else`, que apaga. El servicio manda además «pregunta» y
+               «alerta sísmica» —los dos avisos que más falta hace ver— y los
+               dos apagaban el destello en vez de darlo. */
             when (i?.getStringExtra("modo")) {
                 "sos" -> destelloSos(true)
-                "uno" -> destelloUno()
-                else -> destelloSos(false)
+                "off", null -> destelloSos(false)
+                else -> destelloUno()
             }
         }
     }
@@ -253,6 +258,12 @@ class MainActivity : AppCompatActivity() {
         )
         ServicioSos.mirando = vista == R.id.v_inicio || vista == R.id.v_entorno
         pintarBienvenida()
+        /* El destello lo apaga `onPause` y nadie lo volvía a encender: si la
+           alarma saltaba con la app en segundo plano —que es el caso normal—,
+           al abrirla la pantalla se quedaba quieta. El servicio solo manda el
+           aviso una vez, en el momento de disparar, así que al volver hay que
+           mirar el estado en vez de esperar otro broadcast. */
+        if (ServicioSos.enAlarma && op.pantalla) destelloSos(true)
         reloj.post(tic)
     }
 
@@ -1096,6 +1107,19 @@ class MainActivity : AppCompatActivity() {
         swMalla?.colorActivo = android.graphics.Color.parseColor("#90CA50")
         swMalla?.isChecked = op.avisarMallaAlDisparar
         swMalla?.setOnCheckedChangeListener { c -> op.avisarMallaAlDisparar = c }
+
+        /* Armar y desarmar. La fila entera es pulsable, no solo el interruptor:
+           a oscuras y con prisa, un pomo de 52 dp es un blanco pequeño. */
+        val conmutarArmado = View.OnClickListener {
+            arrancarServicio(ServicioSos.ACCION_ARMAR)
+            anotar(if (ServicioSos.armado) "vigilancia desarmada" else "vigilancia armada")
+            pintar()
+        }
+        findViewById<View>(R.id.fila_armado)?.setOnClickListener(conmutarArmado)
+        findViewById<VistaInterruptor>(R.id.sw_armado)?.setOnCheckedChangeListener {
+            arrancarServicio(ServicioSos.ACCION_ARMAR)
+            pintar()
+        }
     }
 
     private fun montarInterfono() {
@@ -1668,7 +1692,11 @@ class MainActivity : AppCompatActivity() {
                 it.alpha = if (v.isNotBlank()) 1f else 0.45f
             }
         }
-        findViewById<TextView>(R.id.ff_nombre)?.text = if (f.nombre.isBlank()) getString(R.string.ficha_sin_nombre) else Nombres.enDosLineas(f.nombre)
+        findViewById<TextView>(R.id.ff_nombre)?.let {
+            it.text = if (f.nombre.isBlank() && f.apellidos.isBlank())
+                getString(R.string.ficha_sin_nombre) else f.nombreEnDosLineas()
+            it.alpha = if (f.nombre.isBlank() && f.apellidos.isBlank()) 0.45f else 1f
+        }
         poner(R.id.ff_sangre, f.sangre)
         poner(R.id.ff_edad, f.edad)
         poner(R.id.ff_alergias, f.alergias)
@@ -1686,7 +1714,8 @@ class MainActivity : AppCompatActivity() {
         /* Siete campos, uno por dato. Eran cinco, con alergias y medicación
            metidas en el mismo y el teléfono sin campo ninguno — por eso no
            había manera de editar la medicación. */
-        val etNombre = EditText(this).apply { hint = "Nombre y apellidos"; setText(f.nombre) }
+        val etNombre = EditText(this).apply { hint = "Nombres"; setText(f.nombre) }
+        val etApellidos = EditText(this).apply { hint = "Apellidos"; setText(f.apellidos) }
         val etSangre = EditText(this).apply { hint = "Grupo sanguíneo (ej: 0−, A+)"; setText(f.sangre) }
         val etEdad = EditText(this).apply {
             hint = "Edad"; setText(f.edad); inputType = android.text.InputType.TYPE_CLASS_NUMBER
@@ -1699,7 +1728,7 @@ class MainActivity : AppCompatActivity() {
             inputType = android.text.InputType.TYPE_CLASS_PHONE
         }
 
-        for (e in listOf(etNombre, etSangre, etEdad, etAlergias, etMed, etContacto, etTelefono)) {
+        for (e in listOf(etNombre, etApellidos, etSangre, etEdad, etAlergias, etMed, etContacto, etTelefono)) {
             layout.addView(e)
         }
 
@@ -1708,6 +1737,7 @@ class MainActivity : AppCompatActivity() {
             .setView(ScrollView(this).apply { addView(layout) })
             .setPositiveButton("Guardar") { _, _ ->
                 f.nombre = etNombre.text.toString()
+                f.apellidos = etApellidos.text.toString()
                 f.sangre = etSangre.text.toString()
                 f.edad = etEdad.text.toString()
                 f.alergias = etAlergias.text.toString()
@@ -1922,7 +1952,7 @@ class MainActivity : AppCompatActivity() {
            la pantalla que dice «esto es lo que sale del móvil» es la mentira más
            cara de la app: quien la lea creerá que la baliza va cargada. */
         findViewById<TextView>(R.id.baliza_nombre)?.text =
-            if (f.nombre.isBlank()) getString(R.string.baliza_sin_ficha) else f.nombre
+            if (f.nombreCompleto().isBlank()) getString(R.string.baliza_sin_ficha) else f.nombreCompleto()
         findViewById<TextView>(R.id.baliza_sangre)?.text =
             if (f.sangre.isBlank()) "—" else f.sangre
         findViewById<TextView>(R.id.baliza_estado)?.text = when {
@@ -1939,6 +1969,96 @@ class MainActivity : AppCompatActivity() {
     /** Pantalla 03. El umbral que se dibuja tiene que ser el que dispara. */
     private fun pintarDetector() {
         findViewById<VistaTraza>(R.id.traza_detector)?.umbral = op.umbral / 9.81
+
+        /* El interruptor de la vigilancia. `ServicioSos.armado` y la acción
+           ACCION_ARMAR siguieron existiendo después del rediseño, pero no quedó
+           nada en pantalla que las tocara: con la app dando falsos positivos,
+           no poder desarmarla dejaba como única salida desinstalarla. */
+        val armado = ServicioSos.armado
+        findViewById<VistaInterruptor>(R.id.sw_armado)?.let {
+            it.colorActivo = getColor(R.color.gr)
+            if (it.isChecked != armado) it.isChecked = armado
+        }
+        findViewById<TextView>(R.id.armado_titulo)
+            ?.setText(if (armado) R.string.det_armado else R.string.det_desarmado)
+        findViewById<TextView>(R.id.armado_sub)?.let {
+            it.setText(if (armado) R.string.det_armado_sub else R.string.det_desarmado_sub)
+            it.setTextColor(getColor(if (armado) R.color.dim else R.color.ambar))
+        }
+
+        /* El detector de sonido. El motor mide nivel, tono, impactos, la onda y
+           cinco patrones con su progreso y la hora del último, y nada de eso
+           salía a ninguna pantalla. */
+        val oyendo = ServicioSos.oyeEscuchando
+        findViewById<TextView>(R.id.oye_estado)?.let {
+            it.setText(if (oyendo) R.string.det_escuchando else R.string.det_sin_micro)
+            it.setTextColor(getColor(if (oyendo) R.color.gr else R.color.dim))
+        }
+        findViewById<TextView>(R.id.oye_nivel)?.text =
+            if (oyendo) String.format(Locale.US, "%.0f dBFS", ServicioSos.oyeNivelDb) else "—"
+        findViewById<VistaOnda>(R.id.oye_onda)?.pintar(ServicioSos.oyeOnda, oyendo)
+        pintarPatronesSonido(oyendo)
+    }
+
+    /** Las cinco filas de patrones: qué busca, cuánto lleva acumulado y cuándo
+     *  fue la última vez que lo reconoció. */
+    private fun pintarPatronesSonido(oyendo: Boolean) {
+        val caja = findViewById<LinearLayout>(R.id.oye_patrones) ?: return
+        val prog = ServicioSos.oyeProgreso
+        val cuando = ServicioSos.oyeCuando
+        if (caja.childCount != Escucha.ROTULOS.size) {
+            caja.removeAllViews()
+            for (r in Escucha.ROTULOS) caja.addView(filaPatron(r))
+        }
+        val ahora = System.currentTimeMillis()
+        for (i in Escucha.ROTULOS.indices) {
+            val fila = caja.getChildAt(i) as? ViewGroup ?: continue
+            (fila.getChildAt(1) as? ProgressBar)?.progress =
+                if (oyendo) ((prog.getOrElse(i) { 0.0 }) * 100).toInt().coerceIn(0, 100) else 0
+            (fila.getChildAt(2) as? TextView)?.let {
+                val t = cuando.getOrElse(i) { 0L }
+                it.text = when {
+                    t <= 0L -> getString(R.string.det_nunca)
+                    ahora - t < 60_000 -> "hace ${((ahora - t) / 1000)} s"
+                    else -> hora.format(Date(t))
+                }
+                it.alpha = if (t > 0L) 1f else 0.4f
+            }
+        }
+    }
+
+    private fun filaPatron(rotulo: String): View {
+        val d = resources.displayMetrics.density
+        fun px(v: Int) = (v * d).toInt()
+        val fila = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = px(7) }
+        }
+        fila.addView(TextView(this).apply {
+            text = rotulo
+            setTextColor(getColor(R.color.lectura))
+            textSize = 10f
+            letterSpacing = 0.12f
+            typeface = ResourcesCompat.getFont(this@MainActivity, R.font.mono)
+            layoutParams = LinearLayout.LayoutParams(px(76), LinearLayout.LayoutParams.WRAP_CONTENT)
+        })
+        fila.addView(ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+            max = 100
+            progressDrawable = ContextCompat.getDrawable(context, R.drawable.barra_progreso_frecuencia)
+            layoutParams = LinearLayout.LayoutParams(0, px(4), 1f)
+                .apply { marginStart = px(8); marginEnd = px(8) }
+        })
+        fila.addView(TextView(this).apply {
+            setTextColor(getColor(R.color.dim))
+            textSize = 10f
+            typeface = ResourcesCompat.getFont(this@MainActivity, R.font.mono)
+            layoutParams = LinearLayout.LayoutParams(px(62), LinearLayout.LayoutParams.WRAP_CONTENT)
+            gravity = android.view.Gravity.END
+        })
+        return fila
     }
 
     /** Pantalla 08. El canal dice si está abierto, y la lista solo lo que se oyó. */
@@ -2184,14 +2304,29 @@ class MainActivity : AppCompatActivity() {
         tvRegistro.text = ssb
     }
 
+    /**
+     * El interruptor de una fila de Rescate.
+     *
+     * `viewId` es la FILA entera —etiqueta más interruptor—, y aquí se pintaba
+     * el fondo de la pista sobre ella: las cuatro filas salían como pastillas
+     * verdes de lado a lado con un punto negro al final, en vez de una fila
+     * oscura con un interruptor de 44 dp a la derecha. La pista es
+     * `swt_pista`, dentro de la fila.
+     */
     private fun actualizarSwTactico(viewId: Int, activo: Boolean) {
-        val root = findViewById<View>(viewId) ?: return
-        val pomo = root.findViewById<View>(R.id.swt_pomo) ?: return
-        root.setBackgroundResource(if (activo) R.drawable.sw_tactico_pista_on else R.drawable.sw_tactico_pista_off)
-        pomo.setBackgroundResource(if (activo) R.drawable.sw_tactico_pomo_on else R.drawable.sw_tactico_pomo_off)
-        val targetX = if (activo) (18 * resources.displayMetrics.density) else 0f
-        if (pomo.translationX != targetX) {
-            pomo.animate().translationX(targetX).setDuration(120).start()
+        val fila = findViewById<View>(viewId) ?: return
+        val pista = fila.findViewById<View>(R.id.swt_pista) ?: return
+        val pomo = fila.findViewById<View>(R.id.swt_pomo) ?: return
+        pista.setBackgroundResource(
+            if (activo) R.drawable.sw_tactico_pista_on else R.drawable.sw_tactico_pista_off
+        )
+        pomo.setBackgroundResource(
+            if (activo) R.drawable.sw_tactico_pomo_on else R.drawable.sw_tactico_pomo_off
+        )
+        // 44 dp de pista − 20 de pomo − 3 de margen a cada lado = 18 de recorrido
+        val destino = if (activo) 18 * resources.displayMetrics.density else 0f
+        if (pomo.translationX != destino) {
+            pomo.animate().translationX(destino).setDuration(120).start()
         }
     }
 
@@ -2210,8 +2345,15 @@ class MainActivity : AppCompatActivity() {
            sistema. Fuera del modo rescate no hay pulso que contar. */
         val falta = ServicioSos.proximoPulso - System.currentTimeMillis()
         val activo = ServicioSos.enRescate && ServicioSos.proximoPulso > 0
-        findViewById<TextView>(R.id.rescate_cuenta_pulso)?.text =
-            if (activo) String.format(Locale.US, "%02d", (falta / 1000).coerceIn(0, 99)) else "--"
+        /* Con el rescate parado no hay cuenta atrás. Ponía «--» a 82 sp en
+           mono, que en pantalla son dos bloques blancos enormes y no se lee
+           como «no hay dato»: se lee como que algo se ha roto. */
+        findViewById<TextView>(R.id.rescate_cuenta_pulso)?.let {
+            it.text = if (activo) String.format(Locale.US, "%02d", (falta / 1000).coerceIn(0, 99))
+                      else getString(R.string.rescate_parado_cuenta)
+            it.textSize = if (activo) 82f else 30f
+            it.alpha = if (activo) 1f else 0.4f
+        }
         findViewById<ProgressBar>(R.id.rescate_barra_pulso)?.progress =
             if (activo) (falta * 100 / ServicioSos.RESCATE_MS).toInt().coerceIn(0, 100) else 0
 

@@ -16,9 +16,30 @@ class Ficha(ctx: Context) {
 
     private val p = ctx.getSharedPreferences("ficha", Context.MODE_PRIVATE)
 
+    /* Nombres y apellidos, separados. Estaban en un campo solo y la pantalla
+       adivinaba dónde partirlo: con cuatro palabras acertaba, con tres dejaba
+       un nombre arriba y todo lo demás abajo, y con nombres compuestos o
+       apellidos de dos palabras se equivocaba siempre. No hay heurística que
+       acierte —«María del Carmen Ruiz» y «Ana Ruiz de Lara» se parten distinto
+       y se escriben igual—, así que lo dice la persona y ya está. */
     var nombre: String
         get() = p.getString("nombre", "") ?: ""
         set(v) { p.edit().putString("nombre", v).apply() }
+
+    var apellidos: String
+        get() = p.getString("apellidos", "") ?: ""
+        set(v) { p.edit().putString("apellidos", v).apply() }
+
+    /** Las dos líneas de la tarjeta. Si la ficha viene de una versión anterior
+     *  —todo en `nombre` y `apellidos` vacío— se parte una vez con la regla de
+     *  [Nombres], que es lo único que se puede hacer con lo que hay guardado. */
+    fun nombreEnDosLineas(): String =
+        if (apellidos.isNotBlank()) "${nombre.trim().uppercase()}\n${apellidos.trim().uppercase()}"
+        else Nombres.enDosLineas(nombre)
+
+    /** El nombre entero en una línea, para la baliza y para la ficha por Wi-Fi. */
+    fun nombreCompleto(): String = listOf(nombre.trim(), apellidos.trim())
+        .filter { it.isNotBlank() }.joinToString(" ")
 
     var sangre: String
         get() = p.getString("sangre", "") ?: ""
@@ -52,7 +73,7 @@ class Ficha(ctx: Context) {
         get() = p.getString("telefono", "") ?: ""
         set(v) { p.edit().putString("telefono", v).apply() }
 
-    fun vacia() = nombre.isBlank() && sangre.isBlank() && edad.isBlank() &&
+    fun vacia() = nombre.isBlank() && apellidos.isBlank() && sangre.isBlank() && edad.isBlank() &&
                   alergias.isBlank() && medicacion.isBlank() &&
                   contacto.isBlank() && telefono.isBlank()
 
@@ -60,7 +81,7 @@ class Ficha(ctx: Context) {
 
     /** Lo que se enseña a pantalla completa. Sin adornos: lo urgente arriba. */
     fun comoTexto(): String = buildString {
-        if (nombre.isNotBlank()) append(nombre).append("\n\n")
+        if (nombreCompleto().isNotBlank()) append(nombreCompleto()).append("\n\n")
         if (sangre.isNotBlank()) append("SANGRE\n").append(sangre).append("\n\n")
         if (alergias.isNotBlank()) append("ALERGIAS\n").append(alergias).append("\n\n")
         if (medicacion.isNotBlank()) append("MEDICACIÓN\n").append(medicacion).append("\n\n")

@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Pomo blanco sobre la pista verde. Era casi negro (#0A0F06): sobre el verde
+     se leía como un agujero, y en la maqueta es un disco claro. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
-    <solid android:color="#0A0F06" />
+    <solid android:color="#FFFFFF" />
 </shape>

@@ -292,7 +292,7 @@ class FichaLan(
 
     private fun paquete(f: Ficha): ByteArray = JSONObject()
         .put("v", VERSION)
-        .put("nombre", f.nombre.trim())
+        .put("nombre", f.nombreCompleto())
         .put("sangre", f.sangre.trim().uppercase())
         .put("edad", f.edad.trim())
         /* Aquí sí caben los dos por separado: esto va por UDP y no por los 31

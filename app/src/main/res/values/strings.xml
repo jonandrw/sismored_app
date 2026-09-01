@@ -520,7 +520,7 @@ Para leerla hace falta el permiso de acceso a notificaciones, que Android da ent
     <string name="b_alerta_google_probar">PROBAR SIMULADA</string>
     <string name="d_alerta_google_on">Activa. Oye la alerta de Google y la reparte por sonido.</string>
     <string name="d_alerta_google_off">Sin activar: hoy no puede oírla. Toca para ver cómo.</string>
-    <string name="panico_mantener">Mantén pulsado 2 s</string>
+    <string name="panico_mantener">Mantén pulsado medio segundo</string>
     <string name="panico_soltando">Suelta para cancelar</string>
 
     <!-- ===== REDISEÑO 17 PANTALLAS ===== -->
@@ -582,6 +582,16 @@ Para leerla hace falta el permiso de acceso a notificaciones, que Android da ent
     <string name="interfono_sin_respuestas">Todavía no se ha oído nada</string>
 
     <!-- Tres pitidos de 0,20 s que arrancan cada 0,28 s: 0,76 en total. -->
+    <!-- La tarjeta decia «AUTONOMIA ESTIMADA · 31 h · pidiendo ayuda» con la
+         cifra sacada de `bateria * 0,65`. Nadie ha medido cuanto dura el modo
+         rescate en un movil real, asi que se enseña la carga —que si se mide— y
+         se dice con todas las letras que las horas no se saben. -->
+    <string name="rescate_parado_cuenta">SIN PULSO</string>
+    <string name="rescate_bateria">BATERÍA RESTANTE</string>
+    <string name="rescate_pct">%</string>
+    <string name="rescate_pidiendo">pidiendo ayuda</string>
+    <string name="rescate_nota">Cuántas horas son estas no está medido: depende del móvil, de la temperatura y del estado de la batería. Lo que sí se sabe es que el pulso cada 12 s gasta muchísimo menos que la sirena continua, y se oye desde igual de lejos.</string>
+
     <string name="rescate_cadencia">CADENCIA 12 S</string>
     <string name="rescate_pulso">PULSO 0.76 S</string>
 
@@ -612,9 +622,24 @@ Para leerla hace falta el permiso de acceso a notificaciones, que Android da ent
         <item quantity="other">%d eventos guardados en este móvil</item>
     </plurals>
 
+    <!-- El espacio duro del final no sobra: Saira en cursiva se sale de su
+         caja por la derecha y con `wrap_content` la R quedaba cortada. Es la
+         misma solucion que ya lleva el rotulo de PANICO. -->
+    <string name="parar_italica">PARAR </string>
     <string name="parar_sub">SE PUEDE VOLVER A ENCENDER</string>
     <string name="permiso_flash_hay">Este móvil tiene flash y la linterna funciona. No hace falta conceder nada: se controla sin el permiso de cámara.</string>
     <string name="permiso_flash_no">Este móvil no tiene flash. El destello SOS no está disponible; todo lo demás sí.</string>
+
+    <!-- === Detector ===
+         El interruptor que apaga la vigilancia y lo que oye el micrófono. -->
+    <string name="det_armado">Vigilancia armada</string>
+    <string name="det_armado_sub">Escucha sacudidas en reposo</string>
+    <string name="det_desarmado">Vigilancia desarmada</string>
+    <string name="det_desarmado_sub">No va a avisar de nada</string>
+    <string name="det_sonido">DETECTOR DE SONIDO</string>
+    <string name="det_sin_micro">SIN MICRÓFONO</string>
+    <string name="det_escuchando">ESCUCHANDO</string>
+    <string name="det_nunca">nunca</string>
 
     <string name="ob_siguiente">SIGUIENTE</string>
     <string name="ob_saltar_intro">Saltar a los permisos</string>
