@@ -1850,35 +1850,51 @@ class VistaEspectroMalla @JvmOverloads constructor(
 }
 
 /**
- * La onda de lo que está entrando por el micrófono, ahora mismo.
+ * El osciloscopio del micrófono: lo que está entrando por el aire, ahora mismo.
  *
- * Es la envolvente que ya calcula `Escucha` —dos segundos y medio de niveles,
- * tres o cuatro sílabas— y que hasta ahora no salía a ninguna pantalla. Sirve
- * para lo más básico y lo más difícil de saber de otra forma: si el micrófono
- * está llegando al aire o si la app se ha quedado sorda. Un trazo plano y un
- * micrófono denegado se parecen mucho en una lista de texto, y no se parecen
- * en nada aquí.
+ * Es la envolvente que ya calcula `Escucha` —128 picos de los últimos 85 ms—
+ * dibujada como una onda simétrica y rellena, que es como se lee un sonido de
+ * un vistazo. Sirve para lo más básico y lo más difícil de saber de otra
+ * forma: si el micrófono está llegando al aire, o si la app se ha quedado
+ * sorda sin decirlo.
  *
- * Se dibuja simétrica respecto al centro porque es una envolvente, no una
- * señal: lo que se mide es cuánta energía hay, no en qué sentido va.
+ * **Un trazo plano y un micrófono denegado no se dibujan igual.** Sin escucha
+ * no se pinta la onda: solo la línea de base, apagada. Una onda plana es una
+ * lectura —«hay silencio»— y eso es otra cosa, y la diferencia importa cuando
+ * lo que decides es si fiarte de que te va a oír.
+ *
+ * La escala es fija y no se ajusta sola. Un auto-gain haría que el silencio se
+ * viera como una onda enorme, que es exactamente la clase de mentira que este
+ * proyecto no se permite: la altura tiene que querer decir algo.
  */
 class VistaOnda @JvmOverloads constructor(
     ctx: Context, attrs: AttributeSet? = null
 ) : View(ctx, attrs) {
 
-    private val p = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
-    private val pLinea = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val pOnda = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val pBorde = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+    }
+    private val pBase = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         color = 0xFF1E252A.toInt()
     }
-    private val rect = RectF()
+    private val camino = Path()
 
     private var muestras = FloatArray(0)
     private var viva = false
 
+    /** Lo dibujado se suaviza hacia la lectura nueva en vez de saltar a ella:
+     *  el servicio publica dieciséis veces por segundo y la pantalla repinta a
+     *  sesenta, y sin esto la onda va a tirones. */
+    private var suave = FloatArray(0)
+
     fun pintar(onda: FloatArray, viva: Boolean) {
         this.muestras = onda
         this.viva = viva
+        if (suave.size != onda.size) suave = FloatArray(onda.size)
         invalidate()
     }
 
@@ -1886,29 +1902,40 @@ class VistaOnda @JvmOverloads constructor(
         val w = width.toFloat(); val h = height.toFloat()
         if (w <= 0 || h <= 0) return
         val medio = h / 2f
-        pLinea.strokeWidth = px(this, 1f)
-        c.drawLine(0f, medio, w, medio, pLinea)
+        pBase.strokeWidth = px(this, 1f)
+        c.drawLine(0f, medio, w, medio, pBase)
 
-        /* Sin micrófono no se dibuja una línea plana: una línea plana es una
-           lectura —«silencio»— y esto es otra cosa, que es «no estoy oyendo».
-           La diferencia importa cuando lo que decides es si fiarte. */
         if (!viva || muestras.isEmpty()) return
 
         val n = muestras.size
-        val hueco = px(this, 2f)
-        val ancho = ((w - (n - 1) * hueco) / n).coerceAtLeast(px(this, 1f))
-        val r = px(this, 1f)
         for (i in 0 until n) {
-            val v = muestras[i].coerceIn(0f, 1f)
-            val alto = (medio * v).coerceAtLeast(px(this, 1f))
-            val x = i * (ancho + hueco)
-            rect.set(x, medio - alto, x + ancho, medio + alto)
-            /* Verde mientras sea ruido de fondo y ámbar cuando el nivel se
-               acerca al techo: ahí es donde el micrófono empieza a recortar y
-               los patrones dejan de ser fiables. */
-            p.color = if (v > 0.85f) 0xFFF0A02A.toInt() else 0xFF90CA50.toInt()
-            p.alpha = (90 + v * 165).toInt().coerceIn(0, 255)
-            c.drawRoundRect(rect, r, r, p)
+            suave[i] += (muestras[i] - suave[i]) * 0.35f
         }
+
+        /* El pico manda el color: verde mientras haya sitio y ámbar cuando la
+           onda toca el techo, que es donde el micrófono recorta y los patrones
+           dejan de ser fiables. */
+        var pico = 0f
+        for (v in suave) if (v > pico) pico = v
+        val color = if (pico > 0.9f) 0xFFF0A02A.toInt() else 0xFF90CA50.toInt()
+
+        val dx = w / (n - 1).coerceAtLeast(1)
+        val techo = medio - px(this, 1f)
+
+        camino.reset()
+        camino.moveTo(0f, medio)
+        for (i in 0 until n) camino.lineTo(i * dx, medio - suave[i] * techo)
+        for (i in n - 1 downTo 0) camino.lineTo(i * dx, medio + suave[i] * techo)
+        camino.close()
+
+        pOnda.color = color
+        pOnda.alpha = 60
+        c.drawPath(camino, pOnda)
+
+        pBorde.color = color
+        pBorde.strokeWidth = px(this, 1.5f)
+        c.drawPath(camino, pBorde)
+
+        if (isShown) postInvalidateOnAnimation()
     }
 }

@@ -609,7 +609,15 @@
                     android:orientation="vertical"
                     android:visibility="gone">
 
-                    <!-- 1. Live Seismograph Radar Screen (270dp, chamfered corner) -->
+                                        <TextView
+                        style="@style/RotuloInstr"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="8dp"
+                        android:text="@string/det_sismografo" />
+
+<!-- 1. Live Seismograph Radar Screen (270dp, chamfered corner) -->
                     <FrameLayout
                         android:layout_width="match_parent"
                         android:layout_height="270dp"
@@ -674,70 +682,6 @@
                             android:id="@+id/sw_armado"
                             android:layout_width="52dp"
                             android:layout_height="30dp" />
-                    </LinearLayout>
-
-                    <!-- DETECTOR DE SONIDO. El motor mide nivel, tono, impactos, la
-                         onda y cinco patrones —derrumbe, gritos, voz, animales y
-                         golpes— con su barra de progreso y la hora del ultimo. Nada
-                         de eso salia a ninguna pantalla despues del rediseño. -->
-                    <TextView
-                        style="@style/RotuloInstr"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="20dp"
-                        android:layout_marginBottom="8dp"
-                        android:text="@string/det_sonido" />
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:background="@drawable/tarjeta"
-                        android:orientation="vertical"
-                        android:paddingStart="16dp"
-                        android:paddingEnd="16dp"
-                        android:paddingTop="14dp"
-                        android:paddingBottom="16dp">
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal">
-
-                            <TextView
-                                android:id="@+id/oye_estado"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:fontFamily="@font/mono"
-                                android:letterSpacing="0.14"
-                                android:text="@string/det_sin_micro"
-                                android:textColor="@color/dim"
-                                android:textSize="10sp" />
-
-                            <TextView
-                                android:id="@+id/oye_nivel"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:fontFamily="@font/mono"
-                                android:text="@string/guion"
-                                android:textColor="@color/gr"
-                                android:textSize="15sp"
-                                android:textStyle="bold" />
-                        </LinearLayout>
-
-                        <red.sismo.VistaOnda
-                            android:id="@+id/oye_onda"
-                            android:layout_width="match_parent"
-                            android:layout_height="52dp"
-                            android:layout_marginTop="10dp" />
-
-                        <LinearLayout
-                            android:id="@+id/oye_patrones"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="12dp"
-                            android:orientation="vertical" />
                     </LinearLayout>
 
                     <!-- 2. Sensitivity Card -->
@@ -951,7 +895,118 @@
                     </LinearLayout>
                 </LinearLayout>
 
-                <!-- ==================== 04 MALLA ACÚSTICA ==================== -->
+                                    <TextView
+                        style="@style/RotuloInstr"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="26dp"
+                        android:layout_marginBottom="8dp"
+                        android:text="@string/det_sonido" />
+
+<!-- DETECTOR DE SONIDO. El motor mide nivel, tono, impactos, la
+                         onda y cinco patrones —derrumbe, gritos, voz, animales y
+                         golpes— con su barra de progreso y la hora del ultimo. Nada
+                         de eso salia a ninguna pantalla despues del rediseño. -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/tarjeta"
+                        android:orientation="vertical"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp"
+                        android:paddingTop="14dp"
+                        android:paddingBottom="16dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:id="@+id/oye_estado"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:fontFamily="@font/mono"
+                                android:letterSpacing="0.14"
+                                android:text="@string/det_sin_micro"
+                                android:textColor="@color/dim"
+                                android:textSize="10sp" />
+
+                            <TextView
+                                android:id="@+id/oye_nivel"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="@font/mono"
+                                android:text="@string/guion"
+                                android:textColor="@color/gr"
+                                android:textSize="15sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+<!-- Encender y apagar la escucha. Existia la accion
+                             ACCION_ESCUCHA_CONMUTAR y no habia nada que la llamara:
+                             el microfono se quedaba como lo hubiera dejado el
+                             servicio y no habia forma de apagarlo desde la app. -->
+                        <LinearLayout
+                            android:id="@+id/fila_oir"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:background="?attr/selectableItemBackground"
+                            android:gravity="center_vertical"
+                            android:minHeight="52dp"
+                            android:orientation="horizontal">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="@font/barlow"
+                                    android:text="@string/det_oir"
+                                    android:textColor="@color/tx"
+                                    android:textSize="16sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="2dp"
+                                    android:fontFamily="@font/barlow"
+                                    android:text="@string/det_oir_sub"
+                                    android:textColor="@color/dim"
+                                    android:textSize="13sp" />
+                            </LinearLayout>
+
+                            <red.sismo.VistaInterruptor
+                                android:id="@+id/sw_oir"
+                                android:layout_width="52dp"
+                                android:layout_height="30dp" />
+                        </LinearLayout>
+
+                        <red.sismo.VistaOnda
+                            android:id="@+id/oye_onda"
+                            android:layout_width="match_parent"
+                            android:layout_height="52dp"
+                            android:layout_marginTop="10dp" />
+
+                        <LinearLayout
+                            android:id="@+id/oye_patrones"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:orientation="vertical" />
+                    </LinearLayout>
+
+                    <!-- ==================== 04 MALLA ACÚSTICA ==================== -->
                 <LinearLayout
                     android:id="@+id/v_red"
                     android:layout_width="match_parent"
@@ -2524,6 +2579,47 @@
                                 android:textColor="#D2AFB0"
                                 android:textSize="13sp" />
                         </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- El permiso del que depende que «¿ESTAS BIEN?» salga sobre el
+                         bloqueo. Sin el, la pregunta llega como una notificacion
+                         normal y puede pasar desapercibida — y si no la contestas,
+                         la sirena arranca sola. -->
+                    <LinearLayout
+                        android:id="@+id/aviso_pantalla_completa"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:background="@drawable/caja_aviso_ambar"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:orientation="vertical"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp"
+                        android:paddingTop="14dp"
+                        android:paddingBottom="14dp"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/saira"
+                            android:letterSpacing="0.03"
+                            android:text="@string/fsi_titulo"
+                            android:textAllCaps="true"
+                            android:textColor="@color/ambar"
+                            android:textSize="17sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:fontFamily="@font/barlow"
+                            android:lineSpacingMultiplier="1.3"
+                            android:text="@string/fsi_texto"
+                            android:textColor="@color/lectura"
+                            android:textSize="13sp" />
                     </LinearLayout>
 
                     <!-- Sección PERMISOS -->

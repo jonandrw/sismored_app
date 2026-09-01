@@ -256,7 +256,7 @@ class MainActivity : AppCompatActivity() {
             this, receptorDestello, IntentFilter(ServicioSos.ACCION_DESTELLO),
             ContextCompat.RECEIVER_NOT_EXPORTED
         )
-        ServicioSos.mirando = vista == R.id.v_inicio || vista == R.id.v_entorno
+        ServicioSos.mirando = miraLienzo(vista)
         pintarBienvenida()
         /* El destello lo apaga `onPause` y nadie lo volvía a encender: si la
            alarma saltaba con la app en segundo plano —que es el caso normal—,
@@ -439,11 +439,23 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<ScrollView>(R.id.scroll).scrollTo(0, 0)
         findViewById<View>(R.id.dock_busqueda)?.visibility = if (destino == R.id.v_busqueda) View.VISIBLE else View.GONE
-        // Inicio, Entorno, Detector y Malla tienen lienzos activos a 60 Hz.
-        ServicioSos.mirando = destino == R.id.v_inicio || destino == R.id.v_entorno || destino == R.id.v_detector || destino == R.id.v_red
+        ServicioSos.mirando = miraLienzo(destino)
         if (destino == R.id.v_diag) pintarDiagnostico(forzar = true)
         pintar()
     }
+
+    /**
+     * Si esta vista tiene un lienzo que pintar a 60 Hz.
+     *
+     * `ServicioSos.mirando` es lo que hace que el servicio publique la traza
+     * del sismógrafo y la onda del micrófono; con esto en falso, las dos se
+     * quedan congeladas. Estaba escrito dos veces con DOS LISTAS DISTINTAS:
+     * `ir` incluía Detector y Malla, y `onResume` no, y como `onResume` corre
+     * después, entrar en el Detector dejaba la onda del micrófono vacía y sin
+     * dibujar. Una sola lista.
+     */
+    private fun miraLienzo(v: Int) = v == R.id.v_inicio || v == R.id.v_entorno ||
+        v == R.id.v_detector || v == R.id.v_red
 
     /* ===================== antes de empezar ===================== */
 
@@ -1120,6 +1132,21 @@ class MainActivity : AppCompatActivity() {
             arrancarServicio(ServicioSos.ACCION_ARMAR)
             pintar()
         }
+
+        /* Encender y apagar el detector de sonido. La accion existia y no la
+           llamaba nadie: el microfono se quedaba como lo hubiera dejado el
+           servicio y no habia forma de apagarlo desde la app. */
+        val conmutarOir = View.OnClickListener {
+            arrancarServicio(ServicioSos.ACCION_ESCUCHA_CONMUTAR)
+            anotar(if (ServicioSos.oyeEscuchando) "detector de sonido apagado"
+                   else "detector de sonido encendido")
+            pintar()
+        }
+        findViewById<View>(R.id.fila_oir)?.setOnClickListener(conmutarOir)
+        findViewById<VistaInterruptor>(R.id.sw_oir)?.setOnCheckedChangeListener {
+            arrancarServicio(ServicioSos.ACCION_ESCUCHA_CONMUTAR)
+            pintar()
+        }
     }
 
     private fun montarInterfono() {
@@ -1632,6 +1659,18 @@ class MainActivity : AppCompatActivity() {
            con la pantalla bloqueada, porque es el único que funciona a ciegas.
            No se puede activar desde aquí —es un servicio de accesibilidad y eso
            lo concede la persona en Ajustes del sistema—, así que lleva allí. */
+        /* Lleva a los ajustes de notificaciones de la app, que es donde se
+           concede en Android 14. En MIUI el permiso propio de ventanas
+           emergentes está en otro sitio y por eso el texto lo dice. */
+        findViewById<View>(R.id.aviso_pantalla_completa)?.setOnClickListener {
+            try {
+                startActivity(
+                    Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                        .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+                )
+            } catch (_: Exception) { abrirAjustesDeLaApp() }
+        }
+
         findViewById<View>(R.id.fila_atajo_volumen)?.setOnClickListener {
             try {
                 startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
@@ -1996,6 +2035,10 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<TextView>(R.id.oye_nivel)?.text =
             if (oyendo) String.format(Locale.US, "%.0f dBFS", ServicioSos.oyeNivelDb) else "—"
+        findViewById<VistaInterruptor>(R.id.sw_oir)?.let {
+            it.colorActivo = getColor(R.color.gr)
+            if (it.isChecked != oyendo) it.isChecked = oyendo
+        }
         findViewById<VistaOnda>(R.id.oye_onda)?.pintar(ServicioSos.oyeOnda, oyendo)
         pintarPatronesSonido(oyendo)
     }
@@ -2047,7 +2090,7 @@ class MainActivity : AppCompatActivity() {
         })
         fila.addView(ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
             max = 100
-            progressDrawable = ContextCompat.getDrawable(context, R.drawable.barra_progreso_frecuencia)
+            progressDrawable = ContextCompat.getDrawable(context, R.drawable.barra_patron)
             layoutParams = LinearLayout.LayoutParams(0, px(4), 1f)
                 .apply { marginStart = px(8); marginEnd = px(8) }
         })
@@ -2525,6 +2568,8 @@ class MainActivity : AppCompatActivity() {
      *  ritmo del resto: inflar veinte layouts dos veces por segundo cuesta
      *  bastante más que cambiar veinte textos, y aquí nada cambia tan deprisa. */
     private var diagUltimo = 0L
+    /** Si «¿ESTÁS BIEN?» puede salir sobre el bloqueo. Ver [pintarDiagnostico]. */
+    private var pantallaCompletaOk = true
     /** Se crea una vez, no en cada repintado. Solo se lee. */
     private var ubicacion: Ubicacion? = null
 
@@ -2541,6 +2586,23 @@ class MainActivity : AppCompatActivity() {
         /* El banner decía «FALTA 1 PERMISO» fijo en el XML: con tres denegados
            seguía diciendo uno, y con todos concedidos se escondía el aviso pero
            el rótulo seguía puesto por debajo. Ahora cuenta. */
+        /* ¿Puede salir «¿ESTÁS BIEN?» a pantalla completa estando la app en
+           segundo plano? El comentario del manifiesto lleva desde el principio
+           diciendo que «la app lo comprueba con canUseFullScreenIntent() y lo
+           dice en Diagnóstico» — y esa comprobación no existía en ninguna
+           parte. Es el permiso del que depende la pregunta, y sin él la app
+           avisa con una notificación normal que puede pasar desapercibida.
+
+           En Android 14 el sistema deja de concederlo solo. Y encima de eso,
+           MIUI y HyperOS tienen su propio permiso —«mostrar ventanas
+           emergentes en segundo plano»— que no se puede consultar por API:
+           por eso el aviso dice dónde mirar en vez de afirmar que está bien. */
+        pantallaCompletaOk = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            (getSystemService(NotificationManager::class.java))?.canUseFullScreenIntent() ?: false
+        } else true
+        findViewById<View>(R.id.aviso_pantalla_completa)?.visibility =
+            if (pantallaCompletaOk) View.GONE else View.VISIBLE
+
         val faltan = listOf(micOk, bleOk, camOk, ubiOk).count { !it }
         findViewById<View>(R.id.banner_falta_permiso)?.visibility =
             if (faltan > 0) View.VISIBLE else View.GONE

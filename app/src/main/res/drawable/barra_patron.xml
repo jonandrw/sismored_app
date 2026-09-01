@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Barra de progreso de verdad. Las filas de patrones usaban
+     `barra_progreso_frecuencia`, que es una forma lisa y no un `layer-list`:
+     Android no sabe recortarla por el progreso, asi que las cinco salian
+     llenas de punta a punta con el acumulador a cero. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@android:id/background">
+        <shape android:shape="rectangle">
+            <corners android:radius="2dp" />
+            <solid android:color="#1E252A" />
+        </shape>
+    </item>
+    <item android:id="@android:id/progress">
+        <clip>
+            <shape android:shape="rectangle">
+                <corners android:radius="2dp" />
+                <solid android:color="#90CA50" />
+            </shape>
+        </clip>
+    </item>
+</layer-list>
