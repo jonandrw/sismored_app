@@ -1328,11 +1328,7 @@ class MainActivity : AppCompatActivity() {
         filtrar(R.id.filtro_ble) {
             it.contains("ble", true) || it.contains("baliza", true) || it.contains("radio", true)
         }
-        findViewById<View>(R.id.btn_exportar_consola)?.setOnClickListener {
-            val clip = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-            clip.setPrimaryClip(android.content.ClipData.newPlainText("SismoRed Consola", lineas.joinToString("\n")))
-            android.widget.Toast.makeText(this, "Consola exportada al portapapeles", android.widget.Toast.LENGTH_SHORT).show()
-        }
+        findViewById<View>(R.id.btn_exportar_consola)?.setOnClickListener { exportarRegistro() }
         findViewById<View>(R.id.btn_limpiar_consola)?.setOnClickListener {
             lineas.clear()
             actualizarConsola(consola, lineas)
@@ -1968,11 +1964,11 @@ class MainActivity : AppCompatActivity() {
             R.id.v_baliza -> pintarBaliza()
             R.id.v_detector -> pintarDetector()
             R.id.v_interfono -> pintarInterfono()
-            R.id.v_consola -> pintarConsola()
+            R.id.v_consola -> { cargarHistorico(); pintarConsola() }
             R.id.v_ficha -> pintarFicha()
             R.id.v_acerca -> pintarAcerca()
             R.id.v_registro -> {
-                if (lineas.isEmpty() && ServicioSos.ultimoRegistro.isNotEmpty()) anotar(ServicioSos.ultimoRegistro)
+                cargarHistorico()
                 pintarRegistro()
             }
         }
@@ -2349,9 +2345,114 @@ class MainActivity : AppCompatActivity() {
         return String.format(Locale.US, "%02d:%02d:%02d", s / 3600, (s % 3600) / 60, s % 60)
     }
 
+    /**
+     * Saca el registro entero a un archivo de texto y lo ofrece para compartir.
+     *
+     * «EXPORTAR .TXT» copiaba al portapapeles las líneas que hubiera en memoria,
+     * o sea las de esta sesión. Para mandarle a alguien lo que pasó anoche eso
+     * no sirve: hace falta leer el disco y hace falta un archivo.
+     *
+     * Va al caché de la app y sale por `FileProvider`, que es la única vía por
+     * la que Android deja pasar un archivo a otra app sin permisos de
+     * almacenamiento. Y no sale solo: lo manda una persona pulsando, que es la
+     * misma regla que el resto — nada sale del móvil sin que se vea.
+     */
+    private fun exportarRegistro() {
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val texto = try {
+                val ev = red.sismo.data.SismoDatabase.getDatabase(this@MainActivity)
+                    .eventoDao().obtenerRecientes()
+                buildString {
+                    append("SismoRed ").append(BuildConfig.VERSION_NAME).append('\n')
+                    append(Build.MANUFACTURER).append(' ').append(Build.MODEL)
+                        .append(" · Android ").append(Build.VERSION.RELEASE).append('\n')
+                    append(ev.size).append(" eventos guardados").append('\n').append('\n')
+                    val f = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
+                    /* Del más viejo al más nuevo: un registro se lee hacia
+                       adelante, aunque en pantalla se enseñe al revés. */
+                    for (e in ev.reversed()) {
+                        append(f.format(Date(e.fechaMs))).append("  ").append(e.mensaje).append('\n')
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w("SismoRed", "no se pudo leer el registro", e); ""
+            }
+            val archivo = if (texto.isBlank()) null else try {
+                val dir = java.io.File(cacheDir, "registros").apply { mkdirs() }
+                val nombre = "sismored-" +
+                    SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(Date()) + ".txt"
+                java.io.File(dir, nombre).apply { writeText(texto) }
+            } catch (e: Exception) {
+                Log.w("SismoRed", "no se pudo escribir el archivo", e); null
+            }
+            withContext(kotlinx.coroutines.Dispatchers.Main) {
+                if (archivo == null) {
+                    Toast.makeText(this@MainActivity,
+                        if (texto.isBlank()) R.string.registro_sin_nada else R.string.registro_sin_archivo,
+                        Toast.LENGTH_LONG).show()
+                    return@withContext
+                }
+                try {
+                    val uri = androidx.core.content.FileProvider.getUriForFile(
+                        this@MainActivity, "$packageName.registros", archivo
+                    )
+                    startActivity(Intent.createChooser(
+                        Intent(Intent.ACTION_SEND)
+                            .setType("text/plain")
+                            .putExtra(Intent.EXTRA_STREAM, uri)
+                            .putExtra(Intent.EXTRA_SUBJECT, archivo.name)
+                            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),
+                        getString(R.string.registro_compartir)
+                    ))
+                    anotar("registro exportado: ${archivo.name}")
+                } catch (e: Exception) {
+                    Log.w("SismoRed", "no se pudo compartir", e)
+                    Toast.makeText(this@MainActivity, R.string.registro_sin_archivo, Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
     /** Cuántos van guardados desde que se abrió la app, solo para saber cuándo
      *  toca podar. Ver [anotar]. */
     private var guardados = 0
+
+    /** Si ya se ha traido el historico del disco a la lista de la pantalla. */
+    private var historicoCargado = false
+
+    /**
+     * Trae de la base de datos lo ya vivido.
+     *
+     * El servicio venia guardando cada evento en disco desde el principio —y el
+     * de la app tambien—, pero NI el Registro NI la Consola leian de ahi: las
+     * dos pintan `lineas`, que es una lista en memoria de la actividad. Al matar
+     * el proceso, la lista se vacia y las dos pantallas aparecen en blanco,
+     * aunque en disco estuviera todo. Parecia que el registro se perdia, y lo
+     * que se perdia era solo la forma de verlo.
+     *
+     * Se trae una vez por sesion, no en cada repintado: son 200 filas de disco.
+     */
+    private fun cargarHistorico() {
+        if (historicoCargado) return
+        historicoCargado = true
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val previos = try {
+                red.sismo.data.SismoDatabase.getDatabase(this@MainActivity)
+                    .eventoDao().obtenerRecientes().take(200)
+            } catch (e: Exception) {
+                Log.w("SismoRed", "no se pudo leer el historico", e); return@launch
+            }
+            withContext(kotlinx.coroutines.Dispatchers.Main) {
+                /* Se pegan DEBAJO de lo de esta sesion, que va primero: `lineas`
+                   se lee de la mas reciente a la mas vieja. */
+                for (e in previos) {
+                    if (lineas.size >= 200) break
+                    lineas.addLast("${hora.format(Date(e.fechaMs))}  ${e.mensaje}")
+                }
+                pintar()
+            }
+        }
+    }
 
     private fun anotar(texto: String, saveToDb: Boolean = true) {
         val sdf = SimpleDateFormat("HH:mm:ss", Locale.US)

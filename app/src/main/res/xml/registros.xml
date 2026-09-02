@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Solo la carpeta de registros del cache, y nada mas. Un FileProvider abierto
+     al directorio entero dejaria salir tambien la ficha medica y la base de
+     datos, que es justo lo que esta app promete que no sale. -->
+<paths>
+    <cache-path name="registros" path="registros/" />
+</paths>

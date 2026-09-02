@@ -619,6 +619,9 @@ Para leerla hace falta el permiso de acceso a notificaciones, que Android da ent
     <string name="acerca_enlace_copiado">No hay con qué abrirlo. La dirección se ha copiado al portapapeles.</string>
     <!-- El registro de la pestaña son las ultimas 50 lineas de esta sesion; el
          historico es lo que queda guardado en el movil. -->
+    <string name="registro_sin_nada">No hay nada guardado todavía.</string>
+    <string name="registro_sin_archivo">No se pudo crear el archivo del registro.</string>
+    <string name="registro_compartir">Compartir el registro</string>
     <string name="historial_ver">Ver todo el histórico</string>
     <string name="historial_sub">Lo de arriba es solo esta sesión</string>
     <plurals name="historial_guardados">
