@@ -2970,7 +2970,95 @@
                         android:orientation="vertical">
 
                         <!-- Consola -->
+                        <!-- SIMULACRO. Los textos existian desde hace tiempo en strings.xml y
+                         NINGUN boton los usaba: el rediseno se llevo por delante la
+                         unica forma de ensayar la app sin esperar a un terremoto.
+                         Y ensayar importa: la pantalla que sale sola hay que haberla
+                         visto una vez antes de verla de verdad. -->
+                    <TextView
+                        style="@style/RotuloInstr"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="24dp"
+                        android:layout_marginBottom="8dp"
+                        android:text="@string/rot_simulacro" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/campo_fondo"
+                        android:orientation="vertical">
+
                         <LinearLayout
+                            android:id="@+id/op_probar_pregunta"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="?attr/selectableItemBackground"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:minHeight="60dp"
+                            android:orientation="vertical"
+                            android:paddingStart="16dp"
+                            android:paddingEnd="16dp"
+                            android:paddingTop="14dp"
+                            android:paddingBottom="14dp">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="@font/barlow"
+                                android:text="@string/b_probar_pregunta"
+                                android:textColor="@color/tx"
+                                android:textSize="16sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:fontFamily="@font/barlow"
+                                android:text="@string/d_simulacro"
+                                android:textColor="@color/dim"
+                                android:textSize="13sp" />
+                        </LinearLayout>
+
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#161C21" />
+
+                        <LinearLayout
+                            android:id="@+id/op_simulacro_total"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="?attr/selectableItemBackground"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:minHeight="60dp"
+                            android:orientation="vertical"
+                            android:paddingStart="16dp"
+                            android:paddingEnd="16dp"
+                            android:paddingTop="14dp"
+                            android:paddingBottom="14dp">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="@font/barlow"
+                                android:text="@string/b_simulacro_total"
+                                android:textColor="@color/ambar"
+                                android:textSize="16sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:fontFamily="@font/barlow"
+                                android:text="@string/d_simulacro_total"
+                                android:textColor="@color/dim"
+                                android:textSize="13sp" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <LinearLayout
                             android:id="@+id/op_consola"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"

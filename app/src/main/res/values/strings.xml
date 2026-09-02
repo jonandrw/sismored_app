@@ -373,6 +373,7 @@ Sin él, no podrás pedir ayuda con la pantalla bloqueada.</string>
     <string name="b_apagar_todo">APAGAR DEL TODO</string>
     <string name="b_apagar_aviso">Se apagan la vigilancia, el micrófono, la radio y el servicio en segundo plano. No detectará nada hasta que vuelvas a abrir la app y la enciendas.</string>
     <string name="b_probar_ficha_lan">PROBAR LA WI-FI</string>
+    <string name="rot_simulacro">ENSAYO</string>
     <string name="b_probar_pregunta">SIMULACRO: ¿ESTÁS BIEN?</string>
     <string name="pr_rotulo">SISMORED</string>
     <string name="pr_titulo">¿Estás bien?</string>
@@ -380,7 +381,9 @@ Sin él, no podrás pedir ayuda con la pantalla bloqueada.</string>
     <string name="pr_bien_sub">CANCELA Y VUELVE A ARMAR</string>
     <string name="pr_ayuda_sub">SIRENA · LINTERNA · BALIZA · MALLA</string>
     <string name="pr_volumen">Cualquier botón de volumen también responde: <b>subir</b> = ayuda, <b>bajar</b> = estoy bien.</string>
-    <string name="pr_cuenta_sub">SEGUNDOS PARA CONTESTAR</string>
+    <!-- Solo «SEGUNDOS»: con «PARA CONTESTAR» se partia en dos lineas y se
+         salia del circulo. Lo que son esos segundos ya lo dice el subtitulo. -->
+    <string name="pr_cuenta_sub">SEGUNDOS</string>
     <string name="pr_explica">Cuando llegue a cero empezaré a emitir tu señal para que puedan encontrarte.</string>
     <string name="pr_bien">ESTOY BIEN</string>
     <string name="pr_gracias">Anotado: estás bien. Este móvil pasa a repetir las alertas de otros.</string>

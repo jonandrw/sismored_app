@@ -245,6 +245,13 @@ class MainActivity : AppCompatActivity() {
             }
             pintar()
         }
+        /* Puente de pruebas, solo en compilaciones de depuracion: deja lanzar el
+           ensayo desde el ordenador sin tener que tocar la pantalla, que en este
+           movil no admite inyeccion de toques. En release no existe. */
+        if (BuildConfig.DEBUG) when (intent?.getStringExtra("probar")) {
+            "pregunta" -> arrancarServicio(ServicioSos.ACCION_PROBAR_PREGUNTA)
+            "simulacro" -> arrancarServicio(ServicioSos.ACCION_SIMULACRO_TOTAL)
+        }
     }
 
     override fun onResume() {
@@ -1757,6 +1764,27 @@ class MainActivity : AppCompatActivity() {
         findViewById<View>(R.id.fila_servicio_arrancar)?.setOnClickListener {
             op.arrancarAlIniciar = !op.arrancarAlIniciar
             pintar()
+        }
+
+        /* El ensayo. La app no se puede probar esperando a un terremoto, y la
+           pantalla que sale sola hay que haberla visto una vez antes de verla de
+           verdad. Las dos acciones existian desde hace tiempo y el rediseno se
+           llevo por delante los dos botones. */
+        findViewById<View>(R.id.op_probar_pregunta)?.setOnClickListener {
+            arrancarServicio(ServicioSos.ACCION_PROBAR_PREGUNTA)
+        }
+        /* El completo si avisa antes: no es solo la pantalla — se cree una
+           sacudida y deja correr la decision entera, asi que si no contestas la
+           baliza se enciende de verdad. */
+        findViewById<View>(R.id.op_simulacro_total)?.setOnClickListener {
+            AlertDialog.Builder(this)
+                .setTitle(R.string.b_simulacro_total)
+                .setMessage(R.string.d_simulacro_total_aviso)
+                .setPositiveButton(R.string.b_simulacro_empezar) { _, _ ->
+                    arrancarServicio(ServicioSos.ACCION_SIMULACRO_TOTAL)
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
         }
 
         findViewById<View>(R.id.op_consola)?.setOnClickListener { ir(R.id.v_consola) }
