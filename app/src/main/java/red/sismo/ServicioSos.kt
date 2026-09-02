@@ -782,12 +782,45 @@ class ServicioSos : Service() {
      */
     private fun alPrimerPlano() {
         val n = notificacion(enAlarma)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            var tipo = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
-            if (malla?.hayPermiso() == true) tipo = tipo or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-            startForeground(ID_NOTIF, n, tipo)
-        } else {
-            startForeground(ID_NOTIF, n)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            try { startForeground(ID_NOTIF, n) } catch (e: Exception) {
+                Log.e("SismoRed", "no se pudo pasar a primer plano", e)
+            }
+            return
+        }
+
+        /* Y NO BASTA CON TENER EL PERMISO.
+           Esto tiraba la app entera con SecurityException aun teniendo
+           RECORD_AUDIO concedido: desde Android 14, un servicio con tipo
+           «micrófono» solo puede arrancar con la app EN PRIMER PLANO, porque el
+           micrófono es un permiso «mientras se usa» y no se puede tomar desde
+           atrás. Con la app en segundo plano —que es de donde arranca esto la
+           mitad de las veces: al encender el móvil, al recibir una alerta, al
+           revivir el servicio— la excepción se llevaba por delante el proceso, y
+           con él la sirena, la malla y el atajo de volumen.
+
+           Así que se intenta con micrófono y, si el sistema dice que no, se
+           vuelve a intentar solo con reproducción. La app se queda sin oír hasta
+           que alguien la abra, pero sigue viva y sigue sonando. Perder la
+           escucha es malo; perder el servicio es perderlo todo. */
+        val base = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+        val conMicro = base or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+        val quiereMicro = malla?.hayPermiso() == true
+
+        if (quiereMicro) {
+            try { startForeground(ID_NOTIF, n, conMicro); return } catch (e: Exception) {
+                Log.w("SismoRed", "sin micrófono en primer plano: ${e.message}")
+                /* Se apaga la escucha de verdad, no solo el tipo declarado:
+                   dejar el micrófono abierto sin haberlo declarado es lo que el
+                   sistema castiga, y además la pantalla diría que oye. */
+                try { escucha?.parar() } catch (_: Exception) {}
+                try { malla?.parar() } catch (_: Exception) {}
+                mallaEscuchando = false
+                oyeEscuchando = false
+            }
+        }
+        try { startForeground(ID_NOTIF, n, base) } catch (e: Exception) {
+            Log.e("SismoRed", "no se pudo pasar a primer plano", e)
         }
     }
 

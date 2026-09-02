@@ -191,6 +191,7 @@ class MainActivity : AppCompatActivity() {
         montarDiagnostico()
         montarAcerca()
         montarDockBusqueda()
+        montarBuscarInterruptor()
 
         for ((tab, _) in pestanas) findViewById<View>(tab).setOnClickListener { ir(tab) }
         ir(R.id.t_inicio)
@@ -273,6 +274,10 @@ class MainActivity : AppCompatActivity() {
         // gastaría batería sin que nadie lo mire
         reloj.removeCallbacks(tic)
         ServicioSos.mirando = false
+        /* El escaner vive en la actividad, asi que al irse de la pantalla deja
+           de escanear — y entonces `buscando` tiene que bajar con el. Dejarlo
+           encendido diria que este movil esta buscando cuando ya no oye nada,
+           y otros contarian con ello. */
         rastreador.parar()
         ServicioSos.buscando = false
         destelloSos(false)
@@ -1236,6 +1241,44 @@ class MainActivity : AppCompatActivity() {
     /** El botón grande del pie de Buscar. No tenía listener: se veía, se
      *  pulsaba y no pasaba nada, justo en el momento en que ya estás encima de
      *  alguien y el siguiente paso es hablarle. Lleva al interfono. */
+    /**
+     * Encender y apagar la busqueda.
+     *
+     * No es solo arrancar el escaner: `ServicioSos.buscando` cambia lo que hace
+     * el resto de la app. Con el encendido, este movil **no grita** —un
+     * rescatista con su propia sirena tapa justo lo que quiere oir— y la baliza
+     * del que esta debajo se acelera al notar que hay alguien buscando.
+     * Ese flag solo se ponia a `false` en `onPause` y no se ponia a `true` en
+     * ningun sitio, asi que el modo entero estaba muerto.
+     */
+    private fun conmutarBusqueda() {
+        if (ServicioSos.buscando) {
+            rastreador.parar()
+            ServicioSos.buscando = false
+            anotar("busqueda parada")
+        } else {
+            if (faltanPermisosDeRadio().isNotEmpty()) { explicarRadio(); pintar(); return }
+            if (!rastreador.arrancar { pintar() }) {
+                Toast.makeText(this, rastreador.motivo, Toast.LENGTH_LONG).show()
+                anotar("no se pudo buscar: ${rastreador.motivo}")
+                /* Se repinta para que el interruptor vuelva a su sitio: si se
+                   queda encendido con el escaner parado, dice que este movil
+                   esta buscando cuando no oye nada. */
+                pintar()
+                return
+            }
+            ServicioSos.buscando = true
+            anotar("buscando supervivientes")
+        }
+        arrancarServicio(ServicioSos.ACCION_OPCIONES)
+        pintar()
+    }
+
+    private fun montarBuscarInterruptor() {
+        findViewById<View>(R.id.fila_buscar)?.setOnClickListener { conmutarBusqueda() }
+        findViewById<VistaInterruptor>(R.id.sw_buscar)?.setOnCheckedChangeListener { conmutarBusqueda() }
+    }
+
     private fun montarDockBusqueda() {
         findViewById<View>(R.id.btn_trabajo_sonido)?.setOnClickListener { ir(R.id.v_interfono) }
     }
@@ -1516,6 +1559,18 @@ class MainActivity : AppCompatActivity() {
            vista dibujaba una silueta fija y respiraba sola, con señal o sin
            ella. Los dos pies («−90 dBm hace 40 s» y «−58 dBm ahora») también
            venían escritos en el XML. */
+        val activa = ServicioSos.buscando
+        findViewById<VistaInterruptor>(R.id.sw_buscar)?.let {
+            it.colorActivo = getColor(R.color.gr)
+            if (it.isChecked != activa) it.setCheckedSilently(activa)
+        }
+        findViewById<TextView>(R.id.buscar_titulo)
+            ?.setText(if (activa) R.string.buscar_on else R.string.buscar_off)
+        findViewById<TextView>(R.id.buscar_sub)?.let {
+            it.setText(if (activa) R.string.buscar_on_sub else R.string.buscar_off_sub)
+            it.setTextColor(getColor(if (activa) R.color.gr else R.color.dim))
+        }
+
         val barras = findViewById<VistaBarrasTendencia>(R.id.hz_barras_tendencia)
         if (hs.isNotEmpty()) {
             val topH = hs.first()
@@ -1686,21 +1741,10 @@ class MainActivity : AppCompatActivity() {
            concede en Android 14. En MIUI el permiso propio de ventanas
            emergentes está en otro sitio y por eso el texto lo dice. */
         findViewById<View>(R.id.aviso_pantalla_completa)?.setOnClickListener {
-            /* Android 14 trae una pantalla propia para este permiso y solo
-               para este: se va derecho al interruptor en vez de dejar a alguien
-               buscandolo entre las notificaciones de la app. */
-            val directo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-                Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
-                    android.net.Uri.parse("package:$packageName"))
-            else Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
-            try { startActivity(directo) } catch (_: Exception) {
-                try {
-                    startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                        .putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
-                } catch (_: Exception) { abrirAjustesDeLaApp() }
-            }
+            abrirPermisoPantallaCompleta()
         }
+        findViewById<View>(R.id.btn_fsi_android)?.setOnClickListener { abrirPermisoPantallaCompleta() }
+        findViewById<View>(R.id.btn_fsi_miui)?.setOnClickListener { abrirPermisosDelFabricante() }
 
         findViewById<View>(R.id.fila_atajo_volumen)?.setOnClickListener {
             try {
@@ -2110,7 +2154,10 @@ class MainActivity : AppCompatActivity() {
         val armado = ServicioSos.armado
         findViewById<VistaInterruptor>(R.id.sw_armado)?.let {
             it.colorActivo = getColor(R.color.gr)
-            if (it.isChecked != armado) it.isChecked = armado
+            /* `isChecked =` dispara el listener y el listener repinta: la
+               pantalla se llamaba a si misma hasta reventar la pila. Para
+               reflejar el estado esta `setCheckedSilently`. */
+            if (it.isChecked != armado) it.setCheckedSilently(armado)
         }
         findViewById<TextView>(R.id.armado_titulo)
             ?.setText(if (armado) R.string.det_armado else R.string.det_desarmado)
@@ -2131,7 +2178,7 @@ class MainActivity : AppCompatActivity() {
             if (oyendo) String.format(Locale.US, "%.0f dBFS", ServicioSos.oyeNivelDb) else "—"
         findViewById<VistaInterruptor>(R.id.sw_oir)?.let {
             it.colorActivo = getColor(R.color.gr)
-            if (it.isChecked != oyendo) it.isChecked = oyendo
+            if (it.isChecked != oyendo) it.setCheckedSilently(oyendo)
         }
         findViewById<VistaOnda>(R.id.oye_onda)?.let {
             it.fuente { ServicioSos.oyeOnda }
@@ -2661,6 +2708,66 @@ class MainActivity : AppCompatActivity() {
 
     /* ===================== diagnóstico ===================== */
 
+    /* ============ el permiso del que depende «¿ESTAS BIEN?» ============
+       Son DOS permisos distintos y en dos sitios distintos, y hacen falta los
+       dos para que la pregunta salga sola con el movil bloqueado:
+
+         · El de Android 14, `USE_FULL_SCREEN_INTENT`, que el sistema ya no
+           concede solo salvo a apps de llamada o alarma.
+         · El propio del fabricante. En MIUI y HyperOS se llama «mostrar
+           ventanas emergentes en segundo plano» y **no se puede consultar por
+           API**: no hay forma de saber si esta dado, solo de llevar alli.
+
+       Medido en el Redmi con HyperOS V816: la pantalla estandar de Android 14
+       —`ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT`— NO EXISTE, y el editor de
+       MIUI si. Por eso se prueban por orden y solo se enseña el boton que
+       lleva a algun sitio: un boton que no hace nada es peor que no tenerlo. */
+
+    /** Si algun ajuste del sistema atiende este intent. */
+    private fun hayDondeIr(i: Intent): Boolean =
+        i.resolveActivity(packageManager) != null
+
+    private fun intentPantallaCompleta(): Intent? {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            val i = Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+                android.net.Uri.parse("package:$packageName"))
+            if (hayDondeIr(i)) return i
+        }
+        val n = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+            .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+        if (hayDondeIr(n)) return n
+        return null
+    }
+
+    /** El editor de permisos del fabricante, si lo hay. En MIUI/HyperOS es
+     *  `miui.intent.action.APP_PERM_EDITOR`, que no es API publica pero lleva
+     *  justo a la lista donde esta «ventanas emergentes en segundo plano». */
+    private fun intentFabricante(): Intent? {
+        val i = Intent("miui.intent.action.APP_PERM_EDITOR")
+            .setClassName(
+                "com.miui.securitycenter",
+                "com.miui.permcenter.permissions.PermissionsEditorActivity"
+            )
+            .putExtra("extra_pkgname", packageName)
+        if (hayDondeIr(i)) return i
+        val g = Intent("miui.intent.action.APP_PERM_EDITOR")
+            .putExtra("extra_pkgname", packageName)
+        if (hayDondeIr(g)) return g
+        return null
+    }
+
+    private fun abrirPermisoPantallaCompleta() {
+        val i = intentPantallaCompleta()
+        if (i == null) { abrirAjustesDeLaApp(); return }
+        try { startActivity(i) } catch (_: Exception) { abrirAjustesDeLaApp() }
+    }
+
+    private fun abrirPermisosDelFabricante() {
+        val i = intentFabricante()
+        if (i == null) { abrirAjustesDeLaApp(); return }
+        try { startActivity(i) } catch (_: Exception) { abrirAjustesDeLaApp() }
+    }
+
     /** Las filas de diagnóstico se rehacen enteras, así que no pueden ir al
      *  ritmo del resto: inflar veinte layouts dos veces por segundo cuesta
      *  bastante más que cambiar veinte textos, y aquí nada cambia tan deprisa. */
@@ -2697,8 +2804,17 @@ class MainActivity : AppCompatActivity() {
         pantallaCompletaOk = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             (getSystemService(NotificationManager::class.java))?.canUseFullScreenIntent() ?: false
         } else true
+        /* El aviso sale si falta el permiso de Android. En un movil con capa
+           propia sale siempre, aunque Android lo de por concedido, porque el
+           permiso del fabricante no se puede consultar y es el que faltaba en
+           el Redmi: darlo por bueno seria justo lo que este proyecto no hace. */
+        val hayFabricante = intentFabricante() != null
         findViewById<View>(R.id.aviso_pantalla_completa)?.visibility =
-            if (pantallaCompletaOk) View.GONE else View.VISIBLE
+            if (pantallaCompletaOk && !hayFabricante) View.GONE else View.VISIBLE
+        findViewById<View>(R.id.btn_fsi_android)?.visibility =
+            if (intentPantallaCompleta() != null && !pantallaCompletaOk) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.btn_fsi_miui)?.visibility =
+            if (hayFabricante) View.VISIBLE else View.GONE
 
         val faltan = listOf(micOk, bleOk, camOk, ubiOk).count { !it }
         findViewById<View>(R.id.banner_falta_permiso)?.visibility =

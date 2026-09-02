@@ -1463,6 +1463,61 @@
                     android:visibility="gone">
 
                     <!-- Tarjeta Tendencia de Señal -->
+                    <!-- ENCENDER Y APAGAR LA BUSQUEDA. `ServicioSos.buscando` solo se
+                         ponia a false en `onPause` y no se ponia a true en NINGUN
+                         sitio: el modo entero estaba muerto. Y no es un detalle de
+                         pantalla — es lo que hace que la baliza del que esta debajo
+                         se acelere al notar que hay alguien buscando, y lo que
+                         impide que el que busca grite y tape lo que quiere oir. -->
+                    <LinearLayout
+                        android:id="@+id/fila_buscar"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="14dp"
+                        android:background="@drawable/tarjeta"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center_vertical"
+                        android:minHeight="60dp"
+                        android:orientation="horizontal"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp"
+                        android:paddingTop="14dp"
+                        android:paddingBottom="14dp">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/buscar_titulo"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="@font/barlow"
+                                android:text="@string/buscar_off"
+                                android:textColor="@color/tx"
+                                android:textSize="16sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/buscar_sub"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:fontFamily="@font/barlow"
+                                android:text="@string/buscar_off_sub"
+                                android:textColor="@color/dim"
+                                android:textSize="13sp" />
+                        </LinearLayout>
+
+                        <red.sismo.VistaInterruptor
+                            android:id="@+id/sw_buscar"
+                            android:layout_width="52dp"
+                            android:layout_height="30dp" />
+                    </LinearLayout>
+
                     <red.sismo.TarjetaTendenciaLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -2651,6 +2706,43 @@
                             android:text="@string/fsi_texto"
                             android:textColor="@color/lectura"
                             android:textSize="13sp" />
+
+                        <!-- Dos botones porque son dos permisos, en dos sitios. Solo
+                             se enseña el que lleva a alguna parte: un boton que no
+                             hace nada es peor que no tenerlo. -->
+                        <TextView
+                            android:id="@+id/btn_fsi_android"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="14dp"
+                            android:background="@drawable/btn_outline"
+                            android:fontFamily="@font/mono"
+                            android:gravity="center"
+                            android:letterSpacing="0.08"
+                            android:minHeight="52dp"
+                            android:paddingTop="15dp"
+                            android:paddingBottom="15dp"
+                            android:text="@string/fsi_btn_android"
+                            android:textColor="@color/ambar"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/btn_fsi_miui"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:background="@drawable/btn_outline"
+                            android:fontFamily="@font/mono"
+                            android:gravity="center"
+                            android:letterSpacing="0.08"
+                            android:minHeight="52dp"
+                            android:paddingTop="15dp"
+                            android:paddingBottom="15dp"
+                            android:text="@string/fsi_btn_fabricante"
+                            android:textColor="@color/ambar"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
                     </LinearLayout>
 
                     <!-- Sección PERMISOS -->

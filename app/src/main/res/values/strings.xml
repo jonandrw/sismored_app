@@ -640,10 +640,17 @@ Para leerla hace falta el permiso de acceso a notificaciones, que Android da ent
     <string name="det_armado_sub">Escucha sacudidas en reposo</string>
     <string name="det_desarmado">Vigilancia desarmada</string>
     <string name="det_desarmado_sub">No va a avisar de nada</string>
+    <string name="fsi_btn_android">CONCEDER PANTALLA COMPLETA</string>
+    <string name="fsi_btn_fabricante">PERMISOS DEL FABRICANTE</string>
     <string name="fsi_titulo">La pregunta no puede salir sola</string>
-    <string name="fsi_texto">Falta el permiso de pantalla completa, así que «¿estás bien?» llegará como un aviso normal y puede pasarte desapercibido. Toca aquí para concederlo.
+    <string name="fsi_texto">Sin esto, «¿estás bien?» llega como un aviso normal y puede pasarte desapercibido — y si no lo contestas, la sirena arranca sola.
 
-En Xiaomi y Redmi hay además un permiso propio: Ajustes · Aplicaciones · SismoRed · Otros permisos · <b>Mostrar ventanas emergentes en segundo plano</b>.</string>
+En Xiaomi y Redmi hacen falta <b>los dos</b>: el de Android y el propio del fabricante, que se llama «mostrar ventanas emergentes en segundo plano» y no se puede comprobar desde aquí.</string>
+
+    <string name="buscar_on">Buscando supervivientes</string>
+    <string name="buscar_on_sub">Este móvil no grita: escucha y deja oír</string>
+    <string name="buscar_off">Búsqueda parada</string>
+    <string name="buscar_off_sub">Enciéndela para oír balizas cercanas</string>
 
     <string name="det_sismografo">SISMÓGRAFO</string>
     <string name="det_sonido">DETECTOR DE SONIDO</string>
