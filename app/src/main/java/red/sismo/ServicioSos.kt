@@ -188,6 +188,14 @@ class ServicioSos : Service() {
         /** Lo que la pestaña Inicio pinta del detector sísmico. */
         @Volatile var sacudida = 0.0; private set
         @Volatile var trazaSismo = FloatArray(0); private set
+
+        /* Cuanto sacudio, en g, y si vale una alerta externa. Los dos existen
+           para que «¿ESTAS BIEN?» pueda decir POR QUE ha salido: quien la lee
+           acaba de despertarse, y un rotulo fijo que ponga «SISMORED» no le
+           dice nada. Cero = no se sabe, y entonces no se escribe cifra. */
+        @Volatile var ultimaSacudidaG = 0.0; private set
+        val alertaExternaVale: Boolean
+            get() = System.currentTimeMillis() < alertaExternaHasta
         @Volatile var armado = true; private set
 
         @Volatile var enAlarma = false
@@ -1094,6 +1102,10 @@ class ServicioSos : Service() {
         if (sucesoDesde > 0L) {
             if (temblando) sucesoSacudida = true
             if (System.currentTimeMillis() - sismo.ultimaFuerte < 60_000L) sucesoFuerte = true
+            /* En g, que es como lo dice la maqueta y como se entiende: el motor
+               mide en m/s2. Se queda el pico del suceso, no el de ahora. */
+            val gAhora = sismo.sacudida / 9.81
+            if (gAhora > ultimaSacudidaG) ultimaSacudidaG = gAhora
             if (estruendoAhora) sucesoEstruendo = true
             if (saltoEntrante > 0) sucesoCorroborada = true
         }
@@ -1527,6 +1539,7 @@ class ServicioSos : Service() {
     /** El suceso se ha resuelto: se limpia para poder ver el siguiente. */
     private fun cerrarSuceso() {
         pararRampa()
+        ultimaSacudidaG = 0.0
         sucesoDesde = 0L
         sucesoSacudida = false; sucesoFuerte = false; sucesoEstruendo = false; sucesoCorroborada = false
         sucesoRegimen = Postura.Regimen.DESCONOCIDO

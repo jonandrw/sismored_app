@@ -96,8 +96,65 @@ class PreguntaActivity : Activity() {
             enviar(ServicioSos.ACCION_PANICO)
             finish()
         }
+        /* El motivo real del disparo, no un rotulo. La pildora ponia «SISMORED»
+           fijo, y quien lee esta pantalla acaba de despertarse: lo primero que
+           necesita es saber POR QUE ha sonado. */
+        findViewById<TextView>(R.id.pr_motivo)?.text = motivoDelDisparo()
+
         pintar()
     }
+
+    /**
+     * Por que ha salido esta pregunta, con la cifra que la provoco.
+     *
+     * Si no se sabe el nivel no se escribe ninguno: la maqueta traia «0.61 g» de
+     * ejemplo y eso, en la pantalla que le explica a alguien por que le acaban de
+     * despertar, seria inventarse la prueba.
+     */
+    private fun motivoDelDisparo(): String {
+        val g = ServicioSos.ultimaSacudidaG
+        val nivel = if (g > 0.0) String.format(java.util.Locale.US, " · %.2f g", g) else ""
+        return when {
+            ServicioSos.alertaExternaVale -> "ALERTA SÍSMICA RECIBIDA$nivel"
+            ServicioSos.mallaRx > 0 -> "AVISO DE OTRO MÓVIL$nivel"
+            else -> "DETECTOR DISPARADO$nivel"
+        }
+    }
+
+    /**
+     * Contestar sin mirar.
+     *
+     * El pie de esta pantalla lleva desde el rediseno diciendo «cualquier boton
+     * de volumen tambien responde: subir = ayuda, bajar = estoy bien», y **eso
+     * no existia**: `ServicioTeclas` trata las dos teclas igual, y esta pantalla
+     * no miraba ninguna. Prometer una via de respuesta que no funciona es lo
+     * peor que puede hacer justo esta pantalla — la contesta alguien a oscuras,
+     * con el movil en el bolsillo o debajo de algo, que es cuando no se puede
+     * apuntar a un boton.
+     *
+     * Se consume el evento para que no cambie el volumen de paso.
+     */
+    override fun onKeyDown(codigo: Int, ev: android.view.KeyEvent?): Boolean {
+        when (codigo) {
+            android.view.KeyEvent.KEYCODE_VOLUME_UP -> {
+                enviar(ServicioSos.ACCION_PANICO); finish(); return true
+            }
+            android.view.KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                enviar(ServicioSos.ACCION_ESTOY_BIEN)
+                android.widget.Toast.makeText(this, R.string.pr_gracias,
+                    android.widget.Toast.LENGTH_LONG).show()
+                finish(); return true
+            }
+        }
+        return super.onKeyDown(codigo, ev)
+    }
+
+    /* Las dos teclas se consumen tambien al soltarlas: si solo se atrapa la
+       bajada, el sistema procesa la subida y cambia el volumen igual. */
+    override fun onKeyUp(codigo: Int, ev: android.view.KeyEvent?): Boolean =
+        if (codigo == android.view.KeyEvent.KEYCODE_VOLUME_UP ||
+            codigo == android.view.KeyEvent.KEYCODE_VOLUME_DOWN) true
+        else super.onKeyUp(codigo, ev)
 
     private fun enviar(accion: String) {
         try {

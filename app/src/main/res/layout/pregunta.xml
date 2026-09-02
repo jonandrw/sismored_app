@@ -68,6 +68,11 @@
                 android:gravity="center"
                 android:letterSpacing="-0.015"
                 android:lineSpacingMultiplier="0.9"
+                android:breakStrategy="simple"
+                android:hyphenationFrequency="none"
+                android:maxLines="2"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
                 android:text="@string/pr_titulo"
                 android:textAllCaps="true"
                 android:textColor="@color/tx"
@@ -136,7 +141,10 @@
                 android:paddingBottom="16dp">
 
                 <TextView
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
+                    android:gravity="center"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/saira"
                     android:letterSpacing="0.02"
@@ -144,6 +152,11 @@
                     android:textAllCaps="true"
                     android:textColor="@color/tx"
                     android:textSize="28sp"
+                    app:autoSizeMaxTextSize="28sp"
+                    app:autoSizeMinTextSize="17sp"
+                    app:autoSizeStepGranularity="1sp"
+                    app:autoSizeTextType="uniform"
+                    android:maxLines="1"
                     android:textStyle="bold|italic" />
 
                 <TextView
@@ -152,7 +165,7 @@
                     android:layout_marginTop="2dp"
                     android:fontFamily="@font/mono"
                     android:letterSpacing="0.14"
-                    android:text="CANCELA Y VUELVE A ARMAR"
+                    android:text="@string/pr_bien_sub"
                     android:textColor="@color/lectura"
                     android:textSize="10.5sp" />
             </LinearLayout>
@@ -173,7 +186,10 @@
                 android:paddingBottom="16dp">
 
                 <TextView
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
+                    android:gravity="center"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/saira"
                     android:letterSpacing="0.02"
@@ -181,6 +197,11 @@
                     android:textAllCaps="true"
                     android:textColor="#0A0405"
                     android:textSize="28sp"
+                    app:autoSizeMaxTextSize="28sp"
+                    app:autoSizeMinTextSize="17sp"
+                    app:autoSizeStepGranularity="1sp"
+                    app:autoSizeTextType="uniform"
+                    android:maxLines="1"
                     android:textStyle="bold|italic" />
 
                 <TextView
@@ -189,7 +210,7 @@
                     android:layout_marginTop="2dp"
                     android:fontFamily="@font/mono"
                     android:letterSpacing="0.14"
-                    android:text="SIRENA · LINTERNA · BALIZA · MALLA"
+                    android:text="@string/pr_ayuda_sub"
                     android:textColor="#800A0405"
                     android:textSize="10.5sp" />
             </LinearLayout>
@@ -201,7 +222,7 @@
                 android:fontFamily="@font/barlow"
                 android:gravity="center"
                 android:lineSpacingMultiplier="1.35"
-                android:text="Cualquier botón de volumen también responde: subir = ayuda, bajar = estoy bien."
+                android:text="@string/pr_volumen"
                 android:textColor="@color/dim"
                 android:textSize="12sp" />
         </LinearLayout>
