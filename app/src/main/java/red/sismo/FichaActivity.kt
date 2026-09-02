@@ -73,6 +73,7 @@ class FichaActivity : Activity() {
             val vacio = f.nombre.isBlank() && f.apellidos.isBlank()
             text = if (vacio) getString(R.string.ficha_sin_nombre) else f.nombreEnDosLineas()
             if (vacio) alpha = 0.45f
+            Nombres.ajustar(this)
         }
         campo(R.id.ff_sangre, f.sangre.trim().uppercase())
         campo(R.id.ff_edad, f.edad.trim())

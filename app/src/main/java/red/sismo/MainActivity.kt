@@ -1766,6 +1766,16 @@ class MainActivity : AppCompatActivity() {
             it.text = if (f.nombre.isBlank() && f.apellidos.isBlank())
                 getString(R.string.ficha_sin_nombre) else f.nombreEnDosLineas()
             it.alpha = if (f.nombre.isBlank() && f.apellidos.isBlank()) 0.45f else 1f
+            Nombres.ajustar(it)
+        }
+        /* El chip decia «SIN DESBLOQUEAR» fijo en el XML, estando la ficha a la
+           vista y desbloqueada. Dice si hay algo escrito, que es lo unico que
+           importa saber de un vistazo. */
+        findViewById<TextView>(R.id.ff_chip)?.let {
+            val hay = !f.vacia()
+            it.setText(if (hay) R.string.ficha_guardada else R.string.ficha_sin_rellenar)
+            it.setTextColor(getColor(if (hay) R.color.gr else R.color.rd))
+            it.setBackgroundResource(if (hay) R.drawable.chip_gr_outline else R.drawable.chip_rd_outline)
         }
         poner(R.id.ff_sangre, f.sangre)
         poner(R.id.ff_edad, f.edad)

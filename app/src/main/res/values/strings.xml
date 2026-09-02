@@ -575,6 +575,8 @@ Para leerla hace falta el permiso de acceso a notificaciones, que Android da ent
     <string name="baliza_est_rescate">EN RESCATE</string>
     <string name="baliza_est_reposo">EN REPOSO</string>
     <string name="baliza_anuncio">ANUNCIO BLE · CONTINUO</string>
+    <string name="ficha_sin_rellenar">SIN RELLENAR</string>
+    <string name="ficha_guardada">GUARDADA EN ESTE MÓVIL</string>
     <string name="ficha_sin_nombre">SIN\nNOMBRE</string>
 
     <string name="interfono_canal_abierto">CANAL ABIERTO · ESCUCHANDO</string>

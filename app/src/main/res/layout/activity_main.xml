@@ -599,7 +599,6 @@
                                 android:textSize="10sp" />
                         </LinearLayout>
                     </LinearLayout>
-                </LinearLayout>
 
                     <!-- LINEA DE ESTADO. El hueco entre la rejilla y las pestañas
                          estaba en negro, y es lo unico que Inicio no decia: que
@@ -631,6 +630,7 @@
                             android:textColor="@color/dim"
                             android:textSize="11sp" />
                     </LinearLayout>
+                </LinearLayout>
 
                 <!-- ==================== 03 DETECTOR SÍSMICO ==================== -->
                 <LinearLayout
