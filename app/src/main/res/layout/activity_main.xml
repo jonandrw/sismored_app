@@ -2951,7 +2951,15 @@
                         </LinearLayout>
                     </LinearLayout>
 
-                    <!-- Sección MÁS OPCIONES -->
+                    <!-- SIMULACRO. Los textos existian desde hace tiempo en strings.xml y
+                         NINGUN boton los usaba: el rediseno se llevo por delante la
+                         unica forma de ensayar la app sin esperar a un terremoto.
+                         Y ensayar importa: la pantalla que sale sola hay que haberla
+                         visto una vez antes de verla de verdad. -->
+                    <!-- Los mismos atributos que PERMISOS y ATAJOS, uno a uno. Estaba
+                         puesto con `@style/RotuloInstr`, que lleva otro espaciado de
+                         letra y medio punto mas de cuerpo: al lado de los otros dos
+                         rotulos de la misma pantalla se veia descolocado. -->
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -2959,29 +2967,9 @@
                         android:layout_marginBottom="10dp"
                         android:fontFamily="@font/mono"
                         android:letterSpacing="0.2"
-                        android:text="MÁS OPCIONES"
+                        android:text="@string/rot_simulacro"
                         android:textColor="#7C858D"
                         android:textSize="10sp" />
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:background="@drawable/campo_fondo"
-                        android:orientation="vertical">
-
-                        <!-- Consola -->
-                        <!-- SIMULACRO. Los textos existian desde hace tiempo en strings.xml y
-                         NINGUN boton los usaba: el rediseno se llevo por delante la
-                         unica forma de ensayar la app sin esperar a un terremoto.
-                         Y ensayar importa: la pantalla que sale sola hay que haberla
-                         visto una vez antes de verla de verdad. -->
-                    <TextView
-                        style="@style/RotuloInstr"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="24dp"
-                        android:layout_marginBottom="8dp"
-                        android:text="@string/rot_simulacro" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -3058,7 +3046,26 @@
                         </LinearLayout>
                     </LinearLayout>
 
+                    <!-- Sección MÁS OPCIONES -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:layout_marginBottom="10dp"
+                        android:fontFamily="@font/mono"
+                        android:letterSpacing="0.2"
+                        android:text="MÁS OPCIONES"
+                        android:textColor="#7C858D"
+                        android:textSize="10sp" />
+
                     <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/campo_fondo"
+                        android:orientation="vertical">
+
+                        <!-- Consola -->
+                        <LinearLayout
                             android:id="@+id/op_consola"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
