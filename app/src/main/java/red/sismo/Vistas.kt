@@ -1101,18 +1101,24 @@ class VistaIconoDetector @JvmOverloads constructor(ctx: Context, attrs: Attribut
         val h = height.toFloat()
         if (w <= 0 || h <= 0) return
 
-        val barW = px(this, 3f)
-        val gap = px(this, 3f)
+        /* Todo en fraccion de la caja, no en dp fijos. Estaba escrito con
+           anchos y alturas en dp sueltos —barras de 3 dp y picos de hasta 26—,
+           asi que este icono llenaba su caja entera mientras los otros cinco
+           ocupaban 22 de 30. En una rejilla de seis eso se nota: parecia mas
+           grande sin serlo. Ahora comparte la misma metrica que los vectores. */
+        val barW = w * 0.10f
+        val gap = w * 0.10f
         val totalW = 5 * barW + 4 * gap
         val startX = (w - totalW) / 2f
         val centerY = h / 2f
+        val techo = h * 0.733f          // 22 de 30, la altura util de los demas
 
         val t = android.os.SystemClock.uptimeMillis() / 1000f
 
         for (i in 0 until 5) {
             val osc = (sin(t * freqs[i] + phases[i]) * 0.45f + sin(t * freqs[i] * 1.6f + phases[i] * 0.5f) * 0.25f)
-            val hDp = (baseHeights[i] * (0.6f + osc)).coerceIn(4f, 26f)
-            val barH = px(this, hDp)
+            val f = (baseHeights[i] / 26f * (0.6f + osc)).coerceIn(0.15f, 1f)
+            val barH = techo * f
 
             val x = startX + i * (barW + gap)
             val top = centerY - barH / 2f

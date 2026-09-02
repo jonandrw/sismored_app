@@ -1,16 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Buscar: la lupa, centrada en su caja.
+     Caja de 30, trazo 2 y la tinta centrada en (15,15) ocupando 22 de 30,
+     como pide el libro del rediseno. Los seis iconos estaban cada uno a su
+     aire: dos con caja de 26 y cuatro con caja de 30, trazos de 1,8 y de 2, y
+     la tinta ocupando entre el 0,63 y el 0,85 de su caja. En una rejilla de
+     seis eso se ve: unos parecian mas grandes que otros sin serlo. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="30dp"
     android:height="30dp"
     android:viewportWidth="30"
-    android:viewportHeight="30">
-    <!-- Section 04: Buscar (Top-left circle + bottom-right 45° ray) -->
+    android:viewportHeight="30"
+    android:tint="#BCC3C9">
     <path
-        android:strokeColor="#BCC3C9"
-        android:strokeWidth="2"
-        android:pathData="M11,2a9,9 0 1,0 0.001,0" />
-    <path
-        android:strokeColor="#BCC3C9"
+        android:strokeColor="#FFFFFF"
         android:strokeWidth="2"
         android:strokeLineCap="round"
-        android:pathData="M18,18L26,26" />
+        android:fillColor="@android:color/transparent"
+        android:pathData="M13,4a8.5,8.5 0 1,0 0.001,0" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M19.2,19.2L26,26" />
 </vector>

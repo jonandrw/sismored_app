@@ -1,24 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- La baliza: el punto que emite y sus dos ondas.
+     Caja de 30, trazo 2 y la tinta centrada en (15,15) ocupando 22 de 30,
+     como pide el libro del rediseno. Los seis iconos estaban cada uno a su
+     aire: dos con caja de 26 y cuatro con caja de 30, trazos de 1,8 y de 2, y
+     la tinta ocupando entre el 0,63 y el 0,85 de su caja. En una rejilla de
+     seis eso se ve: unos parecian mas grandes que otros sin serlo. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="30dp"
     android:height="30dp"
     android:viewportWidth="30"
-    android:viewportHeight="30">
-    <!-- Baliza Icon strictly matching Section 04:
-         Center dot (15,15) r=3 + top-right concentric radio emission arcs -->
-    <!-- Solid center dot at (15, 15) -->
+    android:viewportHeight="30"
+    android:tint="#BCC3C9">
     <path
-        android:fillColor="#BCC3C9"
-        android:pathData="M15,12a3,3 0 1,0 0.001,0" />
-    <!-- Arc 1 (radius 10): from top (15, 5) to right (25, 15) -->
+        android:fillColor="#FFFFFF"
+        android:pathData="M15,12.5a2.5,2.5 0 1,0 0.001,0" />
     <path
-        android:strokeColor="#8CBCC3C9"
+        android:strokeColor="#FFFFFF"
         android:strokeWidth="2"
         android:strokeLineCap="round"
-        android:pathData="M15,5A10,10 0 0,1 25,15" />
-    <!-- Arc 2 (radius 15): from top (15, 0) to right (30, 15) -->
+        android:fillColor="@android:color/transparent"
+        android:pathData="M9.5,9.5A7.8,7.8 0 0,1 20.5,9.5" />
     <path
-        android:strokeColor="#40BCC3C9"
+        android:strokeColor="#FFFFFF"
         android:strokeWidth="2"
         android:strokeLineCap="round"
-        android:pathData="M15,0A15,15 0 0,1 30,15" />
+        android:fillColor="@android:color/transparent"
+        android:pathData="M6,6A11,11 0 0,1 24,6" />
 </vector>

@@ -94,12 +94,20 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="14dp"
                 android:layout_weight="1"
+                android:breakStrategy="simple"
                 android:fontFamily="@font/saira"
+                android:hyphenationFrequency="none"
                 android:letterSpacing="-0.005"
+                android:maxLines="1"
+                android:paddingEnd="6dp"
                 android:textAllCaps="true"
                 android:textColor="@color/tx"
                 android:textSize="32sp"
-                android:textStyle="bold|italic" />
+                android:textStyle="bold|italic"
+                app:autoSizeMaxTextSize="32sp"
+                app:autoSizeMinTextSize="18sp"
+                app:autoSizeStepGranularity="1sp"
+                app:autoSizeTextType="uniform" />
 
             <LinearLayout
                 android:id="@+id/subbarra_chip_container"
@@ -186,12 +194,13 @@
 
                             <TextView
                                 android:id="@+id/panico_titulo"
-                                android:layout_width="wrap_content"
+                                android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/saira"
+                                android:gravity="center"
                                 android:includeFontPadding="false"
-                                android:paddingStart="16dp"
-                                android:paddingEnd="36dp"
+                                android:paddingStart="20dp"
+                                android:paddingEnd="20dp"
                                 android:text="PÁNICO&#160;"
                                 android:textColor="@color/rd"
                                 android:textSize="64sp"
@@ -326,8 +335,8 @@
 
                             <red.sismo.VistaIconoDetector
                                 android:id="@+id/img_tool_detector"
-                                android:layout_width="26dp"
-                                android:layout_height="26dp" />
+                                android:layout_width="28dp"
+                                android:layout_height="28dp" />
 
                             <View
                                 android:layout_width="match_parent"
@@ -370,8 +379,8 @@
 
                             <ImageView
                                 android:id="@+id/img_tool_malla"
-                                android:layout_width="26dp"
-                                android:layout_height="26dp"
+                                android:layout_width="28dp"
+                                android:layout_height="28dp"
                                 android:src="@drawable/ic_tool_malla" />
 
                             <View
@@ -424,8 +433,8 @@
 
                             <ImageView
                                 android:id="@+id/img_tool_buscar"
-                                android:layout_width="26dp"
-                                android:layout_height="26dp"
+                                android:layout_width="28dp"
+                                android:layout_height="28dp"
                                 android:src="@drawable/ic_tool_buscar" />
 
                             <View
@@ -469,8 +478,8 @@
 
                             <ImageView
                                 android:id="@+id/img_tool_baliza"
-                                android:layout_width="26dp"
-                                android:layout_height="26dp"
+                                android:layout_width="28dp"
+                                android:layout_height="28dp"
                                 android:src="@drawable/ic_tool_baliza" />
 
                             <View
@@ -524,8 +533,8 @@
 
                             <ImageView
                                 android:id="@+id/img_tool_sonda"
-                                android:layout_width="26dp"
-                                android:layout_height="26dp"
+                                android:layout_width="28dp"
+                                android:layout_height="28dp"
                                 android:src="@drawable/ic_tool_sonda" />
 
                             <View
@@ -569,8 +578,8 @@
 
                             <ImageView
                                 android:id="@+id/img_tool_interfono"
-                                android:layout_width="26dp"
-                                android:layout_height="26dp"
+                                android:layout_width="28dp"
+                                android:layout_height="28dp"
                                 android:src="@drawable/ic_tool_interfono" />
 
                             <View
@@ -2615,11 +2624,17 @@
                     android:orientation="vertical"
                     android:visibility="gone">
 
+                    <!-- `wrap_content` mide sin contar la inclinacion de la cursiva,
+                         asi que Saira se salia por la derecha y la S quedaba cortada.
+                         Es el mismo caso que PARAR y que el rotulo de PANICO: con el
+                         ancho completo hay sitio para el desbordamiento. -->
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:fontFamily="@font/saira"
-                        android:text="AJUSTES"
+                        android:paddingEnd="8dp"
+                        android:text="@string/t_ajustes"
+                        android:textAllCaps="true"
                         android:textColor="@color/tx"
                         android:textSize="32sp"
                         android:textStyle="bold|italic" />
@@ -3598,7 +3613,9 @@
                         android:textStyle="bold" />
 
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
+                        android:gravity="center"
+                        android:paddingEnd="8dp"
                         android:layout_height="wrap_content"
                         android:fontFamily="@font/saira"
                         android:letterSpacing="-0.015"
@@ -3862,7 +3879,9 @@
                         android:visibility="invisible" />
 
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
+                        android:gravity="center"
+                        android:paddingEnd="8dp"
                         android:layout_height="wrap_content"
                         android:fontFamily="@font/saira"
                         android:letterSpacing="0.02"

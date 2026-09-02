@@ -1,12 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Registro: las lineas de un listado.
+
+     Caja de 24 y la tinta ocupando 20 de 24, igual en los cuatro. Estaban cada
+     uno con su medida: tres en caja de 22 y uno en caja de 30, y la tinta
+     entre el 0,67 y el 0,91 de su caja — en una barra de cuatro, unos se veian
+     mas grandes que otros sin serlo. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="22dp"
-    android:height="22dp"
-    android:viewportWidth="22"
-    android:viewportHeight="22">
-    <!-- Registro tab 3 horizontal lines from Mockup 01 -->
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
     <path
         android:strokeColor="#FFFFFF"
         android:strokeWidth="2"
         android:strokeLineCap="round"
-        android:pathData="M2,6h18M2,11h18M2,16h18" />
+        android:strokeLineJoin="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M2,6h20M2,12h20M2,18h20" />
 </vector>

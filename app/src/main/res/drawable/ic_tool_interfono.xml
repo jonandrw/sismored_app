@@ -1,12 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- El interfono: la voz, en barras simetricas.
+     Caja de 30, trazo 2 y la tinta centrada en (15,15) ocupando 22 de 30,
+     como pide el libro del rediseno. Los seis iconos estaban cada uno a su
+     aire: dos con caja de 26 y cuatro con caja de 30, trazos de 1,8 y de 2, y
+     la tinta ocupando entre el 0,63 y el 0,85 de su caja. En una rejilla de
+     seis eso se ve: unos parecian mas grandes que otros sin serlo. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="26dp"
-    android:height="26dp"
-    android:viewportWidth="26"
-    android:viewportHeight="26">
-    <!-- Interfono Audio Contact from Mockup 01 -->
+    android:width="30dp"
+    android:height="30dp"
+    android:viewportWidth="30"
+    android:viewportHeight="30"
+    android:tint="#BCC3C9">
     <path
-        android:strokeColor="#BCC3C9"
-        android:strokeWidth="1.8"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
         android:strokeLineCap="round"
-        android:pathData="M4,10v6M8,6v14M12,3v20M16,7v12M20,10v6M24,12v2" />
+        android:fillColor="@android:color/transparent"
+        android:pathData="M4,11.5v7M9.5,7v16M15,4v22M20.5,7v16M26,11.5v7" />
 </vector>
