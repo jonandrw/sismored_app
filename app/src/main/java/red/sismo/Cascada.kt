@@ -203,11 +203,37 @@ object Cascada {
            resignado: un terremoto de verdad sacude MUCHOS móviles a la vez, así
            que la corroboración que se pide es justo la que un terremoto trae y
            un empujón no. Es la razón de ser de la malla. */
-        val hayOtraOpinion = p.corroborada || p.alertaExterna || p.estruendo
+        /* EL AUDIO YA NO CUENTA COMO SEGUNDA OPINIÓN.
+        
+           Estaba en la misma fila que la malla y que la alerta de la red
+           sísmica, y no juega en esa liga: el micrófono oye la habitación, no el
+           terremoto. Con el móvil en el bolsillo, el roce de la tela cuenta como
+           estruendo y la marcha cuenta como sacudida — las dos a la vez daban
+           «confirmado» y encendían la sirena. Es literalmente lo que pasó en el
+           bolsillo, y su umbral es además el único de la app calibrado contra
+           señal sintética.
+        
+           Una segunda opinión tiene que venir de FUERA de este teléfono: otro
+           móvil de la malla, o una red de sismómetros. El estruendo se sigue
+           midiendo, se sigue anotando y sigue sirviendo para lo que sí sabe
+           hacer —oír a alguien junto al móvil, en el paso 5—, pero ya no
+           convierte una sacudida en un terremoto. */
+        val opinionAjena = p.corroborada || p.alertaExterna
+
+        /* Y una sacudida fuerte SOLA sigue siendo creíble —si no, un terremoto
+           de verdad sin ningún vecino con la app no dispararía nada— pero de
+           aquí sale ya solo la pregunta silenciosa, nunca la sirena. Eso se
+           decide más abajo. */
+        /* Y si YA se pregunto, el terremoto no esta en duda: la puerta sirve
+           para decidir si se ABRE un suceso, no para volver a juzgarlo cuando ya
+           esta abierto. Sin esto, el derrumbe con el movil despedido y la voz
+           junto al movil se caian aqui —lo caza el autotest— y era peor que el
+           fallo que se venia a arreglar: perder a alguien que se oye debajo del
+           escombro. */
         val creible = when {
+            p.preguntado || p.contestado -> true
             p.sacudidaFuerte -> true
-            p.regimen == Postura.Regimen.EN_REPOSO -> hayOtraOpinion
-            else -> p.corroborada || p.alertaExterna || (p.sacudida && p.estruendo)
+            else -> opinionAjena
         }
         if (!creible && p.regimen == Postura.Regimen.EN_REPOSO)
             return Decision(Accion.NADA, Quien.NADIE,
@@ -232,7 +258,22 @@ object Cascada {
                El dato que los separa ya se medía y no se usaba aquí: cuánto hace
                que alguien tocó el móvil. Si lo has usado hace un rato estás
                despierto, y basta con preguntar sin ruido. */
+            /* LA SIRENA PIDE UNA OPINIÓN DE FUERA.
+            
+               «Sacudida fuerte» bastaba para encenderla sola, y ahí estaba el
+               otro agujero: el propio comentario de `sacudidaFuerte` dice que a
+               nivel MMI V un empujón en la mesa y un terremoto **dan el mismo
+               número**, y aun así ese caso iba directo a la sirena. Es el
+               «entraba de una a modo emergencia» de las pruebas de campo.
+            
+               Sin opinión ajena se pregunta en silencio, que no despierta a
+               nadie ni quema la confianza de la red. Y lo que se pierde está
+               acotado y es asumible: alguien dormido, en un terremoto lo
+               bastante fuerte como para no confundirse, sin un solo móvil con la
+               app cerca y sin alerta de la red sísmica. En ese caso el propio
+               terremoto es lo que despierta, no la sirena. */
             val puedeEstarDormida = p.regimen == Postura.Regimen.EN_REPOSO &&
+                opinionAjena &&
                 (p.msDesdeInteraccion < 0L || p.msDesdeInteraccion > DORMIDA_MS)
             return if (puedeEstarDormida)
                 Decision(Accion.AVISAR, Quien.NADIE,
@@ -299,12 +340,31 @@ object Cascada {
             Triple("sacudida floja con alerta de Google", Accion.AVISAR,
                 Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, alertaExterna = true,
                     msDesdeInteraccion = 6 * 3600_000L)),
-            Triple("sacudida FUERTE, va sola", Accion.AVISAR,
+            /* Antes esto era AVISAR: sirena con un solo sensor, y el propio
+               comentario de `sacudidaFuerte` dice que a ese nivel un empujon en
+               la mesa da el mismo numero. Sigue siendo creible —se pregunta—
+               pero en silencio. */
+            Triple("sacudida FUERTE, va sola, sin nadie que la confirme", Accion.PREGUNTAR,
                 Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true,
                     msDesdeInteraccion = 6 * 3600_000L)),
-            Triple("terremoto y está dormida en un 5º", Accion.AVISAR,
+            Triple("sacudida FUERTE y la malla lo confirma: ahi si suena", Accion.AVISAR,
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true,
+                    corroborada = true, msDesdeInteraccion = 6 * 3600_000L)),
+            /* Los dos casos de campo que trajeron el cambio. */
+            Triple("en el bolsillo: la marcha sacude y la tela suena", Accion.NADA,
+                Pruebas(regimen = Regimen.ENCIMA, sacudida = true, estruendo = true)),
+            Triple("en la mesa: sacudida floja y un camion pasando", Accion.NADA,
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, estruendo = true,
+                    msDesdeInteraccion = 6 * 3600_000L)),
+            /* Dormida en un quinto y NADIE mas lo confirma: se pregunta en
+               silencio. La sirena pide una opinion de fuera del telefono, porque
+               a este nivel un empujon en la mesa da el mismo numero. */
+            Triple("dormida en un 5º, sacudida fuerte y nadie que la confirme", Accion.PREGUNTAR,
                 Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true,
                     msDesdeInteraccion = 6 * 3600_000L)),
+            Triple("dormida en un 5º y la malla lo confirma", Accion.AVISAR,
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true,
+                    corroborada = true, msDesdeInteraccion = 6 * 3600_000L)),
             /* El caso de campo que trajo esto: el móvil en la mesa, con su dueño
                delante mirándolo, y la sirena saltando a la vez que la pregunta.
                «En reposo» y «dormida» no son lo mismo. */
@@ -313,9 +373,15 @@ object Cascada {
                     msDesdeInteraccion = 30_000L)),
             /* Y sin dato de interacción se avisa igual: no saber no puede
                costarle la sirena a quien duerme. */
-            Triple("terremoto sin saber cuándo lo tocó", Accion.AVISAR,
+            Triple("terremoto sin saber cuándo lo tocó", Accion.PREGUNTAR,
                 Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true)),
-            Triple("terremoto y lo lleva encima", Accion.PREGUNTAR,
+            /* Este caso y el del bolsillo son EL MISMO dato: encima, sacudida y
+               ruido. No hay forma de separarlos, asi que hay que elegir cual se
+               pierde. Se pierde este: con el movil encima la persona esta
+               despierta y sujetandolo — si es un terremoto ya lo sabe, y le
+               quedan el boton de PANICO y el atajo de volumen. El del bolsillo,
+               en cambio, pasa varias veces al dia. */
+            Triple("terremoto con el móvil encima: no se distingue de andar", Accion.NADA,
                 Pruebas(regimen = Regimen.ENCIMA, sacudida = true, estruendo = true)),
             Triple("alerta de otro móvil de la malla", Accion.PREGUNTAR,
                 Pruebas(regimen = Regimen.ENCIMA, corroborada = true)),

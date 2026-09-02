@@ -467,6 +467,19 @@ class ServicioSos : Service() {
 
     override fun onCreate() {
         super.onCreate()
+
+        /* La cascada, contra sus escenarios, en cada arranque del servicio.
+           Cuesta microsegundos y es lo unico que comprueba las DECISIONES en vez
+           de los sensores: si alguien toca una regla y con ello deja de
+           encenderse la baliza de una persona enterrada, se sabe aqui y no en un
+           terremoto. Estaba solo detras del boton de COMPROBAR TODO, o sea que
+           en la practica no se corria nunca. */
+        try {
+            val (ok, txt) = Cascada.autotest()
+            if (ok) Log.i("SismoRed", "cascada · $txt")
+            else Log.e("SismoRed", "CASCADA FALLA · $txt")
+        } catch (e: Exception) { Log.e("SismoRed", "cascada: no se pudo comprobar", e) }
+
         opciones = Opciones(this)
         partes = Partes(this)
         val am = getSystemService(Context.AUDIO_SERVICE) as AudioManager
