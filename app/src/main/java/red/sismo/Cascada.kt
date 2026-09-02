@@ -45,6 +45,19 @@ object Cascada {
         AVISAR,
         /** Baliza, ficha y malla. Sin ruido: quizá esté enterrada. */
         BALIZA,
+        /**
+         * Se preguntó, nadie contestó, y el móvil llevaba horas sin tocarse.
+         *
+         * Es la única forma de sirena automática que queda en pie, y la unica
+         * que se sostiene sin una segunda opinion: no la dispara un sensor, la
+         * dispara el SILENCIO de alguien a quien se acaba de preguntar. Un
+         * empujon en la mesa lanza la misma pregunta, pero ahi hay alguien
+         * delante que la descarta de un toque.
+         *
+         * Suena en rampa —vibracion, tono suave, sirena— para que equivocarse
+         * cueste un zumbido y no un susto.
+         */
+        DESPERTAR,
         /** Todo: baliza, sirena, modo rescate. Hay pruebas de que hay alguien. */
         AUXILIO
     }
@@ -301,6 +314,21 @@ object Cascada {
             "no contesta y se oye a alguien junto al móvil")
         if (p.caidaImpacto && p.quietoMs > INMOVIL_MS) return Decision(Accion.BALIZA, Quien.MOVIL,
             "el móvil salió despedido y lleva inmóvil: marca el sitio del móvil, no el de nadie")
+        /* Y aqui se recupera lo unico que se perdio al pedirle a la sirena una
+           opinion de fuera: la persona dormida en un quinto piso.
+        
+           Hasta ahora este caso caia en BALIZA, que es silenciosa, y de ahi
+           pasaba al pulso de rescate cada 12 s. Los dos estan pensados para que
+           te OIGA quien busca, no para DESPERTARTE a ti — y quien duerme sigue
+           durmiendo mientras su movil pide ayuda por el.
+        
+           No hace falta ningun sensor nuevo ni ningun vecino: si se pregunto y
+           no contesto nadie, y ademas el movil llevaba horas sin tocarse, o esta
+           dormida o esta inconsciente. En los dos casos hay que hacer ruido. */
+        val nadieCerca = p.regimen == Postura.Regimen.EN_REPOSO &&
+            (p.msDesdeInteraccion < 0L || p.msDesdeInteraccion > DORMIDA_MS)
+        if (nadieCerca) return Decision(Accion.DESPERTAR, Quien.PERSONA_PROBABLE,
+            "se pregunto, no contesto nadie y el movil llevaba horas sin tocarse")
         return Decision(Accion.BALIZA, Quien.PERSONA_PROBABLE,
             "terremoto confirmado y nadie ha contestado")
     }
@@ -391,7 +419,15 @@ object Cascada {
             Triple("contesta que está bien", Accion.NADA,
                 Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true,
                     preguntado = true, contestado = true)),
-            Triple("dormida, no contesta y no anda", Accion.BALIZA,
+            /* El caso que la sirena habia dejado huerfano y que recupera
+               DESPERTAR: se pregunto, no contesto nadie y el movil llevaba horas
+               sin tocarse. No hace falta ni malla ni red sismica. */
+            /* Y el mismo silencio con alguien delante NO despierta a nadie: si
+               tocaste el movil hace un minuto, estas ahi. */
+            Triple("no contesto pero acaba de usar el móvil", Accion.BALIZA,
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true,
+                    preguntado = true, quietoMs = 300_000L, msDesdeInteraccion = 60_000L)),
+            Triple("dormida, no contesta y no anda", Accion.DESPERTAR,
                 Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true,
                     preguntado = true, pasosDespues = 0, quietoMs = 300_000L)),
             Triple("derrumbe y el móvil sale despedido", Accion.BALIZA,
@@ -408,7 +444,7 @@ object Cascada {
             Triple("preguntó, nadie contestó, lo llevaba encima", Accion.BALIZA,
                 Pruebas(regimen = Regimen.ENCIMA, sacudida = true, estruendo = true,
                     preguntado = true, pasosDespues = 0, quietoMs = 90_000L)),
-            Triple("sin contador de pasos y sin contestar", Accion.BALIZA,
+            Triple("sin contador de pasos y sin contestar", Accion.DESPERTAR,
                 Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true,
                     preguntado = true, pasosDespues = -1, quietoMs = 300_000L)),
 

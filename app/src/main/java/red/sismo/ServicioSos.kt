@@ -1179,6 +1179,7 @@ class ServicioSos : Service() {
             Cascada.Accion.PREGUNTAR -> preguntar(false, d.motivo)
             Cascada.Accion.AVISAR -> preguntar(true, d.motivo)
             Cascada.Accion.BALIZA -> balizaSilenciosa(d)
+            Cascada.Accion.DESPERTAR -> despertar(d)
             Cascada.Accion.AUXILIO -> {
                 anotar("${Cascada.rotulo(d.quien)} · ${d.motivo}")
                 panico(d.motivo)
@@ -1291,6 +1292,9 @@ class ServicioSos : Service() {
     private fun estoyBien() {
         haContestado = true
         preguntaHasta = 0L
+        /* Lo primero, cortar la rampa: si esta subiendo y alguien contesta, no
+           puede llegar el siguiente peldano por estar ya encolado. */
+        pararRampa()
         quitarPregunta()
         preguntaTarea?.let { reloj.removeCallbacks(it) }
         preguntaTarea = null
@@ -1316,6 +1320,74 @@ class ServicioSos : Service() {
      * aunque no haya ninguna prueba de que la persona esté aquí, diciendo con
      * todas las letras lo que se sabe y lo que no.
      */
+    /* Cuanto dura cada peldano de la rampa. Cortos a proposito: si de verdad
+       hay alguien, se despierta en el primero o en el segundo, y si no hay
+       nadie no tiene sentido alargar la duda. */
+    private val rampaMs = longArrayOf(4000L, 5000L)
+    private var rampaTarea: Runnable? = null
+
+    /**
+     * Despertar a quien no ha contestado, en rampa.
+     *
+     * Es la unica sirena automatica que queda, y no la dispara un sensor: la
+     * dispara el silencio de alguien a quien se acaba de preguntar. Por eso se
+     * puede permitir sonar sin una segunda opinion, y por eso sube por peldanos
+     * en vez de arrancar a todo volumen — equivocarse cuesta un zumbido.
+     *
+     *   1. Vibracion larga. Despierta al que tiene el movil en la mesilla y no
+     *      molesta a nadie mas.
+     *   2. Pulso sonoro, el mismo del modo rescate: se oye en una habitacion sin
+     *      ser una sirena.
+     *   3. Todo. Si a los nueve segundos sigue sin contestar nadie, o esta
+     *      inconsciente o no esta.
+     *
+     * Cualquier señal de vida corta la rampa, y eso lo hace `cerrarSuceso` y
+     * `estoyBien` al llamar a `pararRampa`.
+     */
+    private fun despertar(d: Cascada.Decision) {
+        if (enAlarma || enRescate) return
+        if (rampaTarea != null) return                      // ya esta subiendo
+        anotar("${Cascada.rotulo(d.quien)} · ${d.motivo}")
+
+        /* La baliza se enciende YA, en el primer peldano y no al final: si esta
+           inconsciente, los nueve segundos de rampa no pueden ser nueve segundos
+           sin emitir. La rampa es para despertarla, no para decidir. */
+        balizaSilenciosa(d)
+
+        var peldano = 0
+        val tarea = object : Runnable {
+            override fun run() {
+                if (haContestado || enAlarma) { pararRampa(); return }
+                when (peldano) {
+                    0 -> vibrarLargo()
+                    1 -> pulsoRescate()
+                    else -> { pararRampa(); panico(d.motivo); return }
+                }
+                reloj.postDelayed(this, rampaMs[peldano])
+                peldano++
+            }
+        }
+        rampaTarea = tarea
+        reloj.post(tarea)
+    }
+
+    private fun pararRampa() {
+        rampaTarea?.let { reloj.removeCallbacks(it) }
+        rampaTarea = null
+    }
+
+    private fun vibrarLargo() {
+        if (!opciones.vibracion) return
+        try {
+            val patron = longArrayOf(0, 800, 300, 800, 300, 800)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrador?.vibrate(VibrationEffect.createWaveform(patron, -1))
+            } else {
+                @Suppress("DEPRECATION") vibrador?.vibrate(patron, -1)
+            }
+        } catch (_: Exception) {}
+    }
+
     private fun balizaSilenciosa(d: Cascada.Decision) {
         anotar("${Cascada.rotulo(d.quien)} · ${d.motivo}")
         if (enAlarma || enRescate) return
@@ -1454,6 +1526,7 @@ class ServicioSos : Service() {
 
     /** El suceso se ha resuelto: se limpia para poder ver el siguiente. */
     private fun cerrarSuceso() {
+        pararRampa()
         sucesoDesde = 0L
         sucesoSacudida = false; sucesoFuerte = false; sucesoEstruendo = false; sucesoCorroborada = false
         sucesoRegimen = Postura.Regimen.DESCONOCIDO
