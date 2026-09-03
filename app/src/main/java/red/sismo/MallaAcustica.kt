@@ -236,7 +236,15 @@ class MallaAcustica(
     @Volatile var sueloDb = SUELO_ABS_DB; private set
 
     @Volatile var escuchando = false; private set
+    /** Candidatos: todo lo que el decodificador ha leido como un salto, esten
+     *  corroborados o no. Sirve para diagnostico, NO para avisar a nadie. */
     @Volatile var rx = 0; private set
+
+    /** Las que han pasado la corroboracion, o sea las que la app se cree.
+     *  Existe porque `rx` cuenta candidatos y la notificacion usaba `rx`:
+     *  anunciaba «alerta de la malla» al mismo tiempo que el registro decia
+     *  «he oido algo que puede ser una alerta; espero a confirmarlo». */
+    @Volatile var confirmadas = 0; private set
     @Volatile var tx = 0; private set
     @Volatile var ultimoSalto = 0; private set
     /** Cuántas balizas confirmadas se han oído en cada salto, 1..MAX_HOP. Es lo
@@ -580,6 +588,7 @@ class MallaAcustica(
             return
         }
         ultimoSalto = hop
+        confirmadas++
         porSalto[hop - 1]++
         reg("ALERTA RECIBIDA de otro móvil" + if (hop > 1) ", a $hop móviles de distancia" else ", justo al lado")
         Log.i(TAG, "malla: baliza confirmada salto=$hop cadencia=$cadencia rx=$rx")

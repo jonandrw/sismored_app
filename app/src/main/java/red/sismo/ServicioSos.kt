@@ -133,7 +133,12 @@ class ServicioSos : Service() {
         @Volatile var contestoBien = 0L
 
         /** Cifras de la malla, para las pestañas Inicio y Red. */
+        /** Candidatos oidos. Diagnostico, no aviso: cuenta tambien lo que el
+         *  propio decodificador descarta por no corroborarse. */
         @Volatile var mallaRx = 0; private set
+        /** Las que la app se cree de verdad. Es lo unico con lo que se puede
+         *  avisar a alguien de que hay otro movil pidiendo ayuda. */
+        @Volatile var mallaConfirmadas = 0; private set
         @Volatile var mallaTx = 0; private set
         @Volatile var mallaSalto = 0; private set
         /** Balizas confirmadas por salto: es lo que dibuja el radar. */
@@ -850,6 +855,7 @@ class ServicioSos : Service() {
         ultimoRegistro = m
         malla?.let {
             mallaRx = it.rx; mallaTx = it.tx; mallaSalto = it.ultimoSalto
+            mallaConfirmadas = it.confirmadas
             mallaPorSalto = it.porSalto.copyOf()
             mallaNiveles = it.niveles.copyOf(); mallaSuelo = it.sueloDb
         }
@@ -2067,6 +2073,7 @@ class ServicioSos : Service() {
                     System.currentTimeMillis() - sismo.ultimoTemblor < TEMBLOR_MS
                 malla?.let {
                     mallaRx = it.rx; mallaTx = it.tx; mallaSalto = it.ultimoSalto
+            mallaConfirmadas = it.confirmadas
                     mallaPorSalto = it.porSalto.copyOf()
                     mallaNiveles = it.niveles.copyOf(); mallaSuelo = it.sueloDb
                     mallaEscuchando = it.escuchando
@@ -2305,7 +2312,18 @@ class ServicioSos : Service() {
         )
 
         val esAlarma = alarma || enRescate || preguntaHasta > System.currentTimeMillis()
-        val esMalla = !esAlarma && (mallaRx > 0 || mallaTx > 0)
+        /* LA NOTIFICACION SE CREIA LO QUE EL MOTOR NO SE CREE.
+        
+           Estaba escrita contra `mallaRx`, que cuenta CANDIDATOS: todo lo que el
+           decodificador lee como un salto, corroborado o no. Y justo debajo, el
+           mismo motor escribe en el registro «he oido algo que puede ser una
+           alerta; espero a confirmarlo». O sea que la app decia a la vez las dos
+           cosas, y en la barra de notificaciones —que es lo que ve la persona—
+           decia la que no era.
+        
+           En el registro de campo del 3 de septiembre pasa exactamente eso a las
+           14:56:37, sin un solo movil con la app alrededor. */
+        val esMalla = !esAlarma && (mallaConfirmadas > 0 || mallaTx > 0)
 
         val layoutId = when {
             esAlarma -> R.layout.notif_alarma
@@ -2328,8 +2346,12 @@ class ServicioSos : Service() {
                 rv.setTextViewText(R.id.btn_notif_rescate, "PÁNICO")
             }
         } else if (esMalla) {
-            val salto = if (mallaSalto > 0) mallaSalto else 3
-            val tit = "Alerta de la malla · salto $salto de 4"
+            /* Y el salto no se inventa. Ponia un 3 cuando no se sabia —el
+               numero de la maqueta— asi que la notificacion afirmaba haber
+               contado tres saltos que nadie habia contado. */
+            val tit = if (mallaSalto > 0)
+                "Alerta de la malla · salto $mallaSalto de ${MallaAcustica.MAX_HOP}"
+            else "Alerta de la malla · sin saber a cuántos saltos"
             val sub = if (mallaTx > 0) "Retransmitiendo señal de socorro a nodos cercanos"
                       else "Un móvil cercano pidió ayuda hace unos segundos"
             rv.setTextViewText(R.id.notif_titulo, tit)
