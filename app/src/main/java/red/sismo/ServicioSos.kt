@@ -1181,10 +1181,20 @@ class ServicioSos : Service() {
     }
 
     private fun evaluar(motivo: String) {
-        val d = Cascada.decidir(pruebas())
+        val pr = pruebas()
+        val d = Cascada.decidir(pr)
         cascadaQuien = d.quien
         cascadaMotivo = d.motivo
         Log.i("SismoRed", "cascada($motivo) -> $d")
+        /* Y la foto de las pruebas con las que se decidio, cuando la decision
+           NO es «nada». Sin esto, un registro de campo dice que la app pregunto
+           pero no con que evidencia, y las reglas de la cascada dejan de poder
+           comprobarse contra lo que de verdad paso. */
+        if (d.accion != Cascada.Accion.NADA) anotar(
+            "pruebas · ${pr.regimen} sac=${pr.sacudida} fuerte=${pr.sacudidaFuerte} " +
+            "estruendo=${pr.estruendo} malla=${pr.corroborada} alerta=${pr.alertaExterna} " +
+            "ciclo=${"%.0f".format(sismo.cicloTrabajo * 100)}%"
+        )
         when (d.accion) {
             Cascada.Accion.NADA -> {
                 anotar("$motivo · ${d.motivo}")
@@ -1236,8 +1246,16 @@ class ServicioSos : Service() {
         }
         ultimaPregunta = ahoraP
         preguntaHasta = System.currentTimeMillis() + PREGUNTA_MS
-        anotar(if (conRuido) "TERREMOTO · te despierto y te pregunto si estás bien"
-               else "TERREMOTO · ¿estás bien? Tienes ${PREGUNTA_MS / 1000} s para contestar")
+        /* CON EL MOTIVO, que es lo que faltaba. `preguntar` recibia `motivo`
+           —la regla de la cascada que decidio— y lo tiraba a la basura: el
+           registro ponia siempre la misma frase. Al mirar los registros de campo
+           del 3 de septiembre no habia forma de saber POR QUE habia preguntado
+           cuatro veces en una hora, ni de distinguir una decision real de un
+           simulacro. Guardar la razon justo donde se toma la decision es la
+           diferencia entre diagnosticar y adivinar. */
+        anotar((if (conRuido) "TERREMOTO · te despierto y te pregunto si estás bien"
+                else "TERREMOTO · ¿estás bien? Tienes ${PREGUNTA_MS / 1000} s para contestar") +
+               " · $motivo")
         if (conRuido) {
             try { sirena.start() } catch (_: Exception) {}
             try { destello("pregunta") } catch (_: Exception) {}
