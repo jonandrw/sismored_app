@@ -27,3 +27,8 @@ fx sounds/wav/
 .DS_Store
 Thumbs.db
 .maqueta/
+
+# La firma de release nunca entra en el repositorio.
+keystore.properties
+*.jks
+*.keystore
