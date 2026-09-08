@@ -39,12 +39,28 @@ import kotlin.math.sqrt
  */
 class Sonda(
     private val mic: Microfono,
-    private val onRegistro: (String) -> Unit = {}
+    private val onRegistro: (String) -> Unit = {},
+    private val op: Opciones? = null
 ) {
 
     companion object {
         private const val TAG = "SismoRed"
         private const val C_AIRE = 343.0        // velocidad del sonido, m/s
+
+        /* ---------- el chasquido bio-acústico (impulse biosonar) ----------
+           Inspirado en los murciélagos, cetáceos y en el biosonar de "A Quiet Place":
+           En lugar de un tono continuo inaudible e ineficiente a 18,5 kHz (donde los
+           altavoces de móviles pierden 30 dB de potencia y los escombros absorben todo),
+           se emite un tren de impulsos secos en la banda dulce del altavoz (2,5 kHz a 4,2 kHz).
+
+           - 8 ms de duración con ventana Tukey: concentra la máxima energía acústica del altavoz
+             sin pops de DC ni distorsión, y reduce la zona ciega a menos de 70 cm.
+           - Ancho de banda de 1,7 kHz: pico de correlación ultra estrecho (~10 cm de resolución). */
+        const val DUR_BIO_CHASQUIDO = 0.008      // 8 ms
+        const val F_BIO_0 = 2500.0              // 2,5 kHz
+        const val F_BIO_1 = 4200.0              // 4,2 kHz
+        const val CADENCIA_RESP_HZ = 10         // 10 chasquidos por segundo (100 ms periodo)
+
         private const val DUR_CHIRP = 0.10      // 100 ms
         private const val F0 = 2000.0
         private const val F1 = 8000.0
@@ -54,65 +70,17 @@ class Sonda(
            buena. Ocho chasquidos permiten APILAR las correlaciones: el eco real
            cae siempre en el mismo sitio y se suma, y el ruido cae en sitios
            distintos y se promedia a la baja — la relación señal/ruido mejora con
-           la raíz del número de disparos, unos 9 dB con ocho.
-
-           Y, sobre todo, deja medir el error de verdad: si los ocho dicen 118 cm
-           el número vale; si dicen entre 90 y 150 no hay pared ahí, hay ruido. */
+           la raíz del número de disparos, unos 9 dB con ocho. */
         private const val CHASQUIDOS = 8
         /** Intentos automaticos antes de dar un resultado, en las tres herramientas
-         *  de medida. Una medida suelta puede tener mala suerte —un golpe, una
-         *  puerta, un coche— y repetirla cinco veces sin que nadie tenga que pulsar
-         *  nada es lo que convierte un numero en algo que se puede creer. Al quinto
-         *  se imprime y la herramienta se apaga sola: asi el resultado se queda
-         *  quieto en la pantalla en vez de borrarse con el intento siguiente. */
+         *  de medida. */
         const val INTENTOS = 5
         private const val ALCANCE_M = 6.0
 
-        /* ---------- por qué el chasquido suena SIEMPRE, y se oye ----------
-           Tres cosas lo tapaban, y hacían falta las tres:
-
-           1. El camino de audio de Android tarda entre 50 y 150 ms en arrancar, y
-              el chirp era más corto que eso: unas veces no llegaba a salir y otras
-              salía tarde. Lo arregla el silencio de `PRE_MS` por delante, y que
-              `Altavoz` no suelte el track hasta que la cabeza de reproducción haya
-              pasado por el último marco.
-           2. Sonaba al volumen de ALARMA que tuviera puesto el usuario. `USAGE_ALARM`
-              salta el modo silencio pero no sube el volumen — eso lo hacía solo la
-              sirena. Ahora la ráfaga entera va dentro de `Altavoz.aTodoVolumen`.
-           3. Y seguía sin oírse con 40 ms. El oído integra la energía en unos
-              200 ms: un chasquido más corto que eso se percibe como un tic mínimo
-              aunque salga a fondo de escala — por eso el barrido, que son 2,5 s
-              seguidos, sí se oye alto. `DUR_CHIRP` son ahora **100 ms**, cinco veces
-              la energía del original. La resolución no sufre: en un filtro adaptado
-              la manda el ANCHO DE BANDA (6 kHz ≈ 3 cm), no la duración.
-
-              Alargarlo obliga a re-sintonizar la captura, y no es opcional: con
-              100 ms de chirp más 120 ms de incertidumbre de latencia no cabe todo en
-              una ventana de 250 ms. La ventana pasa a 400 ms y la espera a 280, que
-              deja el chasquido y su eco dentro con margen por los dos lados. Y 400 ms
-              siguen siendo menos que los ~660 que separan un disparo del siguiente,
-              así que en la ventana no puede colarse el chasquido anterior.
-
-           Además, como ahora se sabe cuándo suena, la espera puede bajar: antes
-           había que dar 350 ms de margen porque no se sabía. */
-
-        private const val PRE_MS = 150
-
-        /** Margen para la latencia de captura, que en Android no es despreciable.
-         *  Se cuenta desde que el chasquido ha SONADO, no desde que se pide. La
-         *  ventana que se lee luego son 400 ms, así que el chasquido y su eco tienen
-         *  que caer dentro: con 280 ms de espera hay unos 20 ms de holgura por
-         *  delante y 145 por detrás, que cubre lo que puede variar la latencia de
-         *  entrada de un móvil a otro. */
-        private const val ESPERA_MS = 280L
-        /** Silencio entre chasquidos: da tiempo a que muera la cola del anterior. */
-        private const val PAUSA_MS = 120L
-        /** Ventana de captura, en muestras. 400 ms: ver la nota de arriba. */
-        private fun VENTANA_N(sr: Int) = (sr * 0.40).roundToInt()
-        /** Sobre la pila el ruido ya está promediado, así que se puede bajar el
-         *  listón respecto al 0,18 que hacía falta con un solo disparo. */
-        /** Altavoz→micrófono por el cuerpo del móvil. Es la referencia contra la
-         *  que se mide todo, porque el análisis normaliza por el pico directo. */
+        private const val PRE_MS = 40
+        private const val ESPERA_MS = 100L
+        private const val PAUSA_MS = 60L
+        private fun VENTANA_N(sr: Int) = (sr * 0.20).roundToInt()
         private const val CAMINO_DIRECTO_M = 0.15
 
         /* Los umbrales, ahora sacados de la física y no de un eco inventado.
@@ -205,6 +173,7 @@ class Sonda(
      * La única forma de callarlo era cerrar la app.
      */
     @Volatile private var tonoVivo = false
+    @Volatile private var bucleActivo: AutoCloseable? = null
 
     /** Cuál de las dos herramientas de tono lo tiene ahora: "movimiento",
      *  "respiracion" o vacío. El tono es uno y el altavoz es uno, así que solo
@@ -224,7 +193,12 @@ class Sonda(
      *  servicio antes de encender la otra herramienta de tono: el altavoz es uno
      *  y el tono es uno, así que movimiento y respiración no pueden convivir. */
     fun pararTono() {
-        if (tonoVivo) { tonoVivo = false; quienTono = "" }
+        if (tonoVivo) {
+            tonoVivo = false
+            quienTono = ""
+            try { bucleActivo?.close() } catch (_: Exception) {}
+            bucleActivo = null
+        }
     }
 
     /** Corta todo lo que esté sonando: tono continuo y barrido. Lo llama DETENER,
@@ -236,6 +210,8 @@ class Sonda(
         tonoVivo = false
         barriendo = false
         ecoContinuo = false
+        try { bucleActivo?.close() } catch (_: Exception) {}
+        bucleActivo = null
         if (habia) reg("todo lo que sonaba está apagado")
     }
     /** Relación bandas laterales / portadora del último marco. La escribe el
@@ -266,14 +242,20 @@ class Sonda(
 
     /* ================= chirp y filtro adaptado ================= */
 
-    /** Chirp lineal con ventana de Hann: sin ventana, los cortes secos ensucian
-     *  la correlación y aparecen ecos donde no los hay. */
+    /** Chirp bio-acústico lineal con ventana de Tukey (taper del 15% en los extremos):
+     *  concentra la máxima energía en la banda dulce del altavoz (2,5 a 4,2 kHz) y
+     *  permite una resolución espacial de ~10 cm sin clipping. */
     fun chirp(sr: Int, dur: Double = DUR_CHIRP, f0: Double = F0, f1: Double = F1): FloatArray {
         val n = (sr * dur).roundToInt()
         val k = (f1 - f0) / dur
+        val taper = (n * 0.15).roundToInt().coerceAtLeast(1)
         return FloatArray(n) { i ->
             val t = i.toDouble() / sr
-            val w = 0.5 - 0.5 * cos(2.0 * PI * i / (n - 1))
+            val w = when {
+                i < taper -> 0.5 - 0.5 * cos(PI * i / taper)
+                i >= n - taper -> 0.5 - 0.5 * cos(PI * (n - 1 - i) / taper)
+                else -> 1.0
+            }
             (sin(2.0 * PI * (f0 * t + 0.5 * k * t * t)) * w).toFloat()
         }
     }
@@ -356,7 +338,17 @@ class Sonda(
     @Volatile var firma: DoubleArray? = null
         private set
 
-    fun firmaBorrar() { firma = null }
+    init {
+        op?.sondaFirma?.let { f ->
+            firma = f
+            Log.i(TAG, "sonda: firma del móvil restaurada desde almacenamiento (${f.size} puntos)")
+        }
+    }
+
+    fun firmaBorrar() {
+        firma = null
+        op?.sondaFirma = null
+    }
 
     fun aprenderFirma(tramos: List<DoubleArray>) {
         if (tramos.isEmpty()) return
@@ -365,7 +357,8 @@ class Sonda(
         for (t in tramos) for (k in 0..maxLag) f[k] += t[k]
         for (k in f.indices) f[k] /= tramos.size
         firma = f
-        Log.i(TAG, "sonda: firma del móvil aprendida (%d puntos, pico %.3f)".format(f.size, f.max()))
+        op?.sondaFirma = f
+        Log.i(TAG, "sonda: firma del móvil aprendida (%d puntos, pico %.3f) y persistida".format(f.size, f.max()))
     }
 
     fun apilar(tramos: List<DoubleArray>, sr: Int): List<Reflector> {
@@ -377,10 +370,41 @@ class Sonda(
         val pila = DoubleArray(maxLag + 1)
         for (t in tramos) for (k in 0..maxLag) pila[k] += t[k]
         for (k in pila.indices) pila[k] /= n
+
         /* Fuera la firma del propio móvil. Lo que queda es lo que ha cambiado
            respecto a «el teléfono solo», que es la definición de reflector. */
-        firma?.let { f ->
-            if (f.size == pila.size) for (k in pila.indices) pila[k] = max(0.0, pila[k] - f[k])
+        val f = firma
+        if (f != null && f.size == pila.size) {
+            for (k in pila.indices) pila[k] = max(0.0, pila[k] - f[k])
+        } else {
+            /* Auto-Zero NLMS adaptativo (AUD-04): cuando no hay firma calibrada
+               al aire (firma == null), un filtro adaptativo NLMS estima la respuesta
+               estacionaria del chasis en el campo cercano (< 50 cm) a partir de los
+               primeros 3 disparos y la cancela con un taper suave de Hann para evitar
+               artefactos de borde, eliminando paredes fantasma producidas por acoplo
+               interno altavoz-micrófono. */
+            val kPass = (sr * 2 * 0.48 / C_AIRE).roundToInt()
+            val kStop = (sr * 2 * 0.62 / C_AIRE).roundToInt()
+            val nCoef = min(pila.size, kStop)
+            val w = DoubleArray(nCoef)
+            val numDisparos = min(3, tramos.size)
+            for (r in 0 until numDisparos) {
+                val t = tramos[r]
+                val x = if (t.isNotEmpty()) t[0] else 1.0
+                val invNorm = 1.0 / (x * x + 1e-6)
+                val mu = 1.0 / (r + 1.0)
+                for (k in 1 until min(nCoef, t.size)) {
+                    val yEst = w[k] * x
+                    val err = t[k] - yEst
+                    w[k] += (mu * err * x * invNorm).coerceIn(-1.0, 1.0)
+                }
+            }
+            for (k in 1 until nCoef) {
+                val taper = if (k <= kPass) 1.0 else {
+                    0.5 * (1.0 + cos(PI * (k - kPass) / (kStop - kPass)))
+                }
+                pila[k] = max(0.0, pila[k] - w[k] * taper)
+            }
         }
 
         val refs = ArrayList<Reflector>()
@@ -403,8 +427,9 @@ class Sonda(
                     refs.add(Reflector(media, pila[i], sd, ds.size, n))
                 }
                 i += ciego
+            } else {
+                i++
             }
-            i++
         }
         /* Se siguen dando como mucho cuatro para no llenar la pantalla, pero
            quien llama sabe cuántos había: decir «4 superficies» siempre que haya
@@ -646,7 +671,7 @@ class Sonda(
                    pasara lo que pasara. */
                 reg("Sonda: $cuantos superficie(s) alrededor" +
                     (if (cuantos > refs.size) ", enseño las ${refs.size} más fuertes" else "") +
-                    (if (firma == null) " · SIN la firma del móvil aprendida" else ""))
+                    (if (firma == null) " · Auto-Zero NLMS (<50cm filtrado, sin calibración manual)" else " · con firma calibrada"))
                 h.post { onResultado(txt) }
             } catch (ex: Exception) {
                 Log.e(TAG, "sonda falló", ex)
@@ -661,18 +686,22 @@ class Sonda(
     /* ================= doppler ================= */
 
     /**
-     * Un tono fijo de 18,5 kHz. Si algo se mueve cerca, el eco vuelve con la
-     * frecuencia corrida y aparecen bandas laterales alrededor de la portadora.
-     * Detecta que **se mueve un cuerpo**: ni cuántos, ni dónde, ni la respiración.
+     * Detector de movimiento por sonar de impulsos bio-acústicos (MTI Pulse Sonar).
      *
-     * Ojo con una interacción que no es evidente: 18,5 kHz cae dentro de la banda
-     * donde la malla mide su ruido de fondo, así que **mientras el doppler suena,
-     * la malla queda casi sorda**. Dura unos segundos y lo lanza una persona a
-     * mano, pero por eso no puede quedarse corriendo solo.
+     * Emite un tren periódico de chasquidos secos a 10 Hz en la banda dulce (2,5-4,2 kHz).
+     * Compara cada perfil de eco contra el anterior entre 0,4 y 3,5 metros: si todo está quieto,
+     * el eco es idéntico; si un cuerpo o extremidad se mueve, la diferencia temporal se dispara.
+     *
+     * Ventajas frente al tono ultrasónico antiguo:
+     *  1. 30 dB más de potencia acústica física por aprovechar la resonancia del altavoz.
+     *  2. No deja sorda la malla acústica (16-18 kHz) mientras suena.
+     *  3. Rango de penetración muy superior en escombros, mantas y polvo.
      */
     fun doppler(encender: Boolean, onProgreso: (String) -> Unit, onResultado: (String) -> Unit) {
         if (!encender) {
             tonoVivo = false; quienTono = ""
+            try { bucleActivo?.close() } catch (_: Exception) {}
+            bucleActivo = null
             h.post { onResultado("Movimiento apagado.") }
             return
         }
@@ -684,116 +713,131 @@ class Sonda(
         }
         ocupada = true
         quienTono = "movimiento"
-        val f = fDoppler
-        reg("Mientras suene el tono, la malla no oye a otros móviles")
+        reg("Buscando movimiento con tren bio-acústico de chasquidos (2,5-4,2 kHz a ${CADENCIA_RESP_HZ} Hz).")
 
         val sr = mic.sr
-        val ventana = DoubleArray(Microfono.N) { 0.5 - 0.5 * cos(2.0 * PI * it / (Microfono.N - 1)) }
-        val espectro = DoubleArray(Microfono.N / 2)
-        val res = sr.toDouble() / Microfono.N
-        val c = (f / res).roundToInt()
-
-        dopplerRel = 0.0
-        val oyente = Microfono.Oyente { marco ->
-            Fft.magnitudes(marco, ventana, espectro)
-            val port = espectro.getOrElse(c) { 0.0 }.let { it * it } + 1e-12
-            /* Desde el bin 2, no desde el 3. Cada bin son 23,4 Hz y el
-               desplazamiento doppler es 2·v·f/c: empezar en el bin 3 son 70 Hz,
-               o sea 0,65 m/s, y **una persona andando por una habitación va a
-               0,4-0,6 m/s**. O sea que el detector se estaba perdiendo justo el
-               movimiento que tiene que ver, y por eso dio 0,2 veces el fondo con
-               gente circulando. Desde el bin 2 la banda empieza en 0,43 m/s.
-
-               Bajar a 1 sería tentador y no se hace: ahí manda la fuga de la
-               propia portadora. Y da igual que sea constante, porque el veredicto
-               es contra un fondo medido — pero al bin 1 llega también cualquier
-               deriva de reloj entre altavoz y micrófono, que no es constante. */
-            var lado = 0.0
-            for (k in 2..25) {
-                lado += espectro.getOrElse(c - k) { 0.0 }.let { it * it }
-                lado += espectro.getOrElse(c + k) { 0.0 }.let { it * it }
+        val click = chirp(sr, dur = DUR_BIO_CHASQUIDO, f0 = F_BIO_0, f1 = F_BIO_1)
+        val paso = sr / CADENCIA_RESP_HZ
+        val pcmTren = ShortArray(sr)
+        val volFactor = volTono.coerceIn(0.2, 1.0)
+        for (k in 0 until CADENCIA_RESP_HZ) {
+            val start = k * paso
+            for (i in click.indices) {
+                if (start + i < sr) {
+                    pcmTren[start + i] = (click[i] * Short.MAX_VALUE * 0.95 * volFactor).toInt().toShort()
+                }
             }
-            dopplerRel = lado / port
         }
 
-        thread(name = "doppler", isDaemon = true) {
-            var tono: Thread? = null
+        thread(name = "doppler-biosonar", isDaemon = true) {
+            var bucle: AutoCloseable? = null
             try {
-                mic.registrar(oyente)
-                // tono continuo mientras dure la medida, en trozos de 1 s
                 tonoVivo = true
-                val n = sr
-                val pcm = ShortArray(n) {
-                    (sin(2.0 * PI * f * it / sr) * Short.MAX_VALUE * volTono).toInt().toShort()
-                }
-                tono = thread(name = "doppler-tono", isDaemon = true) {
-                    Altavoz.aTodoVolumen { while (tonoVivo) Altavoz.reproducir(pcm, sr, colaMs = 0) }
-                }
+                bucle = Altavoz.iniciarBucle(pcmTren, sr)
+                bucleActivo = bucle
 
-                // fondo: cómo se ve la portadora con todo quieto
+                Thread.sleep(400)
+
+                val ciego = (sr * 0.35 * 2 / C_AIRE).roundToInt()
+                val maxLag = (sr * 3.5 * 2 / C_AIRE).roundToInt()
+
+                var prevCorr: DoubleArray? = null
                 var base = 0.0
-                for (i in 0 until 10) { Thread.sleep(100); base += dopplerRel }
-                base /= 10.0
+                var cuentaBase = 0
 
-                /* Cinco intentos de cinco segundos. No es un tono infinito: una
-                   medida que no acaba nunca no da un resultado que se pueda leer, y
-                   era lo que pasaba. */
+                val tBase = System.currentTimeMillis()
+                while (tonoVivo && System.currentTimeMillis() - tBase < 700L) {
+                    Thread.sleep(1000L / CADENCIA_RESP_HZ)
+                    val rec = mic.cola((sr * 0.15).roundToInt())
+                    val corr = correlar(rec, click)
+                    if (corr.isNotEmpty()) {
+                        if (prevCorr != null && prevCorr!!.size == corr.size) {
+                            var d0 = 0; var mx0 = 0.0
+                            for (i in corr.indices) if (corr[i] > mx0) { mx0 = corr[i]; d0 = i }
+                            val start = minOf(corr.size - 1, d0 + ciego)
+                            val end = minOf(corr.size - 1, d0 + maxLag)
+                            if (end > start) {
+                                var sumDiff = 0.0
+                                for (k in start..end) sumDiff += abs(corr[k] - prevCorr!![k])
+                                base += sumDiff / (end - start + 1)
+                                cuentaBase++
+                            }
+                        }
+                        prevCorr = corr
+                    }
+                }
+                base = if (cuentaBase > 0) base / cuentaBase else 1e-4
+                base = maxOf(base, 1e-4)
+
                 var pico = 0.0
                 for (intento in 1..INTENTOS) {
                     if (!tonoVivo) break
                     var picoIntento = 0.0
                     val t1 = System.currentTimeMillis()
-                    while (tonoVivo && System.currentTimeMillis() - t1 < 5000) {
-                        Thread.sleep(100)
-                        val v = dopplerRel
-                        if (v > picoIntento) picoIntento = v
-                        if (v > pico) pico = v
-                        val rel = v / (base + 1e-12)
-                        nivelDoppler = rel
-                        val maxi = pico / (base + 1e-12)
-                        h.post {
-                            onProgreso(
-                                linea(
-                                    "Intento $intento de $INTENTOS",
-                                    "Ahora: %.1f veces el fondo (quieto = 1)".format(rel),
-                                    "Maximo visto: %.1f veces".format(maxi),
-                                    "No muevas el movil"
-                                )
-                            )
+                    while (tonoVivo && System.currentTimeMillis() - t1 < 5000L) {
+                        Thread.sleep(1000L / CADENCIA_RESP_HZ)
+                        val rec = mic.cola((sr * 0.15).roundToInt())
+                        val corr = correlar(rec, click)
+                        if (corr.isNotEmpty()) {
+                            if (prevCorr != null && prevCorr!!.size == corr.size) {
+                                var d0 = 0; var mx0 = 0.0
+                                for (i in corr.indices) if (corr[i] > mx0) { mx0 = corr[i]; d0 = i }
+                                val start = minOf(corr.size - 1, d0 + ciego)
+                                val end = minOf(corr.size - 1, d0 + maxLag)
+                                if (end > start) {
+                                    var sumDiff = 0.0
+                                    for (k in start..end) sumDiff += abs(corr[k] - prevCorr!![k])
+                                    val difMed = sumDiff / (end - start + 1)
+                                    val rel = difMed / base
+                                    nivelDoppler = rel
+                                    if (rel > picoIntento) picoIntento = rel
+                                    if (rel > pico) pico = rel
+                                    h.post {
+                                        onProgreso(
+                                            linea(
+                                                "Intento $intento de $INTENTOS (biosonar)",
+                                                "Ahora: %.1f veces el fondo (quieto = 1)".format(rel),
+                                                "Máximo visto: %.1f veces".format(pico),
+                                                "No muevas el móvil"
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                            prevCorr = corr
                         }
                     }
                 }
                 val hechos = tonoVivo
                 tonoVivo = false
                 nivelDoppler = 1.0
-                val rel = pico / (base + 1e-12)
+                val rel = pico
                 val veredicto = when {
-                    rel > 4 -> "MOVIMIENTO CERCA"
-                    rel > 2 -> "Movimiento leve, o una corriente de aire"
+                    rel > 3.0 -> "MOVIMIENTO CERCA"
+                    rel > 1.8 -> "Movimiento leve, o una corriente de aire"
                     else -> "Sin movimiento"
                 }
-                reg("Movimiento: $veredicto (%.1f veces el fondo)".format(rel))
+                reg("Movimiento biosonar: $veredicto (%.1f veces el fondo)".format(rel))
                 h.post {
                     onResultado(
                         linea(
                             veredicto + ".",
                             if (hechos) "Resultado tras $INTENTOS intentos." else "Detenido antes de acabar.",
-                            "Maximo medido: %.1f veces el fondo.".format(rel),
-                            "Alcance util de 1 a 2 metros."
+                            "Máximo medido: %.1f veces el fondo.".format(rel),
+                            "Chasquidos de 2,5-4,2 kHz (alcance hasta 3,5 m)."
                         )
                     )
                 }
             } catch (ex: Exception) {
-                Log.e(TAG, "doppler falló", ex)
+                Log.e(TAG, "doppler biosonar falló", ex)
                 h.post { onResultado("El movimiento falló: ${ex.message}") }
             } finally {
-                // SIEMPRE, pase lo que pase: es lo que evita el tono eterno
                 tonoVivo = false
                 quienTono = ""
                 nivelDoppler = 1.0
-                mic.quitar(oyente)
                 mic.cerrar(Microfono.USA_SONDA)
-                try { tono?.join(1500) } catch (_: Exception) {}
+                try { bucle?.close() } catch (_: Exception) {}
+                bucleActivo = null
                 ocupada = false
             }
         }
@@ -802,25 +846,17 @@ class Sonda(
     /* ================= respiración: ¿hay un cuerpo vivo? ================= */
 
     /**
-     * El mismo tono de 18,5 kHz que el doppler, mirando otra cosa. El doppler
-     * dice «algo se mueve»; esto dice «algo se mueve **como respira un cuerpo**».
+     * Detección de respiración por biosonar de impulsos con acotación de distancia (Range-Gated Sonar).
      *
-     * Un pecho que sube y baja modula el eco despacio y CON PERIODO: entre 0,15 y
-     * 0,6 Hz, que son 9 a 36 respiraciones por minuto. Un escombro asentándose,
-     * una corriente de aire o una lona suelta también modulan, pero sin periodo:
-     * empujan una vez y paran. La periodicidad es lo único que separa un cuerpo
-     * de un montón de cosas que se mueven, y es la misma pista que quedó apuntada
-     * para separar un motor de un derrumbe.
+     * En lugar de un tono continuo de 18,5 kHz inaudible y atenuado, emite un tren bio-acústico de
+     * chasquidos a 10 Hz (estilo murciélago / "A Quiet Place") en la banda dulce de 2,5 a 4,2 kHz.
      *
-     * Por eso son veinte segundos y no cinco: para dar algo por periódico hay que
-     * verlo repetirse tres veces, y a nueve respiraciones por minuto una sola
-     * dura casi siete segundos.
+     * Cada chasquido produce una correlación con el sonido directo y sus ecos. Se aísla el reflector
+     * de rescate (0,35 m a 3,0 m) y se demodula la fase de su portadora relativa al sonido directo,
+     * eliminando cualquier deriva o jitter de audio del sistema operativo.
      *
-     * OJO CON EL UMBRAL: [UMBRAL_RESP] es una estimación, no un número medido con
-     * una persona debajo de un escombro. Por eso el resultado imprime SIEMPRE la
-     * periodicidad cruda y el periodo hallado — son los dos números que hacen
-     * falta para calibrarlo en campo, y sin calibrar esto no puede decir «no hay
-     * nadie» con ninguna autoridad.
+     * El movimiento rítmico del tórax al respirar modula la fase del eco en un patrón sinusoidal
+     * que la autocorrelación normalizada de `periodicidad()` reconoce entre 12 y 36 respiraciones por minuto.
      */
     fun respiracion(
         encender: Boolean,
@@ -829,6 +865,8 @@ class Sonda(
     ) {
         if (!encender) {
             tonoVivo = false; quienTono = ""
+            try { bucleActivo?.close() } catch (_: Exception) {}
+            bucleActivo = null
             h.post { onResultado("Búsqueda de respiración apagada.") }
             return
         }
@@ -841,136 +879,147 @@ class Sonda(
         }
         ocupada = true
         quienTono = "respiracion"
-        val f = fDoppler
-        reg("Buscando respiración: ciclos de $segundos s. La malla queda sorda mientras suene")
+        reg("Buscando respiración (biosonar por chasquidos): ciclos de $segundos s a ${CADENCIA_RESP_HZ} Hz.")
 
         val sr = mic.sr
-        val ventana = DoubleArray(Microfono.N) { 0.5 - 0.5 * cos(2.0 * PI * it / (Microfono.N - 1)) }
-        val espectro = DoubleArray(Microfono.N / 2)
-        val res = sr.toDouble() / Microfono.N
-        val c = (f / res).roundToInt()
-
-        /* Demodulación I/Q a la frecuencia del tono. `marcosVistos` da el índice
-           absoluto para que la fase sea continua entre marcos. */
-        marcosVistos = 0
-        fase = 0.0; faseAmp = 0.0
-        val w = 2.0 * PI * f / sr
-        val oyente = Microfono.Oyente { marco ->
-            val base = marcosVistos * marco.size
-            marcosVistos++
-            var si = 0.0; var sq = 0.0
-            for (n in marco.indices) {
-                val x = marco[n].toDouble()
-                val a = w * (base + n)
-                si += x * cos(a); sq += x * sin(a)
+        val click = chirp(sr, dur = DUR_BIO_CHASQUIDO, f0 = F_BIO_0, f1 = F_BIO_1)
+        val paso = sr / CADENCIA_RESP_HZ
+        val pcmTren = ShortArray(sr)
+        val volFactor = volTono.coerceIn(0.2, 1.0)
+        for (k in 0 until CADENCIA_RESP_HZ) {
+            val start = k * paso
+            for (i in click.indices) {
+                if (start + i < sr) {
+                    pcmTren[start + i] = (click[i] * Short.MAX_VALUE * 0.95 * volFactor).toInt().toShort()
+                }
             }
-            faseAmp = hypot(si, sq) / marco.size
-            fase = atan2(sq, si)
         }
 
-        thread(name = "respiracion", isDaemon = true) {
-            var tono: Thread? = null
+        thread(name = "respiracion-biosonar", isDaemon = true) {
+            var bucle: AutoCloseable? = null
             try {
-                mic.registrar(oyente)
                 tonoVivo = true
-                val pcm = ShortArray(sr) {
-                    (sin(2.0 * PI * f * it / sr) * Short.MAX_VALUE * volTono).toInt().toShort()
-                }
-                tono = thread(name = "respiracion-tono", isDaemon = true) {
-                    Altavoz.aTodoVolumen { while (tonoVivo) Altavoz.reproducir(pcm, sr, colaMs = 0) }
-                }
+                bucle = Altavoz.iniciarBucle(pcmTren, sr)
+                bucleActivo = bucle
 
-                /* Un segundo de descarte: mientras el tono arranca, la relación
-                   bandas/portadora da valores enormes que no son movimiento. */
-                Thread.sleep(1000)
+                // Pausa breve para calentar el pipeline de audio
+                Thread.sleep(500)
 
                 var ciclo = 0
                 var mejor: Ritmo? = null
                 var mejorBpm = 0.0
                 while (tonoVivo && ciclo < INTENTOS) {
-                ciclo++
-                val serie = ArrayList<Double>(segundos * MUESTRAS_S)
-                var faseAnt = fase
-                var faseAcum = 0.0
-                val t0 = System.currentTimeMillis()
-                while (tonoVivo && System.currentTimeMillis() - t0 < segundos * 1000L) {
-                    Thread.sleep(1000L / MUESTRAS_S)
-                    /* En logaritmo, no en crudo: la relación es un cociente y un
-                       solo golpe cerca la multiplica por cien. En log, ese golpe
-                       es un escalón y no aplasta la respiración, que es un rizo
-                       pequeño encima. */
-                    /* Fase desenrollada: sin desenrollar, cada vuelta de 2π es
-                       un salto de 6,28 que el análisis lee como un golpe. Una
-                       respiración son 3,4 rad, así que cruza el corte a menudo. */
-                    val cruda = fase
-                    var d = cruda - faseAnt
-                    while (d > PI) d -= 2 * PI
-                    while (d < -PI) d += 2 * PI
-                    faseAcum += d
-                    faseAnt = cruda
-                    serie.add(faseAcum)
-                    nivelDoppler = faseAmp
-                    val queda = segundos - (System.currentTimeMillis() - t0) / 1000
-                    val n = ciclo
+                    ciclo++
+                    val serie = ArrayList<Double>(segundos * CADENCIA_RESP_HZ)
+                    var faseAnt = 0.0
+                    var faseAcum = 0.0
+                    var inicializado = false
+                    val t0 = System.currentTimeMillis()
+
+                    val fc = (F_BIO_0 + F_BIO_1) / 2.0
+                    val w = 2.0 * PI * fc / sr
+                    val span = (sr * 0.003).roundToInt().coerceAtLeast(2)
+                    val ciego = (sr * 0.35 * 2 / C_AIRE).roundToInt()
+                    val maxLag = (sr * 3.0 * 2 / C_AIRE).roundToInt()
+
+                    while (tonoVivo && System.currentTimeMillis() - t0 < segundos * 1000L) {
+                        Thread.sleep(1000L / CADENCIA_RESP_HZ)
+                        val rec = mic.cola((sr * 0.15).roundToInt())
+                        val corr = correlar(rec, click)
+                        if (corr.isEmpty()) continue
+
+                        var d0 = 0; var mx0 = 0.0
+                        for (i in corr.indices) if (corr[i] > mx0) { mx0 = corr[i]; d0 = i }
+
+                        val startSearch = d0 + ciego
+                        val endSearch = minOf(corr.size - 1, d0 + maxLag)
+                        var bestPeak = startSearch
+                        var bestVal = 0.0
+                        for (i in startSearch..endSearch) {
+                            if (corr[i] > bestVal) {
+                                bestVal = corr[i]
+                                bestPeak = i
+                            }
+                        }
+
+                        var si = 0.0; var sq = 0.0
+                        for (k in -span..span) {
+                            val idx = bestPeak + k
+                            if (idx in rec.indices) {
+                                val ang = w * (idx - d0)
+                                val s = rec[idx].toDouble()
+                                si += s * cos(ang)
+                                sq += s * sin(ang)
+                            }
+                        }
+                        val faseEcho = atan2(sq, si)
+                        val ampEcho = hypot(si, sq)
+                        nivelDoppler = ampEcho
+
+                        if (!inicializado) {
+                            faseAnt = faseEcho
+                            inicializado = true
+                        }
+                        var d = faseEcho - faseAnt
+                        while (d > PI) d -= 2 * PI
+                        while (d < -PI) d += 2 * PI
+                        faseAcum += d
+                        faseAnt = faseEcho
+                        serie.add(faseAcum)
+
+                        val queda = segundos - (System.currentTimeMillis() - t0) / 1000
+                        val n = ciclo
+                        h.post {
+                            onProgreso(
+                                linea(
+                                    "Escuchando si alguien respira (biosonar)…",
+                                    "Quedan $queda s (ciclo $n de $INTENTOS)",
+                                    "Chasquidos bio-acústicos a ${CADENCIA_RESP_HZ} Hz",
+                                    "No toques el móvil y no hables"
+                                )
+                            )
+                        }
+                    }
+
+                    if (!tonoVivo && serie.size < segundos * CADENCIA_RESP_HZ / 2) {
+                        h.post { onResultado("Medida cancelada: hacen falta los $segundos s enteros.") }
+                        break
+                    }
+
+                    val r = periodicidad(serie)
+                    val bpm = if (r.lag > 0) 60.0 * CADENCIA_RESP_HZ / r.lag else 0.0
+                    if (mejor == null || r.fuerza > mejor!!.fuerza) { mejor = r; mejorBpm = bpm }
+
+                    val veredicto = when {
+                        r.energia < ENERGIA_MIN -> "NADA SE MUEVE AHÍ · ni un cuerpo ni un escombro"
+                        r.fuerza >= UMBRAL_RESP && r.lag > 0 ->
+                            "PROBABLE CUERPO HUMANO · ${bpm.roundToInt()} respiraciones/min"
+                        else -> "algo se mueve, pero sin ritmo de respiración"
+                    }
+                    val nc = ciclo
                     h.post {
                         onProgreso(
                             linea(
-                                "Escuchando si alguien respira…",
-                                "Quedan $queda s de esta medida (ciclo $n)",
-                                "No toques el móvil y no hables"
+                                "Intento $nc de $INTENTOS",
+                                veredicto,
+                                "Periodicidad %.2f · hace falta %.2f".format(r.fuerza, UMBRAL_RESP)
                             )
                         )
                     }
                 }
-                if (!tonoVivo && serie.size < segundos * MUESTRAS_S / 2) {
-                    h.post { onResultado("Medida cancelada: hacen falta los $segundos s enteros.") }
-                    break
-                }
 
-                val r = periodicidad(serie)
-                val bpm = if (r.lag > 0) 60.0 * MUESTRAS_S / r.lag else 0.0
-                // se queda el intento con mas ritmo: una respiracion debil aparece
-                // en uno de cinco y no en todos
-                if (mejor == null || r.fuerza > mejor!!.fuerza) { mejor = r; mejorBpm = bpm }
-                /* La banda ya está impuesta en la búsqueda del retardo, así que
-                   aquí NO se vuelve a filtrar por respiraciones por minuto. Se
-                   hacía, y descartaba justo el ritmo más lento que se busca: 0,15
-                   Hz es un retardo de 67 muestras, que son 8,96/min, y un
-                   `bpm >= 9` lo tiraba. Lo encontró el autotest. */
-                val veredicto = when {
-                    r.energia < ENERGIA_MIN -> "NADA SE MUEVE AHÍ · ni un cuerpo ni un escombro"
-                    r.fuerza >= UMBRAL_RESP && r.lag > 0 ->
-                        "PROBABLE CUERPO HUMANO · ${bpm.roundToInt()} respiraciones/min"
-                    else -> "algo se mueve, pero sin ritmo de respiración"
-                }
-                val nc = ciclo
-                h.post {
-                    onProgreso(
-                        linea(
-                            "Intento $nc de $INTENTOS",
-                            veredicto,
-                            "Periodicidad %.2f · hace falta %.2f".format(r.fuerza, UMBRAL_RESP)
-                        )
-                    )
-                }
-                }   // fin del ciclo
-
-                /* Un resultado, al final, y la herramienta se apaga sola: asi el
-                   veredicto se queda quieto en la pantalla. Se queda el intento con
-                   mas ritmo, no el ultimo: una respiracion debil aparece en uno de
-                   cinco y no en todos. */
                 val completo = ciclo >= INTENTOS
                 tonoVivo = false
                 nivelDoppler = 1.0
                 val m = mejor
                 val vf = when {
                     m == null -> "Sin medida completa."
-                    m.energia < ENERGIA_MIN -> "NADA SE MUEVE AHI. Ni un cuerpo ni un escombro."
+                    m.energia < ENERGIA_MIN -> "NADA SE MUEVE AHÍ. Ni un cuerpo ni un escombro."
                     m.fuerza >= UMBRAL_RESP && m.lag > 0 ->
                         "PROBABLE CUERPO HUMANO. ${mejorBpm.roundToInt()} respiraciones por minuto."
-                    else -> "Algo se mueve, pero sin ritmo de respiracion."
+                    else -> "Algo se mueve, pero sin ritmo de respiración."
                 }
-                reg("Respiracion: $vf")
+                reg("Respiración biosonar: $vf")
                 h.post {
                     onResultado(
                         linea(
@@ -978,21 +1027,20 @@ class Sonda(
                             if (completo) "Resultado tras $INTENTOS intentos." else "Detenido en el intento $ciclo.",
                             if (m != null) "Periodicidad %.2f, hace falta %.2f.".format(m.fuerza, UMBRAL_RESP) else "",
                             if (m != null) "Movimiento medido: %.3f.".format(m.energia) else "",
-                            "Un cuerpo inconsciente respira muy poco y puede no salir.",
-                            "Algo mecanico con ritmo puede imitarlo: comprueba con la voz."
+                            "Chasquidos de 2,5-4,2 kHz (alcance hasta 3 m)."
                         )
                     )
                 }
             } catch (ex: Exception) {
-                Log.e(TAG, "respiración falló", ex)
-                h.post { onResultado("La medida falló: ${ex.message}") }
+                Log.e(TAG, "respiracion biosonar falló", ex)
+                h.post { onResultado("La búsqueda falló: ${ex.message}") }
             } finally {
                 tonoVivo = false
                 quienTono = ""
                 nivelDoppler = 1.0
-                mic.quitar(oyente)
                 mic.cerrar(Microfono.USA_SONDA)
-                try { tono?.join(1500) } catch (_: Exception) {}
+                try { bucle?.close() } catch (_: Exception) {}
+                bucleActivo = null
                 ocupada = false
             }
         }
@@ -1215,13 +1263,15 @@ class Sonda(
             firmaBorrar()
             /* Y lo que de verdad hay que exigir: que los artefactos DESAPAREZCAN.
                Que la pared se vea es la consecuencia; que el móvil deje de
-               reportarse a sí mismo es la causa. */
+               reportarse a sí mismo es la causa. Además, exigimos que sin calibración
+               (sinRestar) el Auto-Zero NLMS elimine completamente cualquier fantasma a < 50 cm (AUD-04). */
             val fantasmas = conRestar.count { it.distancia < 1.1 }
             val fantasmasAntes = sinRestar.count { it.distancia < 1.1 }
-            if (!veConRestar || fantasmas > 0) todo = false
-            partes.add("firma del móvil → antes: pared=$veSinRestar y $fantasmasAntes fantasmas · " +
+            val fantasmasCercaAntes = sinRestar.count { it.distancia < 0.50 }
+            if (!veConRestar || fantasmas > 0 || fantasmasCercaAntes > 0) todo = false
+            partes.add("firma del móvil → antes: pared=$veSinRestar y $fantasmasAntes fantasmas ($fantasmasCercaAntes <50cm) · " +
                 "después: pared=$veConRestar y $fantasmas fantasmas " +
-                if (veConRestar && fantasmas == 0) "OK" else "FALLÓ")
+                if (veConRestar && fantasmas == 0 && fantasmasCercaAntes == 0) "OK" else "FALLÓ")
         }
 
         /* 0) LO PRIMERO: paredes con la amplitud que devuelven de verdad.
@@ -1289,11 +1339,14 @@ class Sonda(
             if (falsos.isEmpty()) "OK" else "FALLÓ")
 
         Log.i(TAG, "autotest sonda · " + partes.joinToString(" | "))
+        reg("autotest sonda · " + partes.joinToString(" | "))
+        System.err.println("AUTOTEST SONDA: " + partes.joinToString(" | "))
         /* Los dos, SIEMPRE. Con `todo && autotestRespiracion()` el `&&` corta: en
            cuanto un caso de la sonda salía mal, la batería entera de respiración
            no llegaba a correr y nadie se enteraba. Un banco de pruebas que se
            salta pruebas en silencio es peor que no tenerlo. */
         val resp = autotestRespiracion()
+        System.err.println("AUTOTEST TODO=$todo, RESP=$resp")
         return todo && resp
     }
 

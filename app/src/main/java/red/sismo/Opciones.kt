@@ -103,6 +103,13 @@ class Opciones(ctx: Context) {
         get() = p.getLong("op_latido", 0L)
         set(v) = p.edit().putLong("op_latido", v).apply()
 
+    /** El sistema mató el servicio y el watchdog no pudo levantarlo por falta de
+     *  la exención de batería. Se guarda para poder decírselo al usuario: creerse
+     *  vigilado sin estarlo es peor que saber que no lo estás. */
+    var watchdogImpotente: Boolean
+        get() = p.getBoolean("op_watchdog_impotente", false)
+        set(v) = p.edit().putBoolean("op_watchdog_impotente", v).apply()
+
     /** Cuándo se avisó por última vez de que el sistema mató la app. Sin esto, el
      *  aviso salía en cada arranque y se convertía en ruido — y un aviso que se
      *  repite siempre es un aviso que se deja de leer. */
@@ -179,6 +186,35 @@ class Opciones(ctx: Context) {
      *  móvil sin que alguien lo encienda a mano. */
     var envio: Boolean
         get() = leer("op_envio", false); set(v) = poner("op_envio", v)
+
+    /**
+     * Firma acústica del chasis del móvil para la sonda bio-sonar.
+     * Se almacena serializada en Base64 para que la calibración ("Chitón")
+     * sobreviva reinicios del servicio, de la app y del dispositivo.
+     */
+    var sondaFirma: DoubleArray?
+        get() {
+            val s = p.getString("op_sonda_firma", null) ?: return null
+            return try {
+                val bytes = java.util.Base64.getDecoder().decode(s)
+                val buf = java.nio.ByteBuffer.wrap(bytes).asFloatBuffer()
+                val arr = DoubleArray(buf.remaining()) { buf.get().toDouble() }
+                if (arr.isEmpty()) null else arr
+            } catch (_: Exception) { null }
+        }
+        set(v) {
+            if (v == null || v.isEmpty()) {
+                p.edit().remove("op_sonda_firma").apply()
+            } else {
+                try {
+                    val bytes = ByteArray(v.size * 4)
+                    val buf = java.nio.ByteBuffer.wrap(bytes).asFloatBuffer()
+                    for (x in v) buf.put(x.toFloat())
+                    val b64 = java.util.Base64.getEncoder().encodeToString(bytes)
+                    p.edit().putString("op_sonda_firma", b64).apply()
+                } catch (_: Exception) {}
+            }
+        }
 
     companion object {
         /* 0,2 y no 0,5: en reposo, sobre una mesa que se mueve 0,04, un umbral

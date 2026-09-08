@@ -32,6 +32,16 @@ android {
         versionName = "0.1-fase1"
     }
 
+    flavorDimensions += "distribucion"
+    productFlavors {
+        create("libre") {
+            dimension = "distribucion"
+        }
+        create("play") {
+            dimension = "distribucion"
+        }
+    }
+
     signingConfigs {
         if (hayFirma) create("release") {
             storeFile = file(claves.getProperty("storeFile"))
@@ -71,6 +81,10 @@ android {
         // Para que «Acerca de» saque la versión de aquí y no de un literal.
         buildConfig = true
     }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 // Mínimas a propósito: nada de SDK de terceros, nada de pago, nada que ate el
@@ -87,4 +101,6 @@ dependencies {
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
+
+    testImplementation("junit:junit:4.13.2")
 }

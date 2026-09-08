@@ -49,6 +49,31 @@ class FichaLan(
          *  batería o haber salido de la red, y decir que sigue ahí sería mentir. */
         private const val CADUCA_MS = 60000L
         private const val VERSION = 1
+
+        /**
+         * AUD-07: Calcula la ventana rotativa de IPs en la subred /24 local para despertar
+         * chips Wi-Fi en sueño profundo (Samsung A10s) que descartan tramas broadcast.
+         * Devuelve Pair(listaDeIps, nuevoCursor).
+         */
+        fun calcularVentanaSubred(miIp: String?, cursor: Int, ventana: Int = 16): Pair<List<String>, Int> {
+            if (miIp == null || !miIp.matches(Regex("^\\d+\\.\\d+\\.\\d+\\.\\d+$"))) {
+                return Pair(emptyList(), cursor)
+            }
+            val octetos = miIp.split(".")
+            if (octetos.size != 4) return Pair(emptyList(), cursor)
+            val prefijo = "${octetos[0]}.${octetos[1]}.${octetos[2]}."
+            val miHost = octetos[3].toIntOrNull() ?: -1
+            val ips = ArrayList<String>(ventana)
+            val c = if (cursor in 1..254) cursor else 1
+            for (i in 0 until ventana) {
+                val h = ((c - 1 + i) % 254) + 1 // rango cíclico 1..254
+                if (h != miHost) {
+                    ips.add("$prefijo$h")
+                }
+            }
+            val nuevoCursor = ((c - 1 + ventana) % 254) + 1
+            return Pair(ips, nuevoCursor)
+        }
     }
 
     /** Una ficha que ha llegado. Se indexa por IP: es lo único estable que hay en
@@ -220,7 +245,7 @@ class FichaLan(
                                operador, y una difusión que sale por ahí no la
                                recibe nadie de la red local — sin error ninguno. */
                             try { red?.bindSocket(s) } catch (_: Exception) {}
-                            for (dir in difusiones() + conocidos()) {
+                            for (dir in difusiones() + destinosUnicast()) {
                                 try {
                                     s.send(DatagramPacket(bytes, bytes.size, dir, PUERTO))
                                     enviados++
@@ -272,7 +297,7 @@ class FichaLan(
                 DatagramSocket().use { s ->
                     s.broadcast = true
                     try { red?.bindSocket(s) } catch (_: Exception) {}
-                    for (dir in difusiones() + conocidos()) {
+                    for (dir in difusiones() + destinosUnicast()) {
                         try {
                             // tres veces: un datagrama suelto se pierde y no se reintenta
                             repeat(3) { s.send(DatagramPacket(bytes, bytes.size, dir, PUERTO)); Thread.sleep(150) }
@@ -314,18 +339,40 @@ class FichaLan(
         }
         .toString().toByteArray(Charsets.UTF_8)
 
+    @Volatile private var barridoCursor = 1
+
     /**
-     * Y además, a quien ya se ha oído alguna vez, por unicast.
-     *
-     * Medido entre dos móviles: el A10s **no recibe difusiones con la pantalla
-     * apagada** ni con el candado de difusión ni con el de rendimiento cogidos —
-     * el Redmi sí—. Es cosa del firmware de ese Wi-Fi y no se arregla desde la
-     * app. Lo que sí pasa el filtro dormido es un paquete dirigido A ESE MÓVIL,
-     * así que a los que ya han contestado alguna vez se les manda también
-     * directo. No arregla el primer contacto, pero una vez que dos móviles se
-     * han visto, ya no se pierden aunque uno se duerma.
+     * AUD-07: Destinos Unicast para superar el sueño profundo del chip Wi-Fi.
+     * En terminales como Samsung Galaxy A10s, el firmware descarta tramas MAC broadcast
+     * cuando la pantalla está apagada. Enviamos datagramas dirigidos a:
+     * 1. Nodos conocidos (recibidas).
+     * 2. Ventana rotativa de 16 IPs en la subred /24 local para penetrar el filtro de sueño inicial.
      */
-    private fun conocidos(): List<InetAddress> {
+    fun destinosUnicast(): List<InetAddress> {
+        val out = LinkedHashSet<InetAddress>()
+
+        // 1. Conocidos de sesiones previas
+        for (r in recibidas.values) {
+            try { out.add(InetAddress.getByName(r.ip)) } catch (_: Exception) {}
+        }
+
+        /* La caché ARP del kernel (/proc/net/arp) diría quién hay en la red sin
+           esperar a que hable, pero Android se la cerró a las apps en la versión
+           10 y devuelve «Permission denied» —comprobado en Android 15—. No hay
+           atajo: a los que aún no se han oído se llega por el barrido. */
+
+        // 2. Ventana rotativa en la subred /24 local
+        val (ipsBarrido, nuevoCursor) = calcularVentanaSubred(ipLocal(), barridoCursor, 16)
+        barridoCursor = nuevoCursor
+        for (ipStr in ipsBarrido) {
+            try { out.add(InetAddress.getByName(ipStr)) } catch (_: Exception) {}
+        }
+
+        return out.toList()
+    }
+
+    /** Mantenido por retrocompatibilidad: devuelve las IPs de nodos conocidos. */
+    fun conocidos(): List<InetAddress> {
         val out = ArrayList<InetAddress>()
         for (r in recibidas.values) {
             try { out.add(InetAddress.getByName(r.ip)) } catch (_: Exception) {}

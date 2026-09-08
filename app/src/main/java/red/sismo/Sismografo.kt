@@ -58,8 +58,8 @@ class Sismografo(
     private val alDisparar: (String) -> Unit
 ) : SensorEventListener {
 
-    private val sm = ctx.getSystemService(Context.SENSOR_SERVICE) as SensorManager
-    private val acel: Sensor? = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+    private val sm = ctx.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
+    private val acel: Sensor? = sm?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
 
     /** El umbral que se aplica AHORA, en m/s² de aceleración HORIZONTAL. Lo
      *  elige el servicio según la postura: con el móvil encima manda el
@@ -78,6 +78,11 @@ class Sismografo(
      * compartir número.
      */
     @Volatile var calmaMedida = 0.0; private set
+
+    /** Relación STA/LTA (Short-Term Average / Long-Term Average): contraste
+     *  entre la energía instantánea y el piso de ruido ambiente. */
+    @Volatile var ltaH = 0.02; private set
+    @Volatile var ratioStaLta = 1.0; private set
 
     /**
      * Cuánto ha girado el móvil en los últimos segundos, en grados.
@@ -102,9 +107,16 @@ class Sismografo(
      * giro lento cuenta igual que uno brusco.
      */
     @Volatile var giroGrados = 0.0; private set
-    private val calma = DoubleArray(256)
-    private var ci = 0
-    private var cn = 0
+
+    /** Frente de onda P compresional vertical previa confirmada (AUD-05). */
+    @Volatile var ondaP = false; private set
+    @Volatile var tUltimaOndaP = 0L; private set
+    @Volatile var kurtosisP = 3.0; private set
+
+    /** ¿Hay un frente de onda P primario activo en los últimos segundos? */
+    val hayOndaP: Boolean
+        get() = ondaP && (System.currentTimeMillis() - tUltimaOndaP < ONDA_P_VENTANA_MS)
+
 
     /* La dirección de la gravedad, filtrada, y las de los últimos 15 s. El
        filtro es lento a propósito: lo que interesa es hacia dónde apunta el
@@ -157,6 +169,10 @@ class Sismografo(
        Al terremoto no lo toca y al ruido lo parte por la mitad: la distancia
        entre un MMI V y una lavadora pasa de 1,8 veces a 4,2. */
     private val paLx = Banda(); private val paLy = Banda(); private val paLz = Banda()
+    private val paPz = Banda(ONDA_P_BAJA, ONDA_P_ALTA)
+    private val notchHx = Notch(); private val notchHy = Notch(); private val notchHz = Notch()
+    private val pRing = DoubleArray(40)
+    private var pRi = 0; private var pRn = 0
 
     /** Cada cuánto llegan las muestras, medido — no supuesto. La tasa la decide
      *  el móvil y los coeficientes del filtro dependen de ella. */
@@ -171,7 +187,10 @@ class Sismografo(
      * con los coeficientes de 50 Hz corriendo a 100 no filtra la banda que dice
      * filtrar, y eso es otra vez un fallo mudo.
      */
-    private class Banda {
+    internal class Banda(
+        private val fBaja: Double = BANDA_BAJA,
+        private val fAlta: Double = BANDA_ALTA
+    ) {
         private var b0h = 0.0; private var b1h = 0.0; private var b2h = 0.0
         private var a1h = 0.0; private var a2h = 0.0
         private var b0l = 0.0; private var b1l = 0.0; private var b2l = 0.0
@@ -184,14 +203,14 @@ class Sismografo(
             if (abs(sr - srPuesto) < srPuesto * 0.05) return
             srPuesto = sr
             val q = 0.70710678
-            // paso-alto en BANDA_BAJA
-            var w = 2.0 * PI * BANDA_BAJA / sr
+            // paso-alto en fBaja
+            var w = 2.0 * PI * (fBaja.coerceAtMost(sr * 0.45)) / sr
             var c = cos(w); var s = sin(w); var al = s / (2 * q)
             var a0 = 1 + al
             b0h = ((1 + c) / 2) / a0; b1h = (-(1 + c)) / a0; b2h = ((1 + c) / 2) / a0
             a1h = (-2 * c) / a0; a2h = (1 - al) / a0
-            // paso-bajo en BANDA_ALTA
-            w = 2.0 * PI * BANDA_ALTA / sr
+            // paso-bajo en fAlta
+            w = 2.0 * PI * (fAlta.coerceAtMost(sr * 0.45)) / sr
             c = cos(w); s = sin(w); al = s / (2 * q)
             a0 = 1 + al
             b0l = ((1 - c) / 2) / a0; b1l = (1 - c) / a0; b2l = ((1 - c) / 2) / a0
@@ -209,6 +228,49 @@ class Sismografo(
         fun reiniciar() {
             xh1 = 0.0; xh2 = 0.0; yh1 = 0.0; yh2 = 0.0
             xl1 = 0.0; xl2 = 0.0; yl1 = 0.0; yl2 = 0.0
+        }
+    }
+
+    /**
+     * Filtro Notch IIR biquad de 2.º orden (Audio EQ Cookbook).
+     * Atenúa la cadencia de marcha humana en bolsillo (~2 Hz) más de 18 dB
+     * sin reducir la respuesta a ondas sísmicas a <1.4 Hz o >2.8 Hz.
+     */
+    internal class Notch(
+        private val f0: Double = NOTCH_MARCHA_F0,
+        private val q: Double = NOTCH_MARCHA_Q
+    ) {
+        private var b0 = 1.0; private var b1 = 0.0; private var b2 = 1.0
+        private var a1 = 0.0; private var a2 = 0.0
+        private var x1 = 0.0; private var x2 = 0.0
+        private var y1 = 0.0; private var y2 = 0.0
+        private var srPuesto = 0.0
+
+        fun ajustar(sr: Double) {
+            if (abs(sr - srPuesto) < srPuesto * 0.05) return
+            srPuesto = sr
+            val w0 = 2.0 * PI * (f0.coerceAtMost(sr * 0.45)) / sr
+            val c = cos(w0)
+            val s = sin(w0)
+            val alpha = s / (2.0 * q)
+            val a0 = 1.0 + alpha
+            b0 = 1.0 / a0
+            b1 = (-2.0 * c) / a0
+            b2 = 1.0 / a0
+            a1 = (-2.0 * c) / a0
+            a2 = (1.0 - alpha) / a0
+        }
+
+        fun filtrar(x: Double): Double {
+            val y = b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2
+            x2 = x1; x1 = x
+            y2 = y1; y1 = y
+            return y
+        }
+
+        fun reiniciar() {
+            x1 = 0.0; x2 = 0.0
+            y1 = 0.0; y2 = 0.0
         }
     }
 
@@ -280,7 +342,7 @@ class Sismografo(
      * Ahora los dos preguntan aquí, y endurecer esto los endurece a los dos.
      */
     private val sueloDeFiar: Boolean
-        get() = !hayMano && (umbral > umbralFinoMax || quietoAntes >= QUIETO_ANTES_MS)
+        get() = !hayMano && (umbral > umbralFinoMax || (quietoAntes >= QUIETO_ANTES_MS && ratioStaLta >= 1.8))
 
     /**
      * El umbral que se aplica de verdad: el elegido, o el suelo de ruido de esta
@@ -454,6 +516,24 @@ class Sismografo(
         private const val BANDA_BAJA = 0.5
         private const val BANDA_ALTA = 8.0
 
+        /** Rango de frecuencias de la Onda P compresional vertical (9-18 Hz, AUD-05). */
+        const val ONDA_P_BAJA = 9.0
+        const val ONDA_P_ALTA = 18.0
+
+        /** Umbral de Kurtosis para detectar frente impulsivo de Onda P.
+         *  El ruido gaussiano estacionario tiene Kurtosis ~3.0; un frente sísmico supera 5.2. */
+        const val KURTOSIS_P_MIN = 5.2
+
+        /** Varianza mínima (amplitud RMS > 0.035 m/s²) en el canal P vertical. */
+        const val VAR_P_MIN = 0.001225
+
+        /** Ventana temporal de validez de la Onda P (8 segundos antes de la Onda S). */
+        const val ONDA_P_VENTANA_MS = 8000L
+
+        /** Parámetros del filtro Notch IIR contra marcha humana en bolsillo (AUD-06). */
+        const val NOTCH_MARCHA_F0 = 2.0
+        const val NOTCH_MARCHA_Q = 3.5
+
         private const val VECES_CALMA = 4.0
 
         /** Por encima de esto ya no es «el sitio», es alguien moviendo el móvil:
@@ -475,11 +555,11 @@ class Sismografo(
 
     fun arrancar() {
         reiniciar()
-        acel?.let { sm.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
+        acel?.let { sm?.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
     }
 
     fun parar() {
-        sm.unregisterListener(this)
+        sm?.unregisterListener(this)
     }
 
     /** El estado acumulado se pone a cero al armar y al detener: si no, el
@@ -487,7 +567,11 @@ class Sismografo(
     fun reiniciar() {
         lta = 9.81; sta = 0.0; caidaLibre = 0
         ai = 0; an = 0; cicloTrabajo = 0.0
+        ondaP = false; tUltimaOndaP = 0L; kurtosisP = 3.0
+        pRi = 0; pRn = 0; pRing.fill(0.0)
         paLx.reiniciar(); paLy.reiniciar(); paLz.reiniciar()
+        paPz.reiniciar()
+        notchHx.reiniciar(); notchHy.reiniciar(); notchHz.reiniciar()
         historia.fill(0f)
         ultimoMovimiento = System.currentTimeMillis()
     }
@@ -592,6 +676,8 @@ class Sismografo(
             qi = (qi + 1) % quietoRing.size
         }
         paLx.ajustar(srMedido); paLy.ajustar(srMedido); paLz.ajustar(srMedido)
+        paPz.ajustar(srMedido)
+        notchHx.ajustar(srMedido); notchHy.ajustar(srMedido); notchHz.ajustar(srMedido)
 
         val dev = if (gn > 1e-3) {
             val ux = gx / gn; val uy = gy / gn; val uz = gz / gn
@@ -603,7 +689,43 @@ class Sismografo(
             val ly = paLy.filtrar(ay - gy)
             val lz = paLz.filtrar(az - gz)
             val vert = lx * ux + ly * uy + lz * uz          // lo que va con la gravedad
-            hypot(hypot(lx - vert * ux, ly - vert * uy), lz - vert * uz)
+            var hx = lx - vert * ux
+            var hy = ly - vert * uy
+            var hz = lz - vert * uz
+
+            // AUD-06: Filtro Notch a 2.0 Hz contra impactos de zancada humana en bolsillo
+            if (umbral > umbralFinoMax) {
+                hx = notchHx.filtrar(hx)
+                hy = notchHy.filtrar(hy)
+                hz = notchHz.filtrar(hz)
+            }
+
+            // AUD-05: Canal vertical de compresión Onda P (9.0 - 18.0 Hz)
+            val linVert = (ax - gx) * ux + (ay - gy) * uy + (az - gz) * uz
+            val vertP = paPz.filtrar(linVert)
+            pRing[pRi] = vertP
+            pRi = (pRi + 1) % pRing.size
+            if (pRn < pRing.size) pRn++
+            if (pRn >= 30) {
+                var sum = 0.0
+                for (k in 0 until pRn) sum += pRing[k]
+                val mean = sum / pRn
+                var m2 = 0.0; var m4 = 0.0
+                for (k in 0 until pRn) {
+                    val d = pRing[k] - mean
+                    val d2 = d * d
+                    m2 += d2; m4 += d2 * d2
+                }
+                m2 /= pRn; m4 /= pRn
+                val kurt = if (m2 > 1e-8) m4 / (m2 * m2) else 3.0
+                kurtosisP = kurt
+                if (kurt > KURTOSIS_P_MIN && m2 > VAR_P_MIN && !hayMano) {
+                    tUltimaOndaP = ahoraNs
+                    ondaP = true
+                }
+            }
+
+            hypot(hypot(hx, hy), hz)
         } else 0.0
 
         /* La media lenta del módulo se sigue llevando, pero ya solo para saber si
@@ -669,7 +791,8 @@ class Sismografo(
            tipo de prueba, listón más bajo. Sigue sirviendo para lo que existe
            —que la malla se crea una alerta ajena a la primera— porque un
            terremoto de verdad llega a esto en menos de un segundo. */
-        if (sueloDeFiar && sta > u * 0.6 && cicloTrabajo >= CICLO_MIN * 0.5) {
+        val cicloTemblorReq = if (hayOndaP) CICLO_MIN * 0.25 else CICLO_MIN * 0.5
+        if (sueloDeFiar && sta > u * 0.6 && cicloTrabajo >= cicloTemblorReq) {
             ultimoTemblor = System.currentTimeMillis()
         }
         historia[hi] = sta.toFloat(); hi = (hi + 1) % historia.size
@@ -695,14 +818,19 @@ class Sismografo(
            El listón de referencia es el CONFIGURADO, nunca `umbralReal`: si se
            comparase contra el adaptativo, calma y umbral se empujarían el uno al
            otro hacia arriba hasta dejar el detector sordo. */
-        if (!hayMano && dev < CALMA_TECHO && sta < umbral * 0.5) {
-            calma[ci] = sta; ci = (ci + 1) % calma.size
-            if (cn < calma.size) cn++
-            if (cn >= 64 && ci % 32 == 0) {
-                val v = calma.copyOf(cn).sortedArray()
-                calmaMedida = v[(v.size * 0.98).toInt().coerceAtMost(v.size - 1)]
-            }
+        /* STA/LTA sismológico recursivo:
+           LTA estima el ruido de fondo continuo de la mesa (~15 s).
+           Se congela si hay sacudida transitoria (sta > ltaH * 2.0) o si hay mano,
+           para que un sismo o un empujón no contaminen la calma. Sin quicksort ni
+           asignaciones de memoria en el bucle del sensor. */
+        val congelarLta = hayMano || sta > ltaH * 2.0 || sta > umbral * 0.4
+        if (!congelarLta && dev < CALMA_TECHO) {
+            val alphaLta = (1.0 / (maxOf(20.0, srMedido) * 15.0)).coerceIn(0.0005, 0.005)
+            ltaH += (dev - ltaH) * alphaLta
+            calmaMedida = ltaH * 1.5
         }
+        val ltaPiso = maxOf(ltaH, 0.015)
+        ratioStaLta = sta / ltaPiso
 
         // Caída libre seguida de impacto: el móvil se soltó de la mano y golpeó.
         // Correr no lo activa: nunca da 100 ms seguidos de gravedad casi nula.
@@ -748,8 +876,11 @@ class Sismografo(
         cicloTrabajo = if (total > 0) altos.toDouble() / total else 0.0
 
         /* Media ventana de muestras como mínimo: recién arrancado el anillo está
-           casi vacío y tres muestras altas de tres darían un ciclo de 1,00. */
-        if (armado && total > 20 && cicloTrabajo >= CICLO_MIN) {
+           casi vacío y tres muestras altas de tres darían un ciclo de 1,00.
+           Con Onda P previa confirmada (AUD-05), se reduce a 10 muestras y 50% de ciclo. */
+        val minMuestras = if (hayOndaP) 10 else 20
+        val cicloReq = if (hayOndaP) CICLO_MIN * 0.5 else CICLO_MIN
+        if (armado && total > minMuestras && cicloTrabajo >= cicloReq) {
             /* Y la última puerta, que es la que faltaba: si hay una mano, esto no
                es el suelo. Va AQUÍ y no en el servicio a propósito — el servicio
                revisa la postura una vez por segundo, y levantar un móvil y que
@@ -774,10 +905,10 @@ class Sismografo(
             }
             if (cicloTrabajo >= CICLO_FUERTE) ultimaFuerte = System.currentTimeMillis()
             an = 0; ai = 0                       // el anillo se vacía tras disparar
-            Log.i("SismoRed", "sismografo %.2f m/s2 horizontal · ciclo %.2f · umbral real %.2f (calma %.3f)"
-                .format(sta, cicloTrabajo, u, calmaMedida))
-            alDisparar("sismógrafo %.2f m/s² sobre %.2f · %d%% de dos segundos"
-                .format(sta, u, (cicloTrabajo * 100).toInt()))
+            Log.i("SismoRed", "sismografo %.2f m/s2 horizontal · STA/LTA %.1fx · ciclo %.2f (req %.2f) · P-wave %b · umbral real %.2f (calma %.3f)"
+                .format(sta, ratioStaLta, cicloTrabajo, cicloReq, hayOndaP, u, calmaMedida))
+            alDisparar("sismógrafo %.2f m/s² (STA/LTA %.1fx) sobre %.2f · %d%% de dos segundos%s"
+                .format(sta, ratioStaLta, u, (cicloTrabajo * 100).toInt(), if (hayOndaP) " [Onda P previa]" else ""))
         }
     }
 
@@ -794,18 +925,32 @@ class Sismografo(
        corran en el propio móvil dentro de COMPROBAR TODO. Tardan milisegundos. */
 
     /** Un caso: 12 s de acelerómetro a 50 Hz, con el móvil tumbado boca arriba. */
-    private fun escena(
+    internal fun escena(
         semilla: Long,
         horizontal: Double = 0.0, vertical: Double = 0.0,
         frecs: DoubleArray = doubleArrayOf(0.7, 1.3, 2.1, 3.4, 4.6),
         desde: Double = 3.0, dura: Double = 8.0,
         golpes: DoubleArray = DoubleArray(0), golpeAmp: Double = 0.0,
-        tiron: Double = 0.0
+        tiron: Double = 0.0,
+        ondaPAmp: Double = 0.0, ondaPT: Double = 1.5
     ): Array<DoubleArray> {
         val sr = 50.0
         val n = (12.0 * sr).toInt()
         val rnd = java.util.Random(semilla)
         val out = Array(n) { doubleArrayOf(0.0, 0.0, 9.81) }
+        // Frente de Onda P previa en eje vertical (9-18 Hz)
+        if (ondaPAmp > 0.0) {
+            val i0 = (ondaPT * sr).toInt()
+            val largo = (0.6 * sr).toInt()
+            for (k in 0 until largo) {
+                val j = i0 + k
+                if (j < n) {
+                    val t = k / sr
+                    val env = kotlin.math.sin(PI * k / largo)
+                    out[j][2] += ondaPAmp * env * kotlin.math.sin(2.0 * PI * 13.0 * t)
+                }
+            }
+        }
         if (horizontal > 0.0 || vertical > 0.0) {
             val n0 = (desde * sr).toInt()
             val nd = (dura * sr).toInt()
@@ -836,9 +981,7 @@ class Sismografo(
         }
         /* Levantarlo: el tirón vertical y, sobre todo, la INCLINACIÓN. Nadie coge
            un móvil de una mesa sin girarlo, y a partir de ahí la gravedad le
-           entra por otra cara. Modelarlo sin inclinar era modelar un ascensor,
-           no una mano — y fue lo que hizo que la primera versión de este autotest
-           diera por bueno un caso que en el móvil real fallaba. */
+           entra por otra cara. */
         if (tiron > 0.0) {
             val i0 = (4.0 * sr).toInt(); val largo = (0.18 * sr).toInt()
             for (k in 0 until largo) {
@@ -865,46 +1008,105 @@ class Sismografo(
         correrEscenaDetalle(datos, umbralPrueba).first
 
     /** @return (dispara, se-habría-levantado-la-bandera-de-tiembla) */
-    private fun correrEscenaDetalle(datos: Array<DoubleArray>, umbralPrueba: Double): Pair<Boolean, Boolean> {
+    internal fun correrEscenaDetalle(datos: Array<DoubleArray>, umbralPrueba: Double): Pair<Boolean, Boolean> {
+        val paLx = Banda(); val paLy = Banda(); val paLz = Banda()
+        val notchHx = Notch(); val notchHy = Notch(); val notchHz = Notch()
+        val paPz = Banda(ONDA_P_BAJA, ONDA_P_ALTA)
+        val sr = 50.0
+        paLx.ajustar(sr); paLy.ajustar(sr); paLz.ajustar(sr)
+        notchHx.ajustar(sr); notchHy.ajustar(sr); notchHz.ajustar(sr)
+        paPz.ajustar(sr)
+
+        val u0x = datos[0][0]; val u0y = datos[0][1]; val u0z = datos[0][2]
+        val g0 = sqrt(u0x * u0x + u0y * u0y + u0z * u0z)
         var lgx = datos[0][0]; var lgy = datos[0][1]; var lgz = datos[0][2]
         var rfx = lgx; var rfy = lgy; var rfz = lgz
         var s = 0.0
         val altos = BooleanArray(datos.size)
         val mano = BooleanArray(datos.size)
         var temblo = false
+        val pRing = DoubleArray(40)
+        var pRi = 0; var pRn = 0
+        var ondaP = false
+
         for (i in datos.indices) {
             val x = datos[i][0]; val y = datos[i][1]; val z = datos[i][2]
             lgx += (x - lgx) * 0.02; lgy += (y - lgy) * 0.02; lgz += (z - lgz) * 0.02
             rfx += (x - rfx) * 0.25; rfy += (y - rfy) * 0.25; rfz += (z - rfz) * 0.25
             val g = sqrt(lgx * lgx + lgy * lgy + lgz * lgz)
             val f = sqrt(rfx * rfx + rfy * rfy + rfz * rfz)
+            var esMano = false
             if (g > 1e-3 && f > 1e-3) {
                 val c = ((lgx * rfx + lgy * rfy + lgz * rfz) / (g * f)).coerceIn(-1.0, 1.0)
-                mano[i] = Math.toDegrees(kotlin.math.acos(c)) > MANO_GRADOS
+                val angRapido = Math.toDegrees(kotlin.math.acos(c))
+                val c0 = if (g0 > 1e-3) ((lgx * u0x + lgy * u0y + lgz * u0z) / (g * g0)).coerceIn(-1.0, 1.0) else 1.0
+                val angLento = Math.toDegrees(kotlin.math.acos(c0))
+                esMano = angRapido > MANO_GRADOS || angLento > MANO_GRADOS
+                mano[i] = esMano
             }
             val h = if (g > 1e-3) {
                 val ux = lgx / g; val uy = lgy / g; val uz = lgz / g
                 val lx = x - lgx; val ly = y - lgy; val lz = z - lgz
                 val v = lx * ux + ly * uy + lz * uz
-                hypot(hypot(lx - v * ux, ly - v * uy), lz - v * uz)
+                var hx = lx - v * ux; var hy = ly - v * uy; var hz = lz - v * uz
+                if (umbralPrueba > umbralFinoMax) {
+                    hx = notchHx.filtrar(hx)
+                    hy = notchHy.filtrar(hy)
+                    hz = notchHz.filtrar(hz)
+                }
+
+                // Canal P
+                val linVert = (x - lgx) * ux + (y - lgy) * uy + (z - lgz) * uz
+                val vertP = paPz.filtrar(linVert)
+                pRing[pRi] = vertP
+                pRi = (pRi + 1) % pRing.size
+                if (pRn < pRing.size) pRn++
+                if (pRn >= 30) {
+                    var sum = 0.0
+                    for (k in 0 until pRn) sum += pRing[k]
+                    val mean = sum / pRn
+                    var m2 = 0.0; var m4 = 0.0
+                    for (k in 0 until pRn) {
+                        val d = pRing[k] - mean
+                        val d2 = d * d
+                        m2 += d2; m4 += d2 * d2
+                    }
+                    m2 /= pRn; m4 /= pRn
+                    val kurt = if (m2 > 1e-8) m4 / (m2 * m2) else 3.0
+                    if (kurt > KURTOSIS_P_MIN && m2 > VAR_P_MIN && !esMano) {
+                        ondaP = true
+                    }
+                }
+
+                hypot(hypot(hx, hy), hz)
             } else 0.0
             val hc = min(h, umbralPrueba * 3)
             s += (hc - s) * (if (hc > s) 0.25 else 0.5)
             altos[i] = s > umbralPrueba
-            /* La bandera blanda, con la MISMA puerta que el disparo. Sin ella
-               entraba en la cascada como `sacudida` y bastaba un ruido por el
-               micrófono para tener una alarma con el móvil en la mano. */
-            var conMano0 = false
-            for (k in 0 until minOf(250, i)) if (mano[i - k]) { conMano0 = true; break }
-            if (!conMano0 && s > umbralPrueba * 0.5) temblo = true
+
+            // Retroactividad: cuando aparece una mano, invalida lo que se creyó un temblor u onda P
+            if (esMano) {
+                ondaP = false
+                temblo = false
+            } else {
+                var conMano0 = false
+                for (k in 0 until minOf(250, i)) if (mano[i - k]) { conMano0 = true; break }
+                if (conMano0) {
+                    temblo = false
+                } else {
+                    val umbralTemblor = if (ondaP) umbralPrueba * 0.4 else umbralPrueba * 0.5
+                    if (s > umbralTemblor) temblo = true
+                }
+            }
         }
-        // ventana de 2 s = 100 muestras a 50 Hz; la mano vale 5 s = 250 muestras
+
         val w = 100
         val wm = 250
+        val cicloMinReq = if (ondaP) CICLO_MIN * 0.5 else CICLO_MIN
         for (i in w until datos.size) {
             var c = 0
             for (k in 0 until w) if (altos[i - k]) c++
-            if (c.toDouble() / w < CICLO_MIN) continue
+            if (c.toDouble() / w < cicloMinReq) continue
             var conMano = false
             for (k in 0 until minOf(wm, i)) if (mano[i - k]) { conMano = true; break }
             if (!conMano) return true to temblo
@@ -914,9 +1116,6 @@ class Sismografo(
 
     /**
      * Los escenarios de una mesa real contra un terremoto de verdad.
-     *
-     * Se corre sobre una instancia aparte o con el sensor parado: no toca el
-     * estado del detector vivo porque trabaja con sus propias variables.
      */
     fun autotest(): Pair<Boolean, String> {
         val u = 0.25
@@ -927,9 +1126,6 @@ class Sismografo(
                 escena(19, golpes = doubleArrayOf(4.0, 4.5, 5.1, 5.6), golpeAmp = 3.0)),
             Triple("levantarlo de golpe", false, escena(5, tiron = 3.0)),
             Triple("cogerlo despacio para mirarlo", false, escena(41, tiron = 1.2)),
-            /* Y el que de verdad hacía falta: con el móvil ya en la mano,
-               moviéndose como se mueve una mano. Sin la puerta de la mano
-               este dispara — se comprobó quitándola. */
             Triple("mirándolo con la mano en movimiento", false,
                 escena(47, tiron = 2.0, horizontal = 0.9, vertical = 0.5,
                     frecs = doubleArrayOf(1.8, 3.2, 5.1), desde = 5.0, dura = 6.0)),
@@ -939,26 +1135,25 @@ class Sismografo(
             Triple("camión pasando", false,
                 escena(17, horizontal = 0.15, vertical = 0.12,
                     frecs = doubleArrayOf(2.2, 3.1, 4.4), dura = 6.0)),
+            /* AUD-06: Marcha humana rítmica en bolsillo (2.0 Hz) atenuada por filtro Notch */
+            Triple("marcha humana en bolsillo a 2.0 Hz", false,
+                escena(53, horizontal = 2.0, vertical = 0.8, frecs = doubleArrayOf(2.0), dura = 8.0)),
             Triple("TERREMOTO MMI V", true, escena(11, horizontal = 0.7, vertical = 0.42)),
+            /* AUD-05: Terremoto bi-fase con frente de Onda P vertical 13 Hz previo a Onda S */
+            Triple("TERREMOTO Bi-Fase P/S (pre-aviso)", true,
+                escena(29, horizontal = 0.65, vertical = 0.35, ondaPAmp = 0.14, ondaPT = 1.6)),
             Triple("TERREMOTO MMI VI", true, escena(23, horizontal = 1.3, vertical = 0.78)),
             Triple("TERREMOTO MMI VII", true, escena(31, horizontal = 2.5, vertical = 1.5))
         )
         val partes = ArrayList<String>()
         var todo = true
         for ((nombre, debe, datos) in casos) {
-            val dispara = try { correrEscena(datos, u) } catch (e: Exception) { false }
+            val uCaso = if (nombre.contains("bolsillo")) 6.0 else u
+            val dispara = try { correrEscena(datos, uCaso) } catch (e: Exception) { false }
             val ok = dispara == debe
             if (!ok) todo = false
             partes.add("$nombre → ${if (dispara) "dispara" else "no"}" + if (ok) " OK" else " FALLÓ")
         }
-        /* Y la regresión del fallo de campo, que no era el disparo sino la
-           bandera blanda: con el móvil en la mano, `ultimoTemblor` se levantaba
-           igual, entraba en la cascada como `sacudida`, y con un ruido cualquiera
-           por el micrófono salía «terremoto confirmado» y acababa en BALIZA.
-
-           Se comprueba las dos direcciones: con mano no puede levantarse, y en
-           un terremoto de verdad tiene que levantarse — que si no, la malla
-           perdería el atajo que le deja creerse una alerta ajena a la primera. */
         val (_, tembloConMano) = correrEscenaDetalle(
             escena(47, tiron = 2.0, horizontal = 0.9, vertical = 0.5,
                 frecs = doubleArrayOf(1.8, 3.2, 5.1), desde = 5.0, dura = 6.0), u)

@@ -116,6 +116,8 @@ object Cascada {
          * ese nivel el móvil va solo, y por debajo pide una segunda opinión.
          */
         val sacudidaFuerte: Boolean = false,
+        /** Frente de onda P primaria vertical detectado previamente (AUD-05). */
+        val ondaP: Boolean = false,
         /** El micrófono ha oído un estruendo. */
         val estruendo: Boolean = false,
         /** Otro móvil de la malla dice lo mismo. Es la corroboración que a Google
@@ -246,6 +248,7 @@ object Cascada {
         val creible = when {
             p.preguntado || p.contestado -> true
             p.sacudidaFuerte -> true
+            p.ondaP && p.sacudida -> true
             else -> opinionAjena
         }
         if (!creible && p.regimen == Postura.Regimen.EN_REPOSO)
@@ -469,7 +472,11 @@ object Cascada {
                pusiera en verde, es que `alertaExterna` se habría quedado dada por
                buena para todo el mundo. */
             Triple("sacudida con el móvil encima y sin nada más", Accion.NADA,
-                Pruebas(regimen = Regimen.ENCIMA, sacudida = true))
+                Pruebas(regimen = Regimen.ENCIMA, sacudida = true)),
+            /* Sismógrafo Bi-Fase P/S (AUD-05): Onda P compresional vertical previa
+               seguida de sacudida transversal S confirma el evento aún en movimiento. */
+            Triple("sacudida con onda P previa bi-fase confirmada", Accion.PREGUNTAR,
+                Pruebas(regimen = Regimen.ENCIMA, sacudida = true, ondaP = true))
         )
         val partes = ArrayList<String>()
         var todo = true

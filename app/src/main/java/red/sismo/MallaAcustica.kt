@@ -109,7 +109,50 @@ class MallaAcustica(
          *  sacudida después del aviso, con margen de sobra. */
         const val ALERTA_VALE_MS = 300_000L
 
-        val TONOS = HOP_TONE + doubleArrayOf(LLAMADA, SILENCIO, ALERTA)
+        /* AUD-03: Tonos robustos sub-17.5 kHz para hardware de gama baja (Samsung Galaxy A10s).
+           Los altavoces miniatura de smartphones económicos sufren una caída drástica de respuesta
+           en frecuencia (25 a 40 dB de atenuación) a 18.4 - 18.8 kHz.
+           Trasladamos el silencio y la llamada a frecuencias con excelente respuesta acústica
+           (15.6 kHz y 15.2 kHz) manteniendo compatibilidad con los tonos legacy. */
+        const val SILENCIO_ROBUSTO = 15600.0
+        const val CODIGO_SILENCIO_ROBUSTO = 8
+
+        const val LLAMADA_ROBUSTA = 15200.0
+        const val CODIGO_LLAMADA_ROBUSTA = 9
+
+        val TONOS = HOP_TONE + doubleArrayOf(
+            LLAMADA, SILENCIO, ALERTA, SILENCIO_ROBUSTO, LLAMADA_ROBUSTA
+        )
+
+        /**
+         * AUD-03: Síntesis de pulso Chirp CSS (Chirp Spread Spectrum) de penetración en escombros.
+         * Realiza una modulación angular lineal de f0 a f1 (2.2 kHz a 3.2 kHz por defecto)
+         * para difracción y propagación a través de huecos en derrumbes sin desvanecimiento multicamino.
+         */
+        fun sintetizarChirp(
+            sr: Int = 48000,
+            duracionS: Double = 0.20,
+            f0: Double = 2200.0,
+            f1: Double = 3200.0,
+            amplitud: Double = 0.95
+        ): ShortArray {
+            val n = (sr * duracionS).toInt()
+            val out = ShortArray(n)
+            val rampa = (0.005 * sr).toInt()
+            val k = (f1 - f0) / (2.0 * duracionS)
+            for (i in 0 until n) {
+                val t = i.toDouble() / sr
+                val env = when {
+                    i < rampa -> i.toDouble() / rampa
+                    i > n - rampa -> (n - i).toDouble() / rampa
+                    else -> 1.0
+                }
+                val fase = 2.0 * PI * (f0 * t + k * t * t)
+                val s = sin(fase) * amplitud * env
+                out[i] = (s * Short.MAX_VALUE).toInt().toShort()
+            }
+            return out
+        }
 
         private const val BURST_ON = 0.25       // s de tono
         private const val BURST_OFF = 0.15      // s de silencio
@@ -282,7 +325,7 @@ class MallaAcustica(
         var f = 14000.0
         while (f <= 19000.0) {
             var cerca = abs(f - MARK) < 250
-            for (t in HOP_TONE) if (abs(f - t) < 250) cerca = true
+            for (t in TONOS) if (abs(f - t) < 250) cerca = true
             if (!cerca) fuera.add(f)
             f += 250.0
         }
@@ -402,7 +445,14 @@ class MallaAcustica(
            —el autotest los inyecta de dos en dos— y subirlo dejó la malla sorda
            en los cuatro saltos. La protección contra el ruido no puede venir de
            aquí. */
-        if (confirma >= 2) { confirma = 0; return mejor }
+        if (confirma >= 2) {
+            confirma = 0
+            return when (mejor) {
+                CODIGO_SILENCIO_ROBUSTO -> CODIGO_SILENCIO
+                CODIGO_LLAMADA_ROBUSTA -> CODIGO_LLAMADA
+                else -> mejor
+            }
+        }
         return 0
     }
 
@@ -716,10 +766,22 @@ class MallaAcustica(
         thread(name = "malla-tx", isDaemon = true) {
             try {
                 val pcm = ShortArray(total)
-                val fHop = TONOS[h0 - 1]
+                /* Silencio y llamada se emiten en dos frecuencias: la robusta, que
+                   sale con fuerza en altavoces baratos, y la de siempre, que es la
+                   única que oye un móvil que aún no se ha actualizado. Sumarlas no
+                   cabe —dos tonos ya dan 0,90 de amplitud y un tercero recorta—,
+                   así que se alternan por ráfaga. Cada ráfaga dura 250 ms, unos
+                   seis marcos, y al decodificador le bastan dos seguidos. */
+                val fRobusto = when (h0) {
+                    CODIGO_SILENCIO -> SILENCIO_ROBUSTO
+                    CODIGO_LLAMADA -> LLAMADA_ROBUSTA
+                    else -> TONOS[h0 - 1]
+                }
+                val fLegado = TONOS[h0 - 1]
                 val rampa = (0.008 * sr).toInt()          // 8 ms; un corte seco se
                                                           // derrama por toda la banda
                 for (b in 0 until BURST_N) {
+                    val fHop = if (b % 2 == 0) fRobusto else fLegado
                     val base = b * (nOn + nOff)
                     for (i in 0 until nOn) {
                         val t = i.toDouble() / sr
@@ -787,7 +849,12 @@ class MallaAcustica(
         decodificar(x)                 // el decodificador exige dos marcos
         val got = decodificar(x)
         confirma = 0; confirmaHop = 0   // que la escucha real empiece limpia
-        val ok = got == h0
+        val expected = when (h0) {
+            CODIGO_SILENCIO_ROBUSTO -> CODIGO_SILENCIO
+            CODIGO_LLAMADA_ROBUSTA -> CODIGO_LLAMADA
+            else -> h0
+        }
+        val ok = got == expected
         // solo al registro tecnico: al usuario se le da una frase entera desde el servicio
         Log.i(TAG, if (ok) "autotest malla OK · salto $h0 -> $got" else "autotest malla FALLA · salto $h0 -> $got")
         return ok
