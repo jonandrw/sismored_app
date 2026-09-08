@@ -44,7 +44,7 @@ CLAVES = ["estruendo", "grito", "voz", "animal", "golpes"]
 # necesita y cuánto se calla después de disparar. El enfriamiento importa aquí
 # tanto como en el móvil: sin él, un generador de tres minutos cuenta cuarenta
 # falsos en vez de los seis que de verdad daría.
-NEED = {"estruendo": 4, "grito": 3, "voz": 6, "animal": 3, "golpes": 1}
+NEED = {"estruendo": 4, "grito": 3, "voz": 4, "animal": 3, "golpes": 1}
 CD_S = {"estruendo": 8.0, "grito": 4.0, "voz": 6.0, "animal": 6.0, "golpes": 5.0}
 
 # El único que puede levantar la sirena él solo. Todos los demás anotan.
@@ -154,6 +154,9 @@ def modulacion(env):
 def regularidad(t):
     if len(t) < 3: return 0.0
     h = np.diff(t)
+    # Compuerta de cadencia biológica de golpes SOS: 250 ms a 1250 ms entre impactos
+    if np.any(h < 0.25) or np.any(h > 1.25):
+        return 0.0
     m = float(np.mean(h))
     return float(np.clip(1 - np.std(h) / m, 0, 1)) if m > 0 else 0.0
 
@@ -219,6 +222,7 @@ def analizar(x):
     rasgos_ev, db_max = None, -1e9
     env, wander, onsets = [], [], []
     last_db, sostenido = -90.0, 0
+    last_hz = 0.0
     lta, calienta = None, 0
     rasgos = dict(db=-90.0, grave=0.0, plano=0.0, cl=0.0, hz=0.0,
                   mod=0.0, vib=0.0, sost=0, alto=0.0, centro=0.0, nov=0.0)
@@ -235,15 +239,9 @@ def analizar(x):
         hz, clarity = tono(crudo)
         jump = db - last_db; last_db = db
         plano = planitud(esp); centro = centroide(esp)
-        # Aquí vivía el flujo espectral, y se ha ido: ni marco a marco ni contra
-        # el espectro medio de los últimos segundos separa un generador de un
-        # derrumbe (0,50–0,66 contra 0,35–0,71). Está en CONTINUAR.md como
-        # callejón sin salida; no lo vuelvas a añadir sin una medida nueva.
         env.append(db); env[:] = env[-ENV_N:]
         mod = modulacion(env)
         sostenido = sostenido + 1 if db > -55 else 0
-        # fondo adaptativo: un generador o una sirena se vuelven fondo en unos
-        # segundos; un derrumbe o un grito NO da tiempo a que lo hagan
         if lta is None: lta = db
         calienta += 1
         nov = db - lta
@@ -251,25 +249,48 @@ def analizar(x):
         if hz > 60:
             wander.append(hz); wander[:] = wander[-12:]
         vib = spread(wander)
+        dhz = abs(hz - last_hz) if last_hz > 0 else 0.0
+        if hz > 0:
+            last_hz = hz
 
         p = {}
         if calienta < WARMUP:
             nov = 0.0
         # Las cuatro condiciones, en el mismo orden y con los mismos números que
         # `Escucha.tick`. Si cambias una, cambia la otra.
-        if db > UMB_EST_DB and rumble > 0.5 and clarity < 0.25 and sostenido >= 3 \
-                and nov > NOV_EST:
+        if db > UMB_EST_DB and rumble > 0.60 and clarity < 0.25 and (3 <= sostenido <= 35) \
+                and nov > NOV_EST and mod < 0.25:
             p["estruendo"] = min(1.0, rumble * (db + 60) / 40)
-        if db > -38 and clarity > 0.35 and 300 < hz < 1200 and speech > 0.30 \
-                and plano < 0.40 and mod < 0.35 and sostenido >= 3 and nov > NOV_EV:
-            p["grito"] = min(1.0, clarity + 0.2 - mod)
-        if db > -52 and clarity > 0.3 and 70 < hz < 320 and plano < 0.45 \
-                and VIB_MIN < vib < VIB_MAX and mod > 0.25 and nov > NOV_VOZ:
-            p["voz"] = min(1.0, clarity * 0.5 + mod)
-        if db > -45 and mod < 0.25 and nov > NOV_EV and (
-                (clarity > 0.3 and hz > 900 and sostenido < 12) or
-                (high > 0.45 and jump > 8 and centro > 2500)):
-            p["animal"] = min(1.0, 0.35 + high + (0.2 if hz > 900 else 0.0))
+
+        # VOZ: habla humana natural (70-480 Hz, modulación silábica 0.07-0.48, sin saltos de ladrido)
+        es_rango_voz = (70 < hz < 480)
+        es_mod_habla = (0.07 < mod < 0.48 or (speech > 0.40 and 0.03 < mod < 0.48))
+        es_nivel_habla = (abs(jump) < 11.0)
+        if db > -52 and clarity > 0.28 and es_rango_voz and plano < 0.45 \
+                and VIB_MIN < vib < VIB_MAX and es_mod_habla and nov > NOV_VOZ:
+            p["voz"] = min(1.0, clarity * 0.45 + speech * 0.35 + mod * 0.3)
+
+        # GRITO: grito humano o llanto de auxilio (sostenido, sin rumble de perro < 0.20, sin saltos de ladrido < 14 dB)
+        es_grito_estable = (abs(jump) < 14.0 and vib < 0.40)
+        if db > -38 and clarity > 0.35 and 300 < hz < 1600 and speech > 0.30 \
+                and rumble < 0.20 and plano < 0.35 and mod < 0.35 and sostenido >= 3 \
+                and nov > NOV_EV and es_grito_estable:
+            p["grito"] = min(1.0, clarity + 0.20 - mod)
+
+        # ANIMAL: perros (ladrido impulsivo / gruñido grave) y gatos (armónico agudo con variación tonal)
+        es_ladrido = (clarity > 0.25 and 150 < hz < 900 and (abs(jump) > 10.0 or mod > 0.48) and (rumble > 0.15 or abs(jump) > 12.0))
+        es_grunido = (clarity > 0.35 and rumble > 0.60 and vib > 0.50 and 70 < hz < 500)
+        es_gato = (clarity > 0.65 and 250 < hz < 1800 and rumble < 0.12 and plano < 0.05 \
+                   and (dhz > 45 or vib > 0.20) and sostenido <= 12)
+        es_chillido = (high > 0.45 and jump > 8 and centro > 2500)
+        es_habla_humana = (speech > 0.60 and plano < 0.08 and dhz < 35 and sostenido > 6 and abs(jump) < 8.0)
+        if db > -45 and nov > NOV_EV and not es_habla_humana:
+            if es_ladrido or es_grunido or es_gato or es_chillido:
+                conf = 0.50
+                if es_gato: conf = clarity * 0.80
+                elif es_grunido: conf = rumble * 0.85
+                elif es_ladrido: conf = clarity * 0.75
+                p["animal"] = min(1.0, conf)
 
         ganador = None
         if p:
@@ -298,7 +319,7 @@ def analizar(x):
             else:
                 acum[k] = max(0, acum[k] - 1)
 
-        if jump > 9 and db > -50 and plano > 0.30:
+        if jump > 9 and db > -50 and plano > 0.30 and rumble > 0.10:
             onsets.append(t)
         onsets[:] = [o for o in onsets if t - o < 5.0]
         pico["golpes"] = max(pico["golpes"], min(1.0, len(onsets) / 3.0))
@@ -320,7 +341,7 @@ def analizar(x):
 #   UMB_EST_DB=-30 python banco.py wav
 TAU     = float(os.environ.get("TAU", 0.02))       # FONDO_TAU
 WARMUP  = int(os.environ.get("WARMUP", 12))        # CALIENTA_N
-NOV_EST = float(os.environ.get("NOV_EST", 6))      # NOV_EVENTO, para el derrumbe
+NOV_EST = float(os.environ.get("NOV_EST", 20))     # NOV_ESTRUEN_CATÁSTROFE sobre fondo
 NOV_EV  = float(os.environ.get("NOV_EV", 6))       # NOV_EVENTO, grito y animal
 NOV_VOZ = float(os.environ.get("NOV_VOZ", 3))      # NOV_VOZ
 UMB_EST_DB = float(os.environ.get("UMB_EST_DB", -25))

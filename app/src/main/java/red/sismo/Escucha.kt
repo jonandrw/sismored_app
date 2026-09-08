@@ -70,9 +70,14 @@ class Escucha(
         private const val CALIENTA_N = 12
         /** dB por encima del fondo para que algo cuente como suceso. */
         private const val NOV_EVENTO = 6.0
+        /** dB por encima del fondo para un colapso: un derrumbe es un cataclismo acústico (+20 dB). */
+        private const val NOV_ESTRUENDO = 20.0
+        private const val MOD_ESTRUENDO_MAX = 0.25
+        private const val SOSTENIDO_ESTRUENDO_MAX = 35
         private const val NOV_VOZ = 3.0
         /** Una voz real oscila mucho más de lo que yo creía: en la biblioteca
          *  mide entre 0,40 y 0,75, y con el tope en 0,35 no se encendía NUNCA. */
+        private const val VIB_MIN = 0.005
         private const val VIB_MAX = 1.2
         /** Ticks de silencio que se meten antes de cada prueba. */
         private const val SILENCIO_N = 16
@@ -87,7 +92,7 @@ class Escucha(
     private val ev = mapOf(
         "estruendo" to Evento("ESTRUENDO / DERRUMBE", 4, 8000),
         "grito" to Evento("GRITO DE AUXILIO", 3, 4000),
-        "voz" to Evento("VOZ HUMANA CERCA", 6, 6000),
+        "voz" to Evento("VOZ HUMANA CERCA", 4, 6000),
         "animal" to Evento("ANIMAL (ladrido / chillido)", 3, 6000),
         "golpes" to Evento("GOLPES RÍTMICOS", 1, 5000)
     )
@@ -147,6 +152,7 @@ class Escucha(
 
     private val h = Handler(Looper.getMainLooper())
     private var lastDb = -90.0
+    private var lastHz = 0.0
     private var onsets = ArrayList<Long>()
     private val wander = ArrayList<Double>()
     private var cuenta = 0
@@ -306,6 +312,8 @@ class Escucha(
     private fun regularidad(t: List<Long>): Double {
         if (t.size < 3) return 0.0
         val huecos = (1 until t.size).map { (t[it] - t[it - 1]).toDouble() }
+        // Compuerta de cadencia biológica de golpes SOS: 250 ms a 1250 ms entre impactos
+        if (huecos.any { it < 250.0 || it > 1250.0 }) return 0.0
         val m = huecos.average()
         if (m <= 0) return 0.0
         val sd = sqrt(huecos.sumOf { (it - m) * (it - m) } / huecos.size)
@@ -328,6 +336,8 @@ class Escucha(
         lastDb = db
         nivelDb = db
         tonoHz = p.hz
+        val dhz = if (lastHz > 0.0) abs(p.hz - lastHz) else 0.0
+        if (p.hz > 0.0) lastHz = p.hz
 
         /* Acumulador con fuga: +2 por marco que cumple, −1 por marco que no. El
            habla tiene pausas y consonantes sordas; con +1/−1 el contador se
@@ -377,40 +387,48 @@ class Escucha(
            segundo. Ante la duda no se adivina: no acumula ninguno. */
         val puntos = HashMap<String, Double>()
 
-        /* DERRUMBE: muy fuerte, grave, RUIDO (no nota) y más de medio segundo.
-           La planitud aquí solo tiene que descartar una NOTA grave — un camión,
-           un bajo, un transformador —, y de eso ya se ocupa sobre todo la falta
-           de tono. Por eso el listón es bajo: un derrumbe real está lejos de ser
-           ruido blanco, tiene la energía muy volcada abajo, y perderlo por pedir
-           un espectro plano cuesta mucho más que un falso positivo. */
-        /* La planitud espectral SALE de aquí. La había puesto para que pasara mi
-           ruido sintético, y contra derrumbes de verdad medía entre 0,00 y 0,18
-           — el umbral de 0,12 estaba tirando seis de cada ocho. Lo que queda es
-           lo que sí los describe: fuerte, grave, sin tono y nuevo. */
-        if (db > -25 && rumble > 0.5 && p.clarity < 0.25 && sostenido >= 3 && novedad > NOV_EVENTO)
+        /* DERRUMBE: cataclismo acústico sónico (+20 dB sobre fondo adaptativo),
+           muy grave (rumble > 0.60), no armónico (clarity < 0.25), transitorio
+           violento (sostenido <= 35 ticks) y aperiódico en su envolvente (mod < 0.25)
+           para descartar motores diésel, maquinaria pesada y generadores con giro fijo. */
+        if (db > -25 && rumble > 0.60 && p.clarity < 0.25 &&
+            sostenido in 3..SOSTENIDO_ESTRUENDO_MAX &&
+            novedad > NOV_ESTRUENDO && mod < MOD_ESTRUENDO_MAX)
             puntos["estruendo"] = min(1.0, rumble * (db + 60) / 40)
 
-        // GRITO: tónico, agudo, fuerte y SIN sílabas — un grito se sostiene
-        if (db > -38 && p.clarity > 0.35 && p.hz > 300 && p.hz < 1200 && speech > 0.30 &&
-            plano < 0.40 && mod < 0.35 && sostenido >= 3 && novedad > NOV_EVENTO)
-            puntos["grito"] = min(1.0, p.clarity + 0.2 - mod)
+        // VOZ: habla humana natural (70-480 Hz, modulación silábica 0.07-0.48, sin saltos de ladrido)
+        val esRangoVoz = p.hz in 70.0..480.0
+        val esModHabla = (mod in 0.07..0.48) || (speech > 0.40 && mod in 0.03..0.48)
+        if (db > -52 && p.clarity > 0.28 && esRangoVoz && plano < 0.45 &&
+            vib in VIB_MIN..VIB_MAX && esModHabla && novedad > NOV_VOZ)
+            puntos["voz"] = min(1.0, p.clarity * 0.45 + speech * 0.35 + mod * 0.3)
 
-        // VOZ: fundamental de habla, tónica y CON sílabas. La modulación es
-        // condición, no adorno: sin ella esto es un motor o un grito.
-        if (db > -52 && p.clarity > 0.3 && p.hz > 70 && p.hz < 320 && plano < 0.45 &&
-            vib > 0.005 && vib < VIB_MAX && mod > 0.25 && novedad > NOV_VOZ)
-            puntos["voz"] = min(1.0, p.clarity * 0.5 + mod)
+        // GRITO: grito humano o llanto de auxilio (sostenido, sin rumble de perro < 0.20, sin saltos de ladrido < 14 dB)
+        val esGritoEstable = abs(jump) < 14.0 && vib < 0.40
+        if (db > -38 && p.clarity > 0.35 && p.hz in 300.0..1600.0 && speech > 0.30 &&
+            rumble < 0.20 && plano < 0.35 && mod < 0.35 && sostenido >= 3 &&
+            novedad > NOV_EVENTO && esGritoEstable)
+            puntos["grito"] = min(1.0, p.clarity + 0.20 - mod)
 
-        /* ANIMAL: tónico, por encima del habla, sin sílabas y corto.
-           El corte en 900 Hz es una decisión, no un descuido: por debajo de eso
-           un ladrido y un grito de mujer comparten fundamental, armónicos y
-           duración, y con estos rasgos NO se pueden separar. Ante la duda se
-           dice grito, porque equivocarse hacia «hay una persona» cuesta una
-           batida en balde y equivocarse hacia «es un perro» cuesta una vida. */
-        if (db > -45 && mod < 0.25 && novedad > NOV_EVENTO && (
-                (p.clarity > 0.3 && p.hz > 900 && sostenido < 12) ||
-                (high > 0.45 && jump > 8 && centro > 2500)))
-            puntos["animal"] = min(1.0, 0.35 + high + if (p.hz > 900) 0.2 else 0.0)
+        // ANIMAL: perros (ladrido impulsivo / gruñido grave) y gatos (armónico agudo con variación tonal)
+        val esLadrido = p.clarity > 0.25 && p.hz in 150.0..900.0 &&
+                (abs(jump) > 10.0 || mod > 0.48) && (rumble > 0.15 || abs(jump) > 12.0)
+        val esGrunido = p.clarity > 0.35 && rumble > 0.60 && vib > 0.50 && p.hz in 70.0..500.0
+        val esGato = p.clarity > 0.65 && p.hz in 250.0..1800.0 && rumble < 0.12 && plano < 0.05 &&
+                (dhz > 45.0 || vib > 0.20) && sostenido <= 12
+        val esChillido = high > 0.45 && jump > 8.0 && centro > 2500.0
+        val esHablaHumana = speech > 0.60 && plano < 0.08 && dhz < 35.0 && sostenido > 6 && abs(jump) < 8.0
+        if (db > -45 && novedad > NOV_EVENTO && !esHablaHumana) {
+            if (esLadrido || esGrunido || esGato || esChillido) {
+                val conf = when {
+                    esGato -> p.clarity * 0.80
+                    esGrunido -> rumble * 0.85
+                    esLadrido -> p.clarity * 0.75
+                    else -> 0.50
+                }
+                puntos["animal"] = min(1.0, conf)
+            }
+        }
 
         val mejor = puntos.maxByOrNull { it.value }
         val ganador = mejor?.takeIf { m ->
@@ -425,9 +443,10 @@ class Escucha(
         /* GOLPES: ataques bruscos, planos y RÍTMICOS. La regularidad es lo que
            separa a alguien pidiendo ayuda de una viga que cruje sola, y va
            aparte de los otros cuatro porque no se decide marco a marco sino por
-           lo que ha pasado en los últimos cinco segundos. */
+           lo que ha pasado en los últimos cinco segundos. Se exige cuerpo espectral
+           (rumble > 0.10) para descartar crepitaciones de fuego y chasquidos agudos. */
         val ahora = System.currentTimeMillis()
-        if (jump > 9 && db > -50 && plano > 0.30) onsets.add(ahora)
+        if (jump > 9 && db > -50 && plano > 0.30 && rumble > 0.10) onsets.add(ahora)
         /* La poda va en cada tick, no solo cuando llega un ataque nuevo. Si no,
            dos golpes sueltos dejan la cuenta clavada en 2 hasta el siguiente, y
            tanto «Ataques en los últimos 5 s» como la barra del detector estarían
@@ -611,7 +630,7 @@ class Escucha(
         fun correr(ticks: Int, gen: (Int, Int, Double) -> Double): String? {
             for (e in ev.values) { e.n = 0; e.last = 0 }
             envolvente.clear(); wander.clear(); onsets.clear()
-            sostenido = 0; lastDb = -90.0; impactos = 0
+            sostenido = 0; lastDb = -90.0; lastHz = 0.0; impactos = 0
             ultimoDisparo = null
             probando = true
             try {
@@ -652,9 +671,12 @@ class Escucha(
             },
             // grito: 700 Hz clavado y sin sílabas
             Triple("grito sostenido", "grito") { _: Int, i: Int, t0: Double -> arm(700.0, t0, i) },
-            // animal: 1400 Hz a ráfagas de medio segundo
+            // animal: 1400 Hz a ráfagas de medio segundo con modulación biológica
             Triple("chillido a ráfagas", "animal") { t: Int, i: Int, t0: Double ->
-                if ((t / 5) % 2 == 0) arm(1400.0, t0, i) else 0.0
+                if ((t / 5) % 2 == 0) {
+                    val f0 = 1400.0 * (1.0 + 0.08 * sin(2 * PI * 6.0 * t0))
+                    arm(f0, t0, i)
+                } else 0.0
             },
             // derrumbe: ruido grave, fuerte y continuo
             Triple("derrumbe (ruido grave)", "estruendo") { _: Int, _: Int, _: Double ->
