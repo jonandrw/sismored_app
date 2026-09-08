@@ -885,6 +885,8 @@ class ServicioSos : Service() {
     }
 
     /** Todo lo que pasa en el audio acaba aquí: al registro y a la pantalla. */
+    @Volatile private var anotaciones = 0
+
     private fun anotar(m: String) {
         ultimoRegistro = m
         malla?.let {
@@ -903,6 +905,12 @@ class ServicioSos : Service() {
                     mensaje = m
                 )
                 db.eventoDao().insertar(evento)
+                /* `podar()` existia y no la llamaba nadie. En el Redmi habia
+                   14.010 eventos del 1 al 8 de septiembre y creciendo, en el
+                   aparato que tiene que aguantar encendido justo cuando ya no
+                   puedes liberar espacio a mano. Se poda cada 200 anotaciones y
+                   no en cada una, que serian 14.000 barridos de tabla. */
+                if (++anotaciones % 200 == 0) db.eventoDao().podar()
             } catch (e: Exception) {
                 // Ignore errors
             }
@@ -1254,6 +1262,11 @@ class ServicioSos : Service() {
         cascadaQuien = d.quien
         cascadaMotivo = d.motivo
         Log.i("SismoRed", "cascada($motivo) -> $d")
+        /* La decision iba SOLO a logcat, que se borra en minutos. O sea que el
+           registro guardaba lo que la app vio y el motivo, pero no lo que
+           decidio hacer ni sobre quien: justo la linea que hoy explico por que
+           la onda P disparaba sola. Sin ella hay que deducirlo. */
+        if (d.accion != Cascada.Accion.NADA) anotar("decision · ${d.accion}/${d.quien}")
         /* Y la foto de las pruebas con las que se decidio, cuando la decision
            NO es «nada». Sin esto, un registro de campo dice que la app pregunto
            pero no con que evidencia, y las reglas de la cascada dejan de poder
