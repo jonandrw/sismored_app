@@ -170,7 +170,12 @@ class SismografoTest {
         )
         assertEquals(Cascada.Accion.NADA, d1.accion)
 
-        // Caso 2: sacudida en bolsillo con Onda P previa bi-fase confirmada -> PREGUNTAR
+        /* Caso 2: la misma sacudida, ahora con onda P. Sigue siendo NADA.
+           La onda P sale del mismo acelerómetro que la sacudida, así que no es
+           una segunda opinión: es el mismo testigo declarando dos veces.
+           Medido el 8 de septiembre de 2026 en un Huawei STK-LX3 quieto sobre
+           una mesa: 0,34 m/s² con «P-wave true» bajó el ciclo exigido del 15 %
+           al 7,5 % y la app preguntó «¿estás bien?» sin que pasara nada. */
         val d2 = Cascada.decidir(
             Cascada.Pruebas(
                 regimen = Postura.Regimen.ENCIMA,
@@ -178,7 +183,18 @@ class SismografoTest {
                 ondaP = true
             )
         )
-        assertEquals(Cascada.Accion.PREGUNTAR, d2.accion)
+        assertEquals(Cascada.Accion.NADA, d2.accion)
+
+        // Caso 3: con una opinión ajena de verdad —otro móvil— sí escala.
+        val d3 = Cascada.decidir(
+            Cascada.Pruebas(
+                regimen = Postura.Regimen.ENCIMA,
+                sacudida = true,
+                ondaP = true,
+                corroborada = true
+            )
+        )
+        assertEquals(Cascada.Accion.PREGUNTAR, d3.accion)
     }
 
     @Test

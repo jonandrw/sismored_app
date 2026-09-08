@@ -114,6 +114,22 @@ class Sismografo(
     @Volatile var kurtosisP = 3.0; private set
 
     /** ¿Hay un frente de onda P primario activo en los últimos segundos? */
+    /**
+     * Si la onda P puede rebajar lo que se exige para disparar. Apagado.
+     *
+     * La idea es buena —la onda P llega segundos antes de la que tira la casa—
+     * pero el detector, tal y como está calibrado, salta con que alguien roce la
+     * mesa: kurtosis > 5,2 con 0,035 m/s² lo cumple un golpe de nudillo. Con
+     * esto encendido el listón del ciclo de trabajo baja del 15 % al 7,5 %, y el
+     * 8 de septiembre de 2026 eso bastó para que un móvil quieto preguntara
+     * «¿estás bien?» solo. Se enciende cuando el umbral esté medido contra ondas
+     * P de verdad, no antes.
+     */
+    @Volatile var preavisoOndaP = false
+
+    /** Onda P detectada Y autorizada a rebajar el listón. */
+    private val armadoPorP: Boolean get() = preavisoOndaP && hayOndaP
+
     val hayOndaP: Boolean
         get() = ondaP && (System.currentTimeMillis() - tUltimaOndaP < ONDA_P_VENTANA_MS)
 
@@ -791,7 +807,7 @@ class Sismografo(
            tipo de prueba, listón más bajo. Sigue sirviendo para lo que existe
            —que la malla se crea una alerta ajena a la primera— porque un
            terremoto de verdad llega a esto en menos de un segundo. */
-        val cicloTemblorReq = if (hayOndaP) CICLO_MIN * 0.25 else CICLO_MIN * 0.5
+        val cicloTemblorReq = if (armadoPorP) CICLO_MIN * 0.25 else CICLO_MIN * 0.5
         if (sueloDeFiar && sta > u * 0.6 && cicloTrabajo >= cicloTemblorReq) {
             ultimoTemblor = System.currentTimeMillis()
         }
@@ -878,8 +894,8 @@ class Sismografo(
         /* Media ventana de muestras como mínimo: recién arrancado el anillo está
            casi vacío y tres muestras altas de tres darían un ciclo de 1,00.
            Con Onda P previa confirmada (AUD-05), se reduce a 10 muestras y 50% de ciclo. */
-        val minMuestras = if (hayOndaP) 10 else 20
-        val cicloReq = if (hayOndaP) CICLO_MIN * 0.5 else CICLO_MIN
+        val minMuestras = if (armadoPorP) 10 else 20
+        val cicloReq = if (armadoPorP) CICLO_MIN * 0.5 else CICLO_MIN
         if (armado && total > minMuestras && cicloTrabajo >= cicloReq) {
             /* Y la última puerta, que es la que faltaba: si hay una mano, esto no
                es el suelo. Va AQUÍ y no en el servicio a propósito — el servicio

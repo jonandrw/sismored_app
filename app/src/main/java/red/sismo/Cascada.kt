@@ -248,7 +248,13 @@ object Cascada {
         val creible = when {
             p.preguntado || p.contestado -> true
             p.sacudidaFuerte -> true
-            p.ondaP && p.sacudida -> true
+            /* La onda P NO cuenta como segunda opinión. Sale del mismo
+               acelerómetro que la sacudida, solo que de otra banda: dos lecturas
+               del mismo sensor no son dos testigos. Medido el 8 de septiembre de
+               2026 en un Huawei STK-LX3 quieto sobre una mesa — 0,34 m/s², ciclo
+               del 7 %, «P-wave true»— la app preguntó «¿estás bien?» sin que
+               hubiera pasado nada. Se queda como dato en el registro, no como
+               prueba en la decisión. */
             else -> opinionAjena
         }
         if (!creible && p.regimen == Postura.Regimen.EN_REPOSO)
@@ -473,9 +479,9 @@ object Cascada {
                buena para todo el mundo. */
             Triple("sacudida con el móvil encima y sin nada más", Accion.NADA,
                 Pruebas(regimen = Regimen.ENCIMA, sacudida = true)),
-            /* Sismógrafo Bi-Fase P/S (AUD-05): Onda P compresional vertical previa
-               seguida de sacudida transversal S confirma el evento aún en movimiento. */
-            Triple("sacudida con onda P previa bi-fase confirmada", Accion.PREGUNTAR,
+            /* La onda P no rescata una sacudida que sola no valía: es el mismo
+               sensor diciendo lo mismo dos veces. Este caso guarda la regla. */
+            Triple("sacudida y onda P, pero las dos del mismo acelerómetro", Accion.NADA,
                 Pruebas(regimen = Regimen.ENCIMA, sacudida = true, ondaP = true))
         )
         val partes = ArrayList<String>()
