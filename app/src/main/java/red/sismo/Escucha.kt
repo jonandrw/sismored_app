@@ -312,8 +312,13 @@ class Escucha(
     private fun regularidad(t: List<Long>): Double {
         if (t.size < 3) return 0.0
         val huecos = (1 until t.size).map { (t[it] - t[it - 1]).toDouble() }
-        // Compuerta de cadencia biológica de golpes SOS: 250 ms a 1250 ms entre impactos
-        if (huecos.any { it < 250.0 || it > 1250.0 }) return 0.0
+        /* Cadencia a la que golpea una persona. Los topes son anchos a
+           propósito: por arriba, alguien agotado bajo una losa golpea cada dos
+           segundos, y por abajo, alguien desesperado golpea metal a seis por
+           segundo. Cerrar esta ventana deja fuera justo a los dos que más
+           falta hacen. La carpeta `Golpes` del banco está vacía, así que
+           ninguno de los dos límites está medido contra grabaciones reales. */
+        if (huecos.any { it < 150.0 || it > 2000.0 }) return 0.0
         val m = huecos.average()
         if (m <= 0) return 0.0
         val sd = sqrt(huecos.sumOf { (it - m) * (it - m) } / huecos.size)
