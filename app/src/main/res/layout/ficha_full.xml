@@ -42,7 +42,7 @@
             android:fontFamily="@font/barlow"
             android:gravity="center"
             android:lineSpacingMultiplier="1.3"
-            android:text="Estos datos se guardan solo en este móvil. Salen por radio únicamente con la alarma o el modo rescate activos."
+            android:text="@string/f_estos_datos_se_guardan_solo_en"
             android:textColor="#7C858D"
             android:textSize="12sp" />
     </LinearLayout>

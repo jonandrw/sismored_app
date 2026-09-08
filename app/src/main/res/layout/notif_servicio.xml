@@ -28,7 +28,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:fontFamily="@font/barlow"
-            android:text="Servicio activo"
+            android:text="@string/notif_servicio_activo"
             android:textColor="#BCC3C9"
             android:textSize="15sp"
             android:textStyle="bold" />
@@ -39,7 +39,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
             android:fontFamily="@font/barlow"
-            android:text="Sigue vivo con la pantalla apagada · permanente"
+            android:text="@string/notif_sigue_vivo_con_la_pantalla_apa"
             android:textColor="#7C858D"
             android:textSize="13.5sp" />
     </LinearLayout>

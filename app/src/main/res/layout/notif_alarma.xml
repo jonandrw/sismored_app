@@ -35,7 +35,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:fontFamily="@font/saira"
-                android:text="SISMORED · ALARMA ACTIVA"
+                android:text="@string/notif_sismored_alarma_activa"
                 android:textColor="#FFFFFF"
                 android:textSize="17sp"
                 android:textStyle="bold|italic" />
@@ -45,7 +45,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/mono"
-                android:text="ahora"
+                android:text="@string/notif_ahora"
                 android:textColor="#FFB4B6"
                 android:textSize="10sp" />
         </LinearLayout>
@@ -57,7 +57,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
             android:fontFamily="@font/barlow"
-            android:text="Sirena y linterna en marcha · baliza emitiendo"
+            android:text="@string/notif_sirena_y_linterna_en_marcha_ba"
             android:textColor="#F0D4D5"
             android:textSize="13.5sp" />
 
@@ -81,7 +81,7 @@
                 android:letterSpacing="0.08"
                 android:paddingTop="9dp"
                 android:paddingBottom="9dp"
-                android:text="PARAR"
+                android:text="@string/parar_italica"
                 android:textColor="#FFFFFF"
                 android:textSize="11sp"
                 android:textStyle="bold" />
@@ -97,7 +97,7 @@
                 android:letterSpacing="0.08"
                 android:paddingTop="9dp"
                 android:paddingBottom="9dp"
-                android:text="MODO RESCATE"
+                android:text="@string/notif_modo_rescate"
                 android:textColor="#F0D4D5"
                 android:textSize="11sp" />
         </LinearLayout>

@@ -26,7 +26,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
             android:fontFamily="@font/saira"
-            android:text="HISTORIAL PERSISTENTE"
+            android:text="@string/lbl_historial_persistente"
             android:textColor="#0B0D0F"
             android:textSize="24sp"
             android:textStyle="bold|italic" />

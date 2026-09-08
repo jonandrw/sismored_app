@@ -29,7 +29,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:fontFamily="@font/barlow"
-            android:text="Alerta de la malla · salto 3 de 4"
+            android:text="@string/notif_alerta_de_la_malla_salto_3_de"
             android:textColor="#E8EBED"
             android:textSize="15sp"
             android:textStyle="bold" />
@@ -41,7 +41,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
             android:fontFamily="@font/barlow"
-            android:text="Un móvil cercano pidió ayuda hace 20 s"
+            android:text="@string/notif_un_movil_cercano_pidio_ayuda_h"
             android:textColor="#8A9099"
             android:textSize="13sp" />
     </LinearLayout>

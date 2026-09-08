@@ -652,9 +652,10 @@ Para leerla hace falta el permiso de acceso a notificaciones, que Android da ent
     <string name="fsi_btn_android">CONCEDER PANTALLA COMPLETA</string>
     <string name="fsi_btn_fabricante">PERMISOS DEL FABRICANTE</string>
     <string name="fsi_titulo">La pregunta no puede salir sola</string>
-    <string name="fsi_texto">Sin esto, «¿estás bien?» llega como un aviso normal y puede pasarte desapercibido — y si no lo contestas, la sirena arranca sola.
+    <string name="fsi_texto">Sin esto, «¿estás bien?» llega como un aviso normal y puede pasarte desapercibido — y si no lo contestas, la sirena arranca sola.</string>
+    <string name="fsi_texto_fabricante">Sin esto, «¿estás bien?» llega como un aviso normal y puede pasarte desapercibido — y si no lo contestas, la sirena arranca sola.
 
-En Xiaomi y Redmi hacen falta <b>los dos</b>: el de Android y el propio del fabricante, que se llama «mostrar ventanas emergentes en segundo plano» y no se puede comprobar desde aquí.</string>
+En Xiaomi y Redmi hacen falta &lt;b&gt;los dos&lt;/b&gt;: el de Android y el propio del fabricante, que se llama «mostrar ventanas emergentes en segundo plano» y no se puede comprobar desde aquí.</string>
 
     <string name="buscar_on">Buscando supervivientes</string>
     <string name="buscar_on_sub">Este móvil no grita: escucha y deja oír</string>
@@ -705,15 +706,8 @@ En Xiaomi y Redmi hacen falta <b>los dos</b>: el de Android y el propio del fabr
     <string name="f_ficha_medica">FICHA MÉDICA</string>
     <string name="f_grupo">GRUPO</string>
     <string name="f_medicacion">MEDICACIÓN</string>
-    <string name="hallazgo_58">−58</string>
-    <string name="hallazgo_atrapada_consciente">ATRAPADA · CONSCIENTE</string>
-    <string name="hallazgo_dbm">dBm</string>
-    <string name="hist_21_10_2026_15_32_00">21/10/2026 15:32:00</string>
-    <string name="hist_el_sistema_detecto_un_nodo_cer">El sistema detectó un nodo cercano.</string>
-    <string name="lbl_0">0−</string>
     <string name="lbl_01">01</string>
     <string name="lbl_01_04">01 / 04</string>
-    <string name="lbl_01_24_06">01:24:06</string>
     <string name="lbl_02">02</string>
     <string name="lbl_04_12">04:12</string>
     <string name="lbl_112_db">112 dB</string>
@@ -783,7 +777,6 @@ En Xiaomi y Redmi hacen falta <b>los dos</b>: el de Android y el propio del fabr
     <string name="lbl_lo_que_sale_del_movil">LO QUE SALE DEL MÓVIL</string>
     <string name="lbl_malla_saltos">MALLA · SALTOS</string>
     <string name="lbl_malla_sonda_e_interfono">Malla, sonda e interfono</string>
-    <string name="lbl_marta">MARTA</string>
     <string name="lbl_mas_opciones">MÁS OPCIONES</string>
     <string name="lbl_media">MEDIA</string>
     <string name="lbl_nada_sale_del_movil_sin_que_se">Nada sale del móvil sin que se vea</string>

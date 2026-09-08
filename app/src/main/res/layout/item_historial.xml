@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
@@ -10,7 +11,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:fontFamily="@font/mono"
-        android:text="21/10/2026 15:32:00"
+        android:text=""
+        tools:text="21/10/2026 15:32:00"
         android:textColor="#7C858D"
         android:textSize="12sp"
         android:letterSpacing="0.05" />
@@ -21,7 +23,8 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
         android:fontFamily="@font/barlow"
-        android:text="El sistema detectó un nodo cercano."
+        android:text=""
+        tools:text="El sistema detectó un nodo cercano."
         android:textColor="#0B0D0F"
         android:textSize="16sp" />
 

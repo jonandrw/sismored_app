@@ -14,7 +14,7 @@
                 android:layout_weight="1"
                 android:fontFamily="@font/mono"
                 android:letterSpacing="0.2"
-                android:text="FICHA MÉDICA"
+                android:text="@string/f_ficha_medica"
                 android:textColor="#6B7278"
                 android:textSize="11sp"
                 android:textStyle="bold" />
@@ -75,7 +75,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/mono"
                     android:letterSpacing="0.18"
-                    android:text="GRUPO"
+                    android:text="@string/f_grupo"
                     android:textColor="#D0FFFFFF"
                     android:textSize="10sp" />
 
@@ -105,7 +105,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/mono"
                     android:letterSpacing="0.18"
-                    android:text="EDAD"
+                    android:text="@string/f_edad"
                     android:textColor="#6B7278"
                     android:textSize="10sp" />
 
@@ -137,7 +137,7 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/mono"
                 android:letterSpacing="0.18"
-                android:text="ALERGIAS"
+                android:text="@string/f_alergias"
                 android:textColor="#7C858D"
                 android:textSize="10sp" />
 
@@ -171,7 +171,7 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/mono"
                 android:letterSpacing="0.18"
-                android:text="MEDICACIÓN"
+                android:text="@string/f_medicacion"
                 android:textColor="#7C858D"
                 android:textSize="10sp" />
 
@@ -205,7 +205,7 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/mono"
                 android:letterSpacing="0.18"
-                android:text="CONTACTO"
+                android:text="@string/f_contacto"
                 android:textColor="#7C858D"
                 android:textSize="10sp" />
 

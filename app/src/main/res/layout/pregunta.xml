@@ -110,7 +110,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:fontFamily="@font/mono"
-                        android:text="20"
+                        android:text="@string/preg_20"
                         android:textColor="@color/tx"
                         android:textSize="64sp"
                         android:textStyle="bold" />

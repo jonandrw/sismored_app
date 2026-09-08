@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Elemento de hallazgo de superviviente (Pantalla 06 · Buscar). -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/card_hallazgo_root"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -25,7 +26,8 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:fontFamily="@font/mono"
-            android:text="0−"
+            android:text="@string/guion"
+            tools:text="0−"
             android:textColor="#90CA50"
             android:textSize="13sp"
             android:textStyle="bold" />
@@ -45,7 +47,8 @@
             android:layout_height="wrap_content"
             android:fontFamily="@font/saira"
             android:letterSpacing="0.03"
-            android:text="MARTA"
+            android:text="@string/guion"
+            tools:text="MARTA"
             android:textAllCaps="true"
             android:textColor="#FFFFFF"
             android:textSize="20sp"
@@ -57,7 +60,8 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
             android:fontFamily="@font/mono"
-            android:text="ATRAPADA · CONSCIENTE"
+            android:text=""
+            tools:text="ATRAPADA · CONSCIENTE"
             android:textColor="#F0A02A"
             android:textSize="11sp" />
     </LinearLayout>
@@ -86,7 +90,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/mono"
-                android:text="−58"
+                android:text="@string/guion"
+                tools:text="−58"
                 android:textColor="#90CA50"
                 android:textSize="16sp"
                 android:textStyle="bold" />
@@ -96,7 +101,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/mono"
-                android:text="dBm"
+                android:text=""
+                tools:text="dBm"
                 android:textColor="#7C858D"
                 android:textSize="9sp" />
         </LinearLayout>

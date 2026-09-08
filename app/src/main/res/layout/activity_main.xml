@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/raiz"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -1312,7 +1313,8 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/mono"
-                                android:text="@string/lbl_marta"
+                                android:text="@string/guion"
+                                tools:text="MARTA"
                                 android:textAllCaps="true"
                                 android:textColor="#FFFFFF"
                                 android:textSize="15sp" />
@@ -1348,7 +1350,8 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/mono"
-                                android:text="@string/lbl_0"
+                                android:text="@string/guion"
+                                tools:text="0−"
                                 android:textColor="#E53035"
                                 android:textSize="15sp"
                                 android:textStyle="bold" />
@@ -1420,7 +1423,8 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/mono"
-                                android:text="@string/lbl_01_24_06"
+                                android:text="@string/guion"
+                                tools:text="01:24:06"
                                 android:textColor="#FFFFFF"
                                 android:textSize="15sp" />
                         </LinearLayout>
@@ -2724,6 +2728,7 @@
                             android:textStyle="bold" />
 
                         <TextView
+                            android:id="@+id/txt_fsi_desc"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
