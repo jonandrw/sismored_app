@@ -42,6 +42,7 @@ import kotlinx.coroutines.launch
 class ServicioSos : Service() {
 
     companion object {
+        @Volatile var vivo = false; private set
         const val CANAL = "sismored_sos"
         const val ID_NOTIF = 1
         const val ACCION_PANICO = "red.sismo.PANICO"
@@ -323,6 +324,16 @@ class ServicioSos : Service() {
         /** Cuánto tiene que pasar para volver a preguntar. Ver la nota de
          *  [preguntar]: sin esto la app interroga sola en bucle. */
         private const val PREGUNTA_REPOSO_MS = 300_000L
+
+        /**
+         * Cuánto tiempo puede durar un suceso abierto sin corroboración.
+         *
+         * Si el sismógrafo abre un suceso pero en quince segundos la cascada
+         * se queda en NADA y nadie pregunta, el caso se cierra solo. Sin esto,
+         * el suceso queda abierto para siempre y cualquier movimiento posterior
+         * se suma a pruebas viejas, provocando falsas alarmas encadenadas.
+         */
+        private const val SUCESO_TIMEOUT_MS = 15_000L
         /** Simulacro: enseña «¿ESTÁS BIEN?» sin que haya pasado nada. No puede
          *  escalar — sin sacudida la cascada se queda en NADA aunque no se
          *  conteste. */
@@ -480,6 +491,8 @@ class ServicioSos : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        vivo = true
+        try { WatchdogReceiver.programar(this) } catch (_: Exception) {}
 
         /* La cascada, contra sus escenarios, en cada arranque del servicio.
            Cuesta microsegundos y es lo unico que comprueba las DECISIONES en vez
@@ -635,13 +648,19 @@ class ServicioSos : Service() {
             onEstruendo = {
                 if (sismo.armado) {
                     ultimoEstruendo = System.currentTimeMillis()
-                    pruebaNueva("estruendo por micrófono")
+                    if (sucesoDesde > 0L) {
+                        // El suelo ya se estaba moviendo: el estruendo se suma como evidencia del suceso
+                        evaluar("estruendo durante el temblor")
+                    } else {
+                        // El micrófono oye la habitación, no un sismo: sin sacudida previa no se abre suceso
+                        anotar("estruendo oído por micrófono (sin sacudida previa: se ignora)")
+                    }
                 }
             },
             onRegistro = { m -> anotar(m) }
         )
 
-        sonda = Sonda(mic!!, onRegistro = { m -> anotar(m) })
+        sonda = Sonda(mic!!, onRegistro = { m -> anotar(m) }, op = opciones)
         sonda?.fDoppler = opciones.dopplerKhz * 1000
         /* La ficha completa por Wi-Fi. Escuchar se enciende ya y no se apaga: recibir
            un datagrama cada tres segundos no se nota, y quien busca no siempre se
@@ -825,11 +844,20 @@ class ServicioSos : Service() {
            revivir el servicio— la excepción se llevaba por delante el proceso, y
            con él la sirena, la malla y el atajo de volumen.
 
-           Así que se intenta con micrófono y, si el sistema dice que no, se
-           vuelve a intentar solo con reproducción. La app se queda sin oír hasta
-           que alguien la abra, pero sigue viva y sigue sonando. Perder la
-           escucha es malo; perder el servicio es perderlo todo. */
-        val base = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+           Además, desde Android 14 (API 34) usar Bluetooth/BLE exige declarar
+           FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE tanto en el Manifest como al
+           llamar a startForeground, o el sistema lanzará SecurityException.
+
+           Así que se calcula el tipo deseado (mediaPlayback + connectedDevice si
+           hay permiso de radio) y se intenta con micrófono. Si el micrófono es
+           rechazado por el sistema (arranque en segundo plano), se hace fallback
+           a reproducción + radio, y si falla, a reproducción pura.
+           Perder la escucha o radio es malo; perder el servicio es perderlo todo. */
+        var base = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+        val quiereRadio = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && (radio?.hayPermiso() == true)
+        if (quiereRadio) {
+            base = base or ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+        }
         val conMicro = base or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
         val quiereMicro = malla?.hayPermiso() == true
 
@@ -845,7 +873,10 @@ class ServicioSos : Service() {
                 oyeEscuchando = false
             }
         }
-        try { startForeground(ID_NOTIF, n, base) } catch (e: Exception) {
+        try { startForeground(ID_NOTIF, n, base); return } catch (e: Exception) {
+            Log.w("SismoRed", "sin radio/dispositivo conectado en primer plano: ${e.message}")
+        }
+        try { startForeground(ID_NOTIF, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK) } catch (e: Exception) {
             Log.e("SismoRed", "no se pudo pasar a primer plano", e)
         }
     }
@@ -1006,6 +1037,8 @@ class ServicioSos : Service() {
      */
     private fun apagarDelTodo() {
         anotar("SismoRed apagada del todo. No vigila, no escucha y no queda nada en segundo plano.")
+        vivo = false
+        try { WatchdogReceiver.cancelar(this) } catch (_: Exception) {}
         opciones.apagada = true
         opciones.deberiaVigilar = false
         try { parar() } catch (_: Exception) {}
@@ -1074,6 +1107,25 @@ class ServicioSos : Service() {
      * móvil cayéndose de la mesa y el generador diésel. Ahora los dos llegan
      * hasta aquí y aquí se paran.
      */
+    private var sucesoWatchdog: Runnable? = null
+
+    private fun cancelarWatchdogSuceso() {
+        sucesoWatchdog?.let { reloj.removeCallbacks(it) }
+        sucesoWatchdog = null
+    }
+
+    private fun reprogramarWatchdogSuceso() {
+        cancelarWatchdogSuceso()
+        val w = Runnable {
+            if (sucesoDesde > 0L && preguntaHasta == 0L && !enAlarma && !enRescate) {
+                anotar("suceso cerrado: sin corroboración tras ${SUCESO_TIMEOUT_MS / 1000} s")
+                cerrarSuceso()
+            }
+        }
+        sucesoWatchdog = w
+        reloj.postDelayed(w, SUCESO_TIMEOUT_MS)
+    }
+
     private fun pruebaNueva(motivo: String) {
         if (motivo.startsWith("caída")) ultimaCaida = System.currentTimeMillis()
         if (!sismo.armado && !enAlarma) { anotar("$motivo (vigilancia desarmada)"); return }
@@ -1092,6 +1144,7 @@ class ServicioSos : Service() {
                sola no decide nada y no merece estar encendida todo el día. */
             try { postura?.vigilarLuz(true) } catch (_: Exception) {}
             try { ubicacion?.refrescar() } catch (_: Exception) {}
+            reprogramarWatchdogSuceso()
         }
         evaluar(motivo)
     }
@@ -1123,6 +1176,7 @@ class ServicioSos : Service() {
                Se acumula igual que el resto de la evidencia del suceso. */
             sacudidaFuerte = sucesoFuerte ||
                 System.currentTimeMillis() - sismo.ultimaFuerte < 60_000L,
+            ondaP = sismo.hayOndaP,
             estruendo = sucesoEstruendo || estruendoAhora,
             corroborada = sucesoCorroborada || saltoEntrante > 0,
             /* La alerta de fuera. Se suma a lo que mide el móvil, no lo
@@ -1202,13 +1256,30 @@ class ServicioSos : Service() {
                    batería, con red y con alguien mirándolo. Se queda escuchando
                    y retransmitiendo la malla, que es el multiplicador más grande
                    que tiene esta red y no cuesta nada. */
-                if (sucesoDesde > 0 && (haContestado || preguntaVencida)) cerrarSuceso()
+                if (sucesoDesde > 0 && (haContestado || preguntaVencida)) {
+                    cerrarSuceso()
+                } else if (sucesoDesde > 0 && preguntaHasta == 0L && !enAlarma && !enRescate) {
+                    reprogramarWatchdogSuceso()
+                }
             }
-            Cascada.Accion.PREGUNTAR -> preguntar(false, d.motivo)
-            Cascada.Accion.AVISAR -> preguntar(true, d.motivo)
-            Cascada.Accion.BALIZA -> balizaSilenciosa(d)
-            Cascada.Accion.DESPERTAR -> despertar(d)
+            Cascada.Accion.PREGUNTAR -> {
+                cancelarWatchdogSuceso()
+                preguntar(false, d.motivo)
+            }
+            Cascada.Accion.AVISAR -> {
+                cancelarWatchdogSuceso()
+                preguntar(true, d.motivo)
+            }
+            Cascada.Accion.BALIZA -> {
+                cancelarWatchdogSuceso()
+                balizaSilenciosa(d)
+            }
+            Cascada.Accion.DESPERTAR -> {
+                cancelarWatchdogSuceso()
+                despertar(d)
+            }
             Cascada.Accion.AUXILIO -> {
+                cancelarWatchdogSuceso()
                 anotar("${Cascada.rotulo(d.quien)} · ${d.motivo}")
                 panico(d.motivo)
             }
@@ -1229,6 +1300,7 @@ class ServicioSos : Service() {
      * existe una sirena que se enciende sola.
      */
     private fun preguntar(conRuido: Boolean, motivo: String) {
+        cancelarWatchdogSuceso()
         val ahoraP = System.currentTimeMillis()
         if (preguntaHasta > ahoraP) return                          // ya está preguntada
         /* Y no se vuelve a preguntar en un rato. De campo: «se disparaba más de
@@ -1562,6 +1634,7 @@ class ServicioSos : Service() {
 
     /** El suceso se ha resuelto: se limpia para poder ver el siguiente. */
     private fun cerrarSuceso() {
+        cancelarWatchdogSuceso()
         pararRampa()
         ultimaSacudidaG = 0.0
         sucesoDesde = 0L
@@ -1775,19 +1848,25 @@ class ServicioSos : Service() {
                 val n = (sr * 1.0).toInt()          // 3 pitidos en 0,28 s cada uno
                 val pcm = ShortArray(n)
                 val rampa = (0.005 * sr).toInt()
+                val durS = 0.20
+                val durMuestras = (durS * sr).toInt()
+                val kChirp = (3200.0 - 2200.0) / (2.0 * durS)
                 for (rep in 0..2) {
                     val ini = (rep * 0.28 * sr).toInt()
-                    val dur = (0.20 * sr).toInt()
-                    for (i in 0 until dur) {
+                    for (i in 0 until durMuestras) {
                         if (ini + i >= n) break
+                        val t = i.toDouble() / sr
                         val env = when {
                             i < rampa -> i.toDouble() / rampa
-                            i > dur - rampa -> (dur - i).toDouble() / rampa
+                            i > durMuestras - rampa -> (durMuestras - i).toDouble() / rampa
                             else -> 1.0
                         }
-                        val grave = if (sin(2 * PI * 110.0 * i / sr) >= 0) 1.0 else -1.0
-                        val agudo = if (sin(2 * PI * 3000.0 * i / sr) >= 0) 0.9 else -0.9
-                        val s = (grave + agudo) * 0.5 * env
+                        // AUD-03: Subgrave 110 Hz puro + Chirp CSS (2.2 a 3.2 kHz)
+                        // Penetra escombros sin saturación de armónicos ni desvanecimiento por reflexión
+                        val grave = sin(2.0 * PI * 110.0 * t)
+                        val faseChirp = 2.0 * PI * (2200.0 * t + kChirp * t * t)
+                        val agudoChirp = sin(faseChirp)
+                        val s = (0.35 * grave + 0.65 * agudoChirp) * env
                         pcm[ini + i] = (s * Short.MAX_VALUE * 0.95).toInt().toShort()
                     }
                 }
@@ -2220,6 +2299,9 @@ class ServicioSos : Service() {
                 try {
                     opciones.latido = System.currentTimeMillis()
                     opciones.deberiaVigilar = !opciones.apagada
+                    if (opciones.deberiaVigilar) {
+                        WatchdogReceiver.programar(this@ServicioSos)
+                    }
                 } catch (_: Exception) {}
                 try {
                     fichaLan?.escuchaFuerte(buscando || enAlarma || enRescate || repetidor)
@@ -2275,6 +2357,12 @@ class ServicioSos : Service() {
     }
 
     override fun onDestroy() {
+        vivo = false
+        if (!opciones.apagada && opciones.deberiaVigilar) {
+            try { WatchdogReceiver.programar(this) } catch (_: Exception) {}
+        } else {
+            try { WatchdogReceiver.cancelar(this) } catch (_: Exception) {}
+        }
         try { sismo.parar() } catch (_: Exception) {}
         try { postura?.parar() } catch (_: Exception) {}
         try { escucha?.parar() } catch (_: Exception) {}

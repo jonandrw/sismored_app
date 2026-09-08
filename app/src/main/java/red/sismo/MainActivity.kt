@@ -152,6 +152,9 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         op = Opciones(this)
+        if (Altavoz.audio == null) {
+            Altavoz.audio = getSystemService(android.content.Context.AUDIO_SERVICE) as? android.media.AudioManager
+        }
 
         /* La app deja de esconder las barras del sistema.
            El rediseño las ocultaba para que la maqueta se viera igual que en el
@@ -496,9 +499,11 @@ class MainActivity : AppCompatActivity() {
         l.add(Permiso(R.drawable.ic_bateria, R.string.ob_bateria, R.string.ob_bateria_para,
             { (getSystemService(Context.POWER_SERVICE) as PowerManager).isIgnoringBatteryOptimizations(packageName) },
             { pedirExencionBateria() }))
-        l.add(Permiso(R.drawable.ic_volumen, R.string.ob_teclas, R.string.ob_teclas_para,
-            { teclasActivas(this) },
-            { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }))
+        if (teclasDisponibles()) {
+            l.add(Permiso(R.drawable.ic_volumen, R.string.ob_teclas, R.string.ob_teclas_para,
+                { teclasActivas(this) },
+                { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }))
+        }
         /* La última posición conocida. El texto dice lo que hace y lo que NO:
            la app no enciende el GPS, solo mira lo que el móvil ya sabía. Si
            alguien lo deja sin conceder, todo lo demás sigue funcionando. */
@@ -632,7 +637,7 @@ class MainActivity : AppCompatActivity() {
         op.apagada = false
         arrancarServicio(ServicioSos.ACCION_MALLA)
         anotar("SismoRed vuelve a vigilar.")
-        if (!teclasActivas(this)) {
+        if (teclasDisponibles() && !teclasActivas(this)) {
             AlertDialog.Builder(this)
                 .setTitle(R.string.reactivar_titulo)
                 .setMessage(R.string.reactivar_texto)
@@ -1750,6 +1755,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<View>(R.id.btn_fsi_miui)?.setOnClickListener { abrirPermisosDelFabricante() }
 
         findViewById<View>(R.id.fila_atajo_volumen)?.setOnClickListener {
+            if (!teclasDisponibles()) return@setOnClickListener
             try {
                 startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
             } catch (_: Exception) {
@@ -2976,8 +2982,13 @@ class MainActivity : AppCompatActivity() {
             it.setTextColor(getColor(if (ubiOk) R.color.gr else R.color.rd))
         }
 
-        val teclasOk = teclasActivas(this)
-        findViewById<View>(R.id.sw_atajo_volumen_dot)?.setBackgroundResource(if (teclasOk) R.drawable.punto_verde else R.drawable.punto_ambar)
+        if (teclasDisponibles()) {
+            findViewById<View>(R.id.fila_atajo_volumen)?.visibility = View.VISIBLE
+            val teclasOk = teclasActivas(this)
+            findViewById<View>(R.id.sw_atajo_volumen_dot)?.setBackgroundResource(if (teclasOk) R.drawable.punto_verde else R.drawable.punto_ambar)
+        } else {
+            findViewById<View>(R.id.fila_atajo_volumen)?.visibility = View.GONE
+        }
         findViewById<View>(R.id.sw_confirmar_sirena_dot)?.setBackgroundResource(if (op.confirmarAntesDeSirena) R.drawable.punto_verde else R.drawable.punto_ambar)
         findViewById<View>(R.id.sw_servicio_arrancar_dot)?.setBackgroundResource(if (op.arrancarAlIniciar) R.drawable.punto_verde else R.drawable.punto_ambar)
     }
@@ -3062,12 +3073,17 @@ class MainActivity : AppCompatActivity() {
         anotar("El sistema paró SismoRed al cerrar la app. Sin arreglarlo, no vigila cuando la cierras.")
     }
 
-    private fun servicioVivo(): Boolean = try {
-        @Suppress("DEPRECATION")
-        (getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager)
-            .getRunningServices(Int.MAX_VALUE)
-            .any { it.service.className == ServicioSos::class.java.name }
-    } catch (_: Exception) { true }
+    private fun servicioVivo(): Boolean {
+        if (ServicioSos.vivo) return true
+        val ahora = System.currentTimeMillis()
+        if (op.latido > 0L && (ahora - op.latido) < 30_000L) return true
+        return try {
+            @Suppress("DEPRECATION")
+            (getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager)
+                .getRunningServices(Int.MAX_VALUE)
+                .any { it.service.className == ServicioSos::class.java.name }
+        } catch (_: Exception) { true }
+    }
 
     /** El ajuste de «inicio automático» de MIUI/HyperOS, y si no existe, la
      *  ficha de la app. No hay API estándar: cada fabricante se lo inventa. */

@@ -15,6 +15,7 @@
 # Los servicios y actividades van en el manifiesto por nombre. AGP ya los
 # conserva, pero dejarlo escrito evita sorpresas si alguien cambia el paquete.
 -keep class red.sismo.ServicioSos
+-dontwarn red.sismo.ServicioTeclas
 -keep class red.sismo.ServicioTeclas
 -keep class red.sismo.AlertaGoogle
 

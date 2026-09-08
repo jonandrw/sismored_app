@@ -24,6 +24,8 @@ import androidx.core.content.ContextCompat
  * que activarlo a mano en Ajustes, y hay que explicarle por qué.
  *
  * No consume el evento: el volumen sigue funcionando con normalidad.
+ *
+ * Exclusivo de la distribución libre (GitHub / F-Droid).
  */
 class ServicioTeclas : AccessibilityService() {
 
@@ -137,6 +139,9 @@ class ServicioTeclas : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
     override fun onInterrupt() {}
 }
+
+/** ¿Está disponible el atajo por accesibilidad en esta variante de la app? */
+fun teclasDisponibles(): Boolean = true
 
 /** ¿Ha activado el usuario el servicio en Ajustes? */
 fun teclasActivas(ctx: Context): Boolean {

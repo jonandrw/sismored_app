@@ -617,7 +617,7 @@ Para leerla hace falta el permiso de acceso a notificaciones, que Android da ent
     <string name="ob2_txt">Se queda escuchando en reposo. Si detecta una sacudida te pregunta <i>«¿estás bien?»</i>, y si no contestas enciende la sirena, la linterna y la baliza de radio para que te encuentren.\n\nTambién funciona al revés: si eres tú quien busca, oye a los que están debajo.</string>
 
     <string name="ob3_tit">Dos reglas\nque no se rompen</string>
-    <string name="ob3_txt"><b>Ningún indicador se inventa nada.</b> Si un dato no se puede medir, la pantalla dice que no se puede medir. Preferimos un «no lo sé» a un número bonito que mande a cavar donde no es.\n\n<b>Nada sale del móvil sin que se vea.</b> No hay telemetría. Lo único que se emite es tu baliza y tu ficha, y solo con la alarma o el rescate activos.</string>
+    <string name="ob3_txt"><b>Ningún indicador se inventa nada.</b> Si un dato no se puede medir, la pantalla dice que no se puede medir. Preferimos un «no lo sé» a un número bonito que mande a cavar donde no es.\n\n<b>Nada sale del móvil sin que se vea.</b> No hay telemetría. Lo único que se emite es tu baliza y tu ficha, y solo con la alarma o el rescate activos.\n\n<b>Aviso legal:</b> SismoRed es una herramienta comunitaria experimental de código abierto y <b>no sustituye a los servicios oficiales de emergencia (911 / 112)</b> ni a protección civil. Llama siempre a emergencias si tienes cobertura.</string>
 
     <string name="ob4_tit">Lo que hace falta\npara que funcione</string>
     <string name="ob4_txt">Cada uno se pide para una cosa concreta y la app sigue funcionando sin los que deniegues. Toca cualquiera para concederlo.</string>
@@ -676,9 +676,9 @@ En Xiaomi y Redmi hacen falta <b>los dos</b>: el de Android y el propio del fabr
          Un rótulo y una nota por herramienta. La nota dice siempre lo que la
          herramienta NO puede decir, que es lo que evita que alguien cave donde
          no es. -->
-    <string name="sonda_rot_eco">ECOLOCALIZACIÓN · CHASQUIDO</string>
-    <string name="sonda_rot_doppler">DOPPLER · TONO CONTINUO</string>
-    <string name="sonda_rot_respira">RESPIRACIÓN · BANDA LENTA</string>
+    <string name="sonda_rot_eco">ECOLOCALIZACIÓN · CHASQUIDOS</string>
+    <string name="sonda_rot_doppler">MOVIMIENTO · SONAR DE IMPULSOS</string>
+    <string name="sonda_rot_respira">RESPIRACIÓN · BIOSONAR DE IMPULSO</string>
     <string name="sonda_rot_barrido">BARRIDO · RECORRIDO DE FRECUENCIA</string>
     <string name="sonda_sin_medir">Sin medir todavía. Pulsa SONDEAR.</string>
     <string name="sonda_nota_eco">Dice cuántas superficies devuelven el chasquido, no a qué distancia están. Dos metros de escombro atenúan más que veinte de aire.</string>

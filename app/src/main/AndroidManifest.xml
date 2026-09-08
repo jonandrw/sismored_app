@@ -5,12 +5,13 @@
          pantalla bloqueada. Sin esto, nada de lo demás importa. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Malla acústica: se escucha la banda de 16-18 kHz para recibir balizas de
          otros móviles. No se graba ni se guarda nada; el audio se analiza en
          marcos de 42 ms y se descarta. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- Para que «¿ESTÁS BIEN?» salga a pantalla completa con el móvil
@@ -148,22 +149,7 @@
             android:name=".ServicioSos"
             android:exported="false"
             android:stopWithTask="false"
-            android:foregroundServiceType="mediaPlayback|microphone" />
-
-        <!-- Único mecanismo que recibe las teclas de volumen con la pantalla
-             apagada y bloqueada. El usuario lo activa a mano en Ajustes. -->
-        <service
-            android:name=".ServicioTeclas"
-            android:exported="true"
-            android:label="@string/app_name"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
-            <intent-filter>
-                <action android:name="android.accessibilityservice.AccessibilityService" />
-            </intent-filter>
-            <meta-data
-                android:name="android.accessibilityservice"
-                android:resource="@xml/accesibilidad" />
-        </service>
+            android:foregroundServiceType="mediaPlayback|microphone|connectedDevice" />
 
         <!-- Oír la alerta sísmica de Google. No hay API pública para leerla, así
              que el único camino es la notificación.
@@ -195,6 +181,17 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/registros" />
         </provider>
+
+        <!-- Watchdog anti-kill (AlarmManager) y resurrección tras reinicio o actualización -->
+        <receiver
+            android:name=".WatchdogReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
 
     </application>
 </manifest>
