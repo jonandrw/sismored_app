@@ -1455,8 +1455,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun montarRed() {
+        /* Este botón se llama `g_enviar` y decía EMITIR ALERTA AHORA, pero
+           llamaba a conmutarEnvio(), que enciende y apaga el envío por internet:
+           otra función, en otra pantalla, y con consecuencias de privacidad. */
         findViewById<View>(R.id.g_enviar)?.setOnClickListener {
-            conmutarEnvio()
+            arrancarServicio(ServicioSos.ACCION_MALLA_ALERTA)
         }
     }
 

@@ -1120,10 +1120,21 @@
                                 android:layout_marginStart="8dp"
                                 android:layout_marginBottom="4dp"
                                 android:fontFamily="@font/mono"
-                                android:text="kHz · inaudible"
+                                android:text="@string/malla_portadora_pie"
                                 android:textColor="#7C858D"
                                 android:textSize="14sp" />
                         </LinearLayout>
+
+                        <!-- La pantalla decia «inaudible» de una banda que mucha
+                             gente oye. Un indicador no puede afirmar lo que pasa
+                             dentro del oido del que mira. -->
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:text="@string/malla_banda_nota"
+                            android:textColor="#7C858D"
+                            android:textSize="12sp" />
 
                         <!-- Spectrum Slider Track with Needle -->
                         <!-- El espectro de la banda, en vivo. Aqui habia una barra de

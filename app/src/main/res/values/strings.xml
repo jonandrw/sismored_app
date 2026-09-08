@@ -686,6 +686,9 @@ En Xiaomi y Redmi hacen falta <b>los dos</b>: el de Android y el propio del fabr
     <string name="sonda_nota_respira">El umbral está calibrado contra señal sintética y <i>no</i> se ha contrastado con una persona bajo escombro. Trátalo como una pista, nunca como una confirmación.</string>
     <string name="sonda_nota_barrido">Enseña en qué frecuencias responde el hueco. Sirve para comparar dos sitios, no para medir uno.</string>
 
+    <string name="malla_portadora_pie">kHz · portadora</string>
+    <string name="malla_banda_nota">La malla usa de 15,2 a 18,8 kHz. Los tonos de abajo se oyen: mucha gente los nota como un pitido agudo, y los niños casi siempre.</string>
+
     <string name="teclas_sin_ajustes">Este móvil no abre los ajustes de accesibilidad desde aquí. Búscalos como «Accesibilidad · Apps instaladas · SismoRed».</string>
     <string name="permisos_al_dia">NO FALTA NINGÚN PERMISO</string>
     <plurals name="permisos_faltan">

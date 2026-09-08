@@ -53,6 +53,8 @@ class ServicioSos : Service() {
         const val ACCION_MALLA = "red.sismo.MALLA"
         /** ESCUCHAR MALLA: enciende y apaga la escucha a mano. */
         const val ACCION_MALLA_CONMUTAR = "red.sismo.MALLA_CONMUTAR"
+        /** EMITIR ALERTA AHORA: manda el tono de alerta a los móviles que oigan. */
+        const val ACCION_MALLA_ALERTA = "red.sismo.MALLA_ALERTA"
         /** ESCUCHAR ENTORNO: los cinco detectores, aparte de la malla. */
         const val ACCION_ESCUCHA_CONMUTAR = "red.sismo.ESCUCHA_CONMUTAR"
         /** Emisión interna para que la pantalla pinte lo que va pasando en la malla. */
@@ -700,6 +702,7 @@ class ServicioSos : Service() {
             ACCION_ARMAR -> armar(!sismo.armado)
             ACCION_OPCIONES -> aplicarOpciones()
             ACCION_MALLA_CONMUTAR -> conmutarMalla()
+            ACCION_MALLA_ALERTA -> emitirAlertaMalla()
             ACCION_ESCUCHA_CONMUTAR -> conmutarEscucha()
             ACCION_MARCAR -> marcar()
             /* Este es el boton PROBAR AHORA de la tarjeta de internet. Fuerza el
@@ -1011,6 +1014,17 @@ class ServicioSos : Service() {
      * es la baliza de radio: no hace ruido, no interfiere con nadie y es lo único
      * que atraviesa el escombro.
      */
+    /** El botón EMITIR ALERTA AHORA de la pantalla de malla. */
+    private fun emitirAlertaMalla() {
+        val m = malla
+        if (m == null) {
+            anotar("no se puede avisar: la malla no está encendida")
+            return
+        }
+        anotar("alerta emitida a la malla a mano")
+        try { m.emitirUna(MallaAcustica.CODIGO_ALERTA) } catch (_: Exception) {}
+    }
+
     private fun silencioZona() {
         anotar("SILENCIO EN LA ZONA: aviso a todos los móviles que me oigan.")
         try { sirena.stop() } catch (_: Exception) {}
@@ -1848,25 +1862,25 @@ class ServicioSos : Service() {
                 val n = (sr * 1.0).toInt()          // 3 pitidos en 0,28 s cada uno
                 val pcm = ShortArray(n)
                 val rampa = (0.005 * sr).toInt()
-                val durS = 0.20
-                val durMuestras = (durS * sr).toInt()
-                val kChirp = (3200.0 - 2200.0) / (2.0 * durS)
+                /* Dos ondas CUADRADAS, no dos senos. Se probó con senos puros —110 Hz
+                   y un barrido de 2,2 a 3,2 kHz— y suena peor de oír, que es de lo
+                   único que se trata: un altavoz de móvil no da 110 Hz, así que un
+                   seno grave se pierde entero, y la cuadrada de 3 kHz reparte energía
+                   en 9, 15 y 21 kHz, que es lo que hace que corte. Los armónicos aquí
+                   no son suciedad: son el motivo de que se oiga desde debajo. */
                 for (rep in 0..2) {
                     val ini = (rep * 0.28 * sr).toInt()
-                    for (i in 0 until durMuestras) {
+                    val dur = (0.20 * sr).toInt()
+                    for (i in 0 until dur) {
                         if (ini + i >= n) break
-                        val t = i.toDouble() / sr
                         val env = when {
                             i < rampa -> i.toDouble() / rampa
-                            i > durMuestras - rampa -> (durMuestras - i).toDouble() / rampa
+                            i > dur - rampa -> (dur - i).toDouble() / rampa
                             else -> 1.0
                         }
-                        // AUD-03: Subgrave 110 Hz puro + Chirp CSS (2.2 a 3.2 kHz)
-                        // Penetra escombros sin saturación de armónicos ni desvanecimiento por reflexión
-                        val grave = sin(2.0 * PI * 110.0 * t)
-                        val faseChirp = 2.0 * PI * (2200.0 * t + kChirp * t * t)
-                        val agudoChirp = sin(faseChirp)
-                        val s = (0.35 * grave + 0.65 * agudoChirp) * env
+                        val grave = if (sin(2 * PI * 110.0 * i / sr) >= 0) 1.0 else -1.0
+                        val agudo = if (sin(2 * PI * 3000.0 * i / sr) >= 0) 0.9 else -0.9
+                        val s = (grave + agudo) * 0.5 * env
                         pcm[ini + i] = (s * Short.MAX_VALUE * 0.95).toInt().toShort()
                     }
                 }
