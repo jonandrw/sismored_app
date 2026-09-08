@@ -27,7 +27,15 @@ interface EventoDao {
     suspend fun borrarTodos()
 
     companion object {
-        /** Con qué se queda la poda. Cabe una emergencia larga entera. */
-        const val MAX_EVENTOS = 2000
+        /**
+         * Con qué se queda la poda.
+         *
+         * Medido en el Redmi: 14.010 eventos en 6,6 días, unos 88 por hora y
+         * 95 bytes cada uno. Con 2.000 no llegaba ni a un día, y un falso
+         * positivo de madrugada se descubre por la mañana: para entonces la
+         * causa ya se habría podado. Con 20.000 hay diez días de historia y
+         * ocupa menos de 2 MB, que en el móvil no es nada.
+         */
+        const val MAX_EVENTOS = 20000
     }
 }

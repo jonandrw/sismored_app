@@ -468,6 +468,33 @@ class Sismografo(
          */
         const val CICLO_FUERTE = 0.85
 
+        /**
+         * Y además, cuánto tiene que sacudir. **Este era el agujero.**
+         *
+         * «Fuerte» se decidía SOLO por el ciclo de trabajo, sin mirar la
+         * amplitud: bastaba con que el suelo pasara del umbral de forma
+         * sostenida dos segundos. Con el móvil en reposo el umbral es 0,25
+         * m/s², así que una vibración continua y ridícula —un ventilador, la
+         * nevera, un camión— daba ciclo del 100 % y entraba por la única rama
+         * de la cascada que dispara sin pedirle opinión a nadie.
+         *
+         * Medido sobre 426 disparos reales del Redmi, del 1 al 8 de septiembre
+         * de 2026, sin un solo terremoto: diez pasaron por «fuerte», con
+         * amplitudes de 0,24 a 0,73 m/s².
+         *
+         * El corte es 0,60 y sale de la tabla de arriba, no del ruido: un MMI VI
+         * mide 0,647 aquí, y esta constante existe para el MMI VI o mayor —lo
+         * dice [CICLO_FUERTE]—. Poner el listón por encima de 0,647 dejaría a la
+         * app sorda ante el terremoto que se supone que tiene que oír sola.
+         *
+         * Con 0,60 caen ocho de aquellos diez falsos. Los otros dos median 0,73,
+         * o sea MÁS que un MMI VI: por amplitud no se pueden separar, y quien
+         * los tiene que descartar es la segunda opinión, no este número. Un MMI
+         * V (0,38) tampoco pasa, y es correcto: sigue contando como sacudida
+         * floja, que es la que pide que alguien más la confirme.
+         */
+        const val FUERTE_MIN = 0.60
+
         /** Tamaño del anillo: dos segundos caben de sobra hasta 128 Hz. */
         private const val ANILLO = 256
 
@@ -919,7 +946,7 @@ class Sismografo(
                     .format(sta, manoGrados))
                 return
             }
-            if (cicloTrabajo >= CICLO_FUERTE) ultimaFuerte = System.currentTimeMillis()
+            if (cicloTrabajo >= CICLO_FUERTE && sta >= FUERTE_MIN) ultimaFuerte = System.currentTimeMillis()
             an = 0; ai = 0                       // el anillo se vacía tras disparar
             Log.i("SismoRed", "sismografo %.2f m/s2 horizontal · STA/LTA %.1fx · ciclo %.2f (req %.2f) · P-wave %b · umbral real %.2f (calma %.3f)"
                 .format(sta, ratioStaLta, cicloTrabajo, cicloReq, hayOndaP, u, calmaMedida))
