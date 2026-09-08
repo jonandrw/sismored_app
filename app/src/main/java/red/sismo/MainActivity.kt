@@ -1717,6 +1717,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun montarDiagnostico() {
+        /* El envío por internet no tenía ningún control desde el rediseño: se
+           encendía desde el botón de la pantalla de malla que decía EMITIR
+           ALERTA AHORA. Aquí sí se puede encontrar, y sigue pidiendo
+           confirmación antes de encenderse. */
+        findViewById<View>(R.id.sw_envio)?.setOnClickListener { conmutarEnvio() }
         /* Cada fila pide SU permiso. Cámara y ubicación llamaban las dos a
            `pedirPermisos`, que solo pide notificaciones y micrófono: pulsar
            «Ubicación» no hacía nada visible, y pulsar «Cámara / linterna»
@@ -2916,6 +2921,8 @@ class MainActivity : AppCompatActivity() {
     private var ubicacion: Ubicacion? = null
 
     private fun pintarDiagnostico(forzar: Boolean = false) {
+        // Fuera del freno de dos segundos: un interruptor tiene que moverse al tocarlo.
+        actualizarSwTactico(R.id.sw_envio, op.envio)
         val ahora = System.currentTimeMillis()
         if (!forzar && ahora - diagUltimo < 2000) return
         diagUltimo = ahora

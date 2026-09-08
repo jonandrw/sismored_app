@@ -136,7 +136,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/mono"
                     android:letterSpacing="0.1"
-                    android:text="ARMADO"
+                    android:text="@string/chip_armado"
                     android:textColor="#90CA50"
                     android:textSize="10sp" />
             </LinearLayout>
@@ -201,7 +201,7 @@
                                 android:includeFontPadding="false"
                                 android:paddingStart="20dp"
                                 android:paddingEnd="20dp"
-                                android:text="PÁNICO&#160;"
+                                android:text="@string/lbl_panico_160"
                                 android:textColor="@color/rd"
                                 android:textSize="64sp"
                                 android:textStyle="bold|italic" />
@@ -347,7 +347,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/saira"
-                                android:text="DETECTOR"
+                                android:text="@string/lbl_detector"
                                 android:textAllCaps="true"
                                 android:letterSpacing="0.03"
                                 android:textColor="@color/tx"
@@ -392,7 +392,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/saira"
-                                android:text="MALLA"
+                                android:text="@string/rot_malla"
                                 android:textAllCaps="true"
                                 android:letterSpacing="0.03"
                                 android:textColor="@color/tx"
@@ -446,7 +446,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/saira"
-                                android:text="BUSCAR"
+                                android:text="@string/rot_busqueda"
                                 android:textAllCaps="true"
                                 android:letterSpacing="0.03"
                                 android:textColor="@color/tx"
@@ -458,7 +458,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/mono"
-                                android:text="SIN SEÑAL"
+                                android:text="@string/lbl_sin_senal"
                                 android:textColor="@color/dim"
                                 android:textSize="10sp" />
                         </LinearLayout>
@@ -491,7 +491,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/saira"
-                                android:text="BALIZA"
+                                android:text="@string/lbl_baliza"
                                 android:textAllCaps="true"
                                 android:letterSpacing="0.03"
                                 android:textColor="@color/tx"
@@ -503,7 +503,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/mono"
-                                android:text="OFF"
+                                android:text="@string/off"
                                 android:textColor="@color/dim"
                                 android:textSize="10sp" />
                         </LinearLayout>
@@ -546,7 +546,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/saira"
-                                android:text="SONDA"
+                                android:text="@string/rot_sonda"
                                 android:textAllCaps="true"
                                 android:letterSpacing="0.03"
                                 android:textColor="@color/tx"
@@ -558,7 +558,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/mono"
-                                android:text="SIN CALIBRAR"
+                                android:text="@string/chip_sin_calibrar"
                                 android:textColor="#F0A02A"
                                 android:textSize="10sp" />
                         </LinearLayout>
@@ -591,7 +591,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/saira"
-                                android:text="INTERFONO"
+                                android:text="@string/lbl_interfono"
                                 android:textAllCaps="true"
                                 android:letterSpacing="0.03"
                                 android:textColor="@color/tx"
@@ -603,7 +603,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/mono"
-                                android:text="LISTO"
+                                android:text="@string/ob_hecho"
                                 android:textColor="#90CA50"
                                 android:textSize="10sp" />
                         </LinearLayout>
@@ -745,7 +745,7 @@
                                 android:layout_weight="1"
                                 android:fontFamily="@font/saira"
                                 android:letterSpacing="0.03"
-                                android:text="SENSIBILIDAD"
+                                android:text="@string/lbl_sensibilidad"
                                 android:textAllCaps="true"
                                 android:textColor="@color/tx"
                                 android:textSize="18sp"
@@ -756,7 +756,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/mono"
-                                android:text="MEDIA"
+                                android:text="@string/lbl_media"
                                 android:textColor="#BCC3C9"
                                 android:textSize="13sp" />
                         </LinearLayout>
@@ -779,7 +779,7 @@
                                 android:focusable="true"
                                 android:fontFamily="@font/mono"
                                 android:gravity="center"
-                                android:text="BAJA"
+                                android:text="@string/lbl_baja"
                                 android:textColor="#7C858D"
                                 android:textSize="11sp" />
 
@@ -795,7 +795,7 @@
                                 android:focusable="true"
                                 android:fontFamily="@font/mono"
                                 android:gravity="center"
-                                android:text="MEDIA"
+                                android:text="@string/lbl_media"
                                 android:textColor="#0A0405"
                                 android:textSize="11sp"
                                 android:textStyle="bold" />
@@ -811,7 +811,7 @@
                                 android:focusable="true"
                                 android:fontFamily="@font/mono"
                                 android:gravity="center"
-                                android:text="ALTA"
+                                android:text="@string/lbl_alta"
                                 android:textColor="#7C858D"
                                 android:textSize="11sp" />
                         </LinearLayout>
@@ -842,7 +842,7 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:fontFamily="@font/barlow"
-                                    android:text="Descartar caídas y carrera"
+                                    android:text="@string/lbl_descartar_caidas_y_carrera"
                                     android:textColor="@color/tx"
                                     android:textSize="16sp"
                                     android:textStyle="bold" />
@@ -851,7 +851,7 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:fontFamily="@font/barlow"
-                                    android:text="Filtro de patrón, no de amplitud"
+                                    android:text="@string/lbl_filtro_de_patron_no_de_amplitu"
                                     android:textColor="#7C858D"
                                     android:textSize="13sp" />
                             </LinearLayout>
@@ -885,7 +885,7 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:fontFamily="@font/barlow"
-                                    android:text="Avisar a la malla al disparar"
+                                    android:text="@string/lbl_avisar_a_la_malla_al_disparar"
                                     android:textColor="@color/tx"
                                     android:textSize="16sp"
                                     android:textStyle="bold" />
@@ -894,7 +894,7 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:fontFamily="@font/barlow"
-                                    android:text="Propaga en 16–18 kHz"
+                                    android:text="@string/lbl_propaga_en_1618_khz"
                                     android:textColor="#7C858D"
                                     android:textSize="13sp" />
                             </LinearLayout>
@@ -929,7 +929,7 @@
                             android:layout_weight="1"
                             android:fontFamily="@font/barlow"
                             android:lineSpacingMultiplier="1.3"
-                            android:text="El umbral está calibrado contra señal sintética. No se ha comprobado contra un terremoto real."
+                            android:text="@string/lbl_el_umbral_esta_calibrado_contr"
                             android:textColor="#D9C9A8"
                             android:textSize="13sp" />
                     </LinearLayout>
@@ -1074,7 +1074,7 @@
                             android:layout_marginTop="10dp"
                             android:fontFamily="@font/mono"
                             android:letterSpacing="0.1"
-                            android:text="4 NODOS OÍDOS EN LOS ÚLTIMOS 90 S"
+                            android:text="@string/lbl_4_nodos_oidos_en_los_ultimos_9"
                             android:textColor="#7C858D"
                             android:textSize="11sp" />
                     </LinearLayout>
@@ -1093,7 +1093,7 @@
                             android:layout_height="wrap_content"
                             android:fontFamily="@font/mono"
                             android:letterSpacing="0.2"
-                            android:text="PORTADORA"
+                            android:text="@string/lbl_portadora"
                             android:textColor="#7C858D"
                             android:textSize="10sp" />
 
@@ -1109,7 +1109,7 @@
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/mono"
                                 android:id="@+id/malla_portadora"
-                                android:text="16.0"
+                                android:text="@string/lbl_16_0"
                                 android:textColor="#FFFFFF"
                                 android:textSize="30sp"
                                 android:textStyle="bold" />
@@ -1171,7 +1171,7 @@
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/mono"
                                 android:letterSpacing="0.14"
-                                android:text="SALTOS MÁX"
+                                android:text="@string/lbl_saltos_max"
                                 android:textColor="#7C858D"
                                 android:textSize="10sp" />
 
@@ -1180,7 +1180,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="4dp"
                                 android:fontFamily="@font/mono"
-                                android:text="4"
+                                android:text="@string/n4"
                                 android:textColor="#FFFFFF"
                                 android:textSize="24sp"
                                 android:textStyle="bold" />
@@ -1201,7 +1201,7 @@
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/mono"
                                 android:letterSpacing="0.14"
-                                android:text="REEMITIDAS"
+                                android:text="@string/lbl_reemitidas"
                                 android:textColor="#7C858D"
                                 android:textSize="10sp" />
 
@@ -1211,7 +1211,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="4dp"
                                 android:fontFamily="@font/mono"
-                                android:text="12"
+                                android:text="@string/lbl_12"
                                 android:textColor="#FFFFFF"
                                 android:textSize="24sp"
                                 android:textStyle="bold" />
@@ -1232,7 +1232,7 @@
                         android:gravity="center"
                         android:letterSpacing="0.03"
                         android:padding="16dp"
-                        android:text="EMITIR ALERTA AHORA"
+                        android:text="@string/lbl_emitir_alerta_ahora"
                         android:textColor="#0A0405"
                         android:textSize="20sp"
                         android:textStyle="bold|italic" />
@@ -1278,7 +1278,7 @@
                         android:layout_marginBottom="10dp"
                         android:fontFamily="@font/mono"
                         android:letterSpacing="0.2"
-                        android:text="LO QUE SALE DEL MÓVIL"
+                        android:text="@string/lbl_lo_que_sale_del_movil"
                         android:textColor="#7C858D"
                         android:textSize="10sp" />
 
@@ -1303,7 +1303,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:fontFamily="@font/barlow"
-                                android:text="Nombre de pila"
+                                android:text="@string/lbl_nombre_de_pila"
                                 android:textColor="#7C858D"
                                 android:textSize="15sp" />
 
@@ -1312,7 +1312,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/mono"
-                                android:text="MARTA"
+                                android:text="@string/lbl_marta"
                                 android:textAllCaps="true"
                                 android:textColor="#FFFFFF"
                                 android:textSize="15sp" />
@@ -1339,7 +1339,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:fontFamily="@font/barlow"
-                                android:text="Grupo sanguíneo"
+                                android:text="@string/lbl_grupo_sanguineo"
                                 android:textColor="#7C858D"
                                 android:textSize="15sp" />
 
@@ -1348,7 +1348,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/mono"
-                                android:text="0−"
+                                android:text="@string/lbl_0"
                                 android:textColor="#E53035"
                                 android:textSize="15sp"
                                 android:textStyle="bold" />
@@ -1375,7 +1375,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:fontFamily="@font/barlow"
-                                android:text="Estado"
+                                android:text="@string/k_estado"
                                 android:textColor="#7C858D"
                                 android:textSize="15sp" />
 
@@ -1384,7 +1384,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/mono"
-                                android:text="ATRAPADA"
+                                android:text="@string/baliza_est_alarma"
                                 android:textAllCaps="true"
                                 android:textColor="#F0A02A"
                                 android:textSize="15sp" />
@@ -1411,7 +1411,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:fontFamily="@font/barlow"
-                                android:text="Emitiendo desde"
+                                android:text="@string/lbl_emitiendo_desde"
                                 android:textColor="#7C858D"
                                 android:textSize="15sp" />
 
@@ -1420,7 +1420,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/mono"
-                                android:text="01:24:06"
+                                android:text="@string/lbl_01_24_06"
                                 android:textColor="#FFFFFF"
                                 android:textSize="15sp" />
                         </LinearLayout>
@@ -1449,7 +1449,7 @@
                             android:layout_weight="1"
                             android:fontFamily="@font/barlow"
                             android:lineSpacingMultiplier="1.3"
-                            android:text="Es lo único que sale del móvil, y solo con la alarma o el modo rescate activos. No hay cuenta ni servidor."
+                            android:text="@string/lbl_es_lo_unico_que_sale_del_movil"
                             android:textColor="#7C858D"
                             android:textSize="13sp" />
                     </LinearLayout>
@@ -1468,7 +1468,7 @@
                         android:gravity="center"
                         android:letterSpacing="0.03"
                         android:padding="15dp"
-                        android:text="DETENER BALIZA"
+                        android:text="@string/lbl_detener_baliza"
                         android:textColor="#BCC3C9"
                         android:textSize="18sp"
                         android:textStyle="bold" />
@@ -1550,7 +1550,7 @@
                             android:layout_height="wrap_content"
                             android:fontFamily="@font/mono"
                             android:letterSpacing="0.2"
-                            android:text="TENDENCIA DE SEÑAL"
+                            android:text="@string/lbl_tendencia_de_senal"
                             android:textColor="#90CA50"
                             android:textSize="10sp" />
 
@@ -1573,7 +1573,7 @@
                             android:includeFontPadding="false"
                             android:letterSpacing="-0.02"
                             android:maxLines="1"
-                            android:text="TE ACERCAS"
+                            android:text="@string/lbl_te_acercas"
                             android:textColor="#FFFFFF"
                             android:textSize="44sp"
                             android:textStyle="bold|italic" />
@@ -1598,7 +1598,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:fontFamily="@font/mono"
-                                android:text="−90 dBm hace 40 s"
+                                android:text="@string/lbl_90_dbm_hace_40_s"
                                 android:textColor="#8A9484"
                                 android:textSize="11sp" />
 
@@ -1607,7 +1607,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/mono"
-                                android:text="−58 dBm ahora"
+                                android:text="@string/lbl_58_dbm_ahora"
                                 android:textColor="#90CA50"
                                 android:textSize="11sp"
                                 android:textStyle="bold" />
@@ -1637,7 +1637,7 @@
                             android:layout_weight="1"
                             android:fontFamily="@font/barlow"
                             android:lineSpacingMultiplier="1.3"
-                            android:text="No se traduce a metros. Dos metros de escombro atenúan más que veinte de aire: un número mandaría a cavar donde no es."
+                            android:text="@string/lbl_no_se_traduce_a_metros_dos_met"
                             android:textColor="#7C858D"
                             android:textSize="13sp" />
                     </LinearLayout>
@@ -1650,7 +1650,7 @@
                         android:layout_marginBottom="10dp"
                         android:fontFamily="@font/mono"
                         android:letterSpacing="0.2"
-                        android:text="HALLAZGOS"
+                        android:text="@string/lbl_hallazgos"
                         android:textColor="#7C858D"
                         android:textSize="10sp" />
 
@@ -1689,7 +1689,7 @@
                             android:letterSpacing="0.06"
                             android:paddingTop="11dp"
                             android:paddingBottom="11dp"
-                            android:text="ECO"
+                            android:text="@string/lbl_eco"
                             android:textColor="@color/tx_sec"
                             android:textSize="10sp"
                             android:textStyle="bold" />
@@ -1706,7 +1706,7 @@
                             android:gravity="center"
                             android:paddingTop="11dp"
                             android:paddingBottom="11dp"
-                            android:text="DOPPLER"
+                            android:text="@string/lbl_doppler"
                             android:textColor="@color/dim"
                             android:textSize="10sp" />
 
@@ -1722,7 +1722,7 @@
                             android:gravity="center"
                             android:paddingTop="11dp"
                             android:paddingBottom="11dp"
-                            android:text="RESPIRA"
+                            android:text="@string/lbl_respira"
                             android:textColor="@color/dim"
                             android:textSize="10sp" />
 
@@ -1737,7 +1737,7 @@
                             android:gravity="center"
                             android:paddingTop="11dp"
                             android:paddingBottom="11dp"
-                            android:text="BARRIDO"
+                            android:text="@string/rot_barrido"
                             android:textColor="@color/dim"
                             android:textSize="10sp" />
                     </LinearLayout>
@@ -1842,7 +1842,7 @@
                                 android:layout_weight="1"
                                 android:fontFamily="@font/saira"
                                 android:letterSpacing="0.03"
-                                android:text="GANANCIA DE ENTRADA"
+                                android:text="@string/lbl_ganancia_de_entrada"
                                 android:textColor="@color/tx"
                                 android:textSize="18sp"
                                 android:textStyle="bold" />
@@ -1852,7 +1852,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/mono"
-                                android:text="+18 dB"
+                                android:text="@string/lbl_18_db"
                                 android:textColor="@color/lectura"
                                 android:textSize="13sp" />
                         </LinearLayout>
@@ -1886,7 +1886,7 @@
                             android:gravity="center"
                             android:paddingTop="16dp"
                             android:paddingBottom="16dp"
-                            android:text="SONDEAR"
+                            android:text="@string/lbl_sondear"
                             android:textColor="@color/tx_sobre_rojo"
                             android:textSize="19sp"
                             android:textStyle="bold|italic" />
@@ -1901,7 +1901,7 @@
                             android:gravity="center"
                             android:paddingTop="16dp"
                             android:paddingBottom="16dp"
-                            android:text="CHITÓN"
+                            android:text="@string/lbl_chiton"
                             android:textColor="@color/lectura"
                             android:textSize="19sp"
                             android:textStyle="bold" />
@@ -1950,7 +1950,7 @@
                             android:layout_height="wrap_content"
                             android:fontFamily="@font/mono"
                             android:letterSpacing="0.2"
-                            android:text="DIRECCIÓN"
+                            android:text="@string/lbl_direccion"
                             android:textColor="#7C858D"
                             android:textSize="10sp" />
 
@@ -1972,7 +1972,7 @@
                                 android:letterSpacing="0.04"
                                 android:paddingTop="14dp"
                                 android:paddingBottom="14dp"
-                                android:text="HABLAR ABAJO"
+                                android:text="@string/lbl_hablar_abajo"
                                 android:textColor="#0A0405"
                                 android:textSize="17sp"
                                 android:textStyle="bold" />
@@ -1989,7 +1989,7 @@
                                 android:letterSpacing="0.04"
                                 android:paddingTop="14dp"
                                 android:paddingBottom="14dp"
-                                android:text="ESCUCHAR"
+                                android:text="@string/lbl_escuchar"
                                 android:textColor="#7C858D"
                                 android:textSize="17sp"
                                 android:textStyle="bold" />
@@ -2001,7 +2001,7 @@
                             android:layout_marginTop="14dp"
                             android:fontFamily="@font/barlow"
                             android:lineSpacingMultiplier="1.45"
-                            android:text="La voz viaja por el escombro, no por radio. Apoya el móvil contra el hormigón y habla a la pantalla."
+                            android:text="@string/interfono_guia"
                             android:textColor="#7C858D"
                             android:textSize="13sp" />
                     </LinearLayout>
@@ -2014,7 +2014,7 @@
                         android:layout_marginBottom="10dp"
                         android:fontFamily="@font/mono"
                         android:letterSpacing="0.2"
-                        android:text="RESPUESTAS OÍDAS"
+                        android:text="@string/lbl_respuestas_oidas"
                         android:textColor="#7C858D"
                         android:textSize="10sp" />
 
@@ -2053,7 +2053,7 @@
                         android:gravity="center"
                         android:paddingTop="16dp"
                         android:paddingBottom="16dp"
-                        android:text="CERRAR CANAL"
+                        android:text="@string/lbl_cerrar_canal"
                         android:textColor="@color/tx_sec"
                         android:textSize="19sp"
                         android:textStyle="bold" />
@@ -2087,7 +2087,7 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:layout_marginEnd="4dp"
-                            android:text="EDITAR FICHA" />
+                            android:text="@string/lbl_editar_ficha" />
 
                         <Button
                             android:id="@+id/btn_rescatado_ficha"
@@ -2096,7 +2096,7 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:layout_marginStart="4dp"
-                            android:text="RESCATADO" />
+                            android:text="@string/lbl_rescatado" />
                     </LinearLayout>
                 </LinearLayout>
 
@@ -2271,7 +2271,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:fontFamily="@font/barlow"
-                                android:text="Pulso sonoro"
+                                android:text="@string/lbl_pulso_sonoro"
                                 android:textColor="@color/tx"
                                 android:textSize="16sp" />
                             <include layout="@layout/sw_tactico" />
@@ -2296,7 +2296,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:fontFamily="@font/barlow"
-                                android:text="Baliza de radio"
+                                android:text="@string/lbl_baliza_de_radio"
                                 android:textColor="@color/tx"
                                 android:textSize="16sp" />
                             <include layout="@layout/sw_tactico" />
@@ -2321,7 +2321,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:fontFamily="@font/barlow"
-                                android:text="Destello de linterna"
+                                android:text="@string/lbl_destello_de_linterna"
                                 android:textColor="@color/tx"
                                 android:textSize="16sp" />
                             <include layout="@layout/sw_tactico" />
@@ -2376,7 +2376,7 @@
                         android:gravity="center"
                         android:paddingTop="16dp"
                         android:paddingBottom="16dp"
-                        android:text="SALIR DEL MODO RESCATE"
+                        android:text="@string/lbl_salir_del_modo_rescate"
                         android:textColor="@color/tx_sec"
                         android:textSize="19sp"
                         android:textStyle="bold" />
@@ -2402,7 +2402,7 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:fontFamily="@font/saira"
-                            android:text="REGISTRO"
+                            android:text="@string/rot_registro"
                             android:textAllCaps="true"
                             android:textColor="@color/tx"
                             android:textSize="32sp"
@@ -2419,7 +2419,7 @@
                             android:paddingEnd="12dp"
                             android:paddingTop="6dp"
                             android:paddingBottom="6dp"
-                            android:text="COPIAR"
+                            android:text="@string/copiar_registro"
                             android:textColor="#7C858D"
                             android:textSize="10sp" />
                     </LinearLayout>
@@ -2437,7 +2437,7 @@
                             android:layout_height="wrap_content"
                             android:fontFamily="@font/mono"
                             android:letterSpacing="0.2"
-                            android:text="AUTOCOMPROBACIÓN AL ARRANCAR"
+                            android:text="@string/autotest_titulo"
                             android:textColor="#7C858D"
                             android:textSize="10sp" />
 
@@ -2455,7 +2455,7 @@
                                 android:fontFamily="@font/saira"
                                 android:lineSpacingMultiplier="1"
                                 android:paddingEnd="16dp"
-                                android:text="4 / 5"
+                                android:text="@string/lbl_4_5"
                                 android:textColor="#90CA50"
                                 android:textSize="44sp"
                                 android:textStyle="bold" />
@@ -2466,7 +2466,7 @@
                                 android:layout_marginStart="10dp"
                                 android:layout_marginBottom="6dp"
                                 android:fontFamily="@font/barlow"
-                                android:text="verificado"
+                                android:text="@string/lbl_verificado"
                                 android:textColor="#7C858D"
                                 android:textSize="15sp" />
                         </LinearLayout>
@@ -2485,8 +2485,8 @@
                                 android:gravity="center_vertical"
                                 android:orientation="horizontal">
                                 <View android:id="@+id/ic_malla_sq" android:layout_width="16dp" android:layout_height="16dp" android:background="@drawable/cuadrado_verde" />
-                                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="12dp" android:fontFamily="@font/barlow" android:text="Malla · tonos 16–18 kHz" android:textColor="@color/tx" android:textSize="15sp" />
-                                <TextView android:id="@+id/at_malla_ok" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/mono" android:text="OK" android:textColor="#90CA50" android:textSize="11sp" android:textStyle="bold" />
+                                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="12dp" android:fontFamily="@font/barlow" android:text="@string/autotest_malla" android:textColor="@color/tx" android:textSize="15sp" />
+                                <TextView android:id="@+id/at_malla_ok" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/mono" android:text="@string/lbl_ok" android:textColor="#90CA50" android:textSize="11sp" android:textStyle="bold" />
                             </LinearLayout>
 
                             <!-- Item 2: Detector sísmico -->
@@ -2497,8 +2497,8 @@
                                 android:gravity="center_vertical"
                                 android:orientation="horizontal">
                                 <View android:id="@+id/ic_sismo_sq" android:layout_width="16dp" android:layout_height="16dp" android:background="@drawable/cuadrado_verde" />
-                                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="12dp" android:fontFamily="@font/barlow" android:text="Detector sísmico" android:textColor="@color/tx" android:textSize="15sp" />
-                                <TextView android:id="@+id/at_sismo_ok" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/mono" android:text="OK" android:textColor="#90CA50" android:textSize="11sp" android:textStyle="bold" />
+                                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="12dp" android:fontFamily="@font/barlow" android:text="@string/autotest_sismo" android:textColor="@color/tx" android:textSize="15sp" />
+                                <TextView android:id="@+id/at_sismo_ok" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/mono" android:text="@string/lbl_ok" android:textColor="#90CA50" android:textSize="11sp" android:textStyle="bold" />
                             </LinearLayout>
 
                             <!-- Item 3: Baliza BLE -->
@@ -2509,8 +2509,8 @@
                                 android:gravity="center_vertical"
                                 android:orientation="horizontal">
                                 <View android:id="@+id/ic_ble_sq" android:layout_width="16dp" android:layout_height="16dp" android:background="@drawable/cuadrado_verde" />
-                                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="12dp" android:fontFamily="@font/barlow" android:text="Baliza BLE" android:textColor="@color/tx" android:textSize="15sp" />
-                                <TextView android:id="@+id/at_ble_ok" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/mono" android:text="OK" android:textColor="#90CA50" android:textSize="11sp" android:textStyle="bold" />
+                                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="12dp" android:fontFamily="@font/barlow" android:text="@string/lbl_baliza_ble" android:textColor="@color/tx" android:textSize="15sp" />
+                                <TextView android:id="@+id/at_ble_ok" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/mono" android:text="@string/lbl_ok" android:textColor="#90CA50" android:textSize="11sp" android:textStyle="bold" />
                             </LinearLayout>
 
                             <!-- Item 4: Sirena -->
@@ -2521,8 +2521,8 @@
                                 android:gravity="center_vertical"
                                 android:orientation="horizontal">
                                 <View android:id="@+id/ic_sirena_sq" android:layout_width="16dp" android:layout_height="16dp" android:background="@drawable/cuadrado_verde" />
-                                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="12dp" android:fontFamily="@font/barlow" android:text="Sirena · canal alarma" android:textColor="@color/tx" android:textSize="15sp" />
-                                <TextView android:id="@+id/at_sirena_ok" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/mono" android:text="OK" android:textColor="#90CA50" android:textSize="11sp" android:textStyle="bold" />
+                                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="12dp" android:fontFamily="@font/barlow" android:text="@string/lbl_sirena_canal_alarma_1" android:textColor="@color/tx" android:textSize="15sp" />
+                                <TextView android:id="@+id/at_sirena_ok" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/mono" android:text="@string/lbl_ok" android:textColor="#90CA50" android:textSize="11sp" android:textStyle="bold" />
                             </LinearLayout>
 
                             <!-- Item 5: Respiración -->
@@ -2533,8 +2533,8 @@
                                 android:gravity="center_vertical"
                                 android:orientation="horizontal">
                                 <View android:id="@+id/ic_respira_sq" android:layout_width="16dp" android:layout_height="16dp" android:background="@drawable/cuadrado_ambar" />
-                                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="12dp" android:fontFamily="@font/barlow" android:text="Umbral de respiración" android:textColor="@color/tx_sec" android:textSize="15sp" />
-                                <TextView android:id="@+id/at_respira_ok" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/mono" android:text="SIN CALIBRAR" android:textColor="#F0A02A" android:textSize="11sp" android:textStyle="bold" />
+                                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="12dp" android:fontFamily="@font/barlow" android:text="@string/lbl_umbral_de_respiracion" android:textColor="@color/tx_sec" android:textSize="15sp" />
+                                <TextView android:id="@+id/at_respira_ok" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/mono" android:text="@string/chip_sin_calibrar" android:textColor="#F0A02A" android:textSize="11sp" android:textStyle="bold" />
                             </LinearLayout>
                         </LinearLayout>
                     </red.sismo.TarjetaAchaflanadaLayout>
@@ -2547,7 +2547,7 @@
                         android:layout_marginBottom="10dp"
                         android:fontFamily="@font/mono"
                         android:letterSpacing="0.2"
-                        android:text="EVENTOS"
+                        android:text="@string/lbl_eventos"
                         android:textColor="#7C858D"
                         android:textSize="10sp" />
 
@@ -2578,7 +2578,7 @@
                         android:gravity="center"
                         android:paddingTop="16dp"
                         android:paddingBottom="16dp"
-                        android:text="REPETIR AUTOCOMPROBACIÓN"
+                        android:text="@string/lbl_repetir_autocomprobacion"
                         android:textColor="@color/tx_sec"
                         android:textSize="19sp"
                         android:textStyle="bold" />
@@ -2687,7 +2687,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/barlow"
-                                android:text="Sin ubicación en segundo plano la baliza no se ve con la pantalla apagada."
+                                android:text="@string/lbl_sin_ubicacion_en_segundo_plano"
                                 android:textColor="#D2AFB0"
                                 android:textSize="13sp" />
                         </LinearLayout>
@@ -2779,7 +2779,7 @@
                         android:layout_marginBottom="10dp"
                         android:fontFamily="@font/mono"
                         android:letterSpacing="0.2"
-                        android:text="PERMISOS"
+                        android:text="@string/lbl_permisos"
                         android:textColor="#7C858D"
                         android:textSize="10sp" />
 
@@ -2800,10 +2800,10 @@
                             android:padding="14dp">
                             <View android:id="@+id/permiso_micro_dot" android:layout_width="8dp" android:layout_height="8dp" android:background="@drawable/punto_verde" />
                             <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="12dp" android:orientation="vertical">
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="Micrófono" android:textColor="@color/tx" android:textSize="16sp" android:textStyle="bold" />
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="Malla, sonda e interfono" android:textColor="#7C858D" android:textSize="12.5sp" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="@string/ob_micro" android:textColor="@color/tx" android:textSize="16sp" android:textStyle="bold" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="@string/lbl_malla_sonda_e_interfono" android:textColor="#7C858D" android:textSize="12.5sp" />
                             </LinearLayout>
-                            <TextView android:id="@+id/permiso_micro_txt" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/mono" android:text="CONCEDIDO" android:textColor="#90CA50" android:textSize="11sp" />
+                            <TextView android:id="@+id/permiso_micro_txt" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/mono" android:text="@string/chip_concedido" android:textColor="#90CA50" android:textSize="11sp" />
                         </LinearLayout>
 
                         <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#161C21" />
@@ -2819,10 +2819,10 @@
                             android:padding="14dp">
                             <View android:id="@+id/permiso_ble_dot" android:layout_width="8dp" android:layout_height="8dp" android:background="@drawable/punto_verde" />
                             <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="12dp" android:orientation="vertical">
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="Bluetooth" android:textColor="@color/tx" android:textSize="16sp" android:textStyle="bold" />
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="Baliza y búsqueda" android:textColor="#7C858D" android:textSize="12.5sp" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="@string/lbl_bluetooth" android:textColor="@color/tx" android:textSize="16sp" android:textStyle="bold" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="@string/lbl_baliza_y_busqueda" android:textColor="#7C858D" android:textSize="12.5sp" />
                             </LinearLayout>
-                            <TextView android:id="@+id/permiso_ble_txt" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/mono" android:text="CONCEDIDO" android:textColor="#90CA50" android:textSize="11sp" />
+                            <TextView android:id="@+id/permiso_ble_txt" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/mono" android:text="@string/chip_concedido" android:textColor="#90CA50" android:textSize="11sp" />
                         </LinearLayout>
 
                         <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#161C21" />
@@ -2838,10 +2838,10 @@
                             android:padding="14dp">
                             <View android:id="@+id/permiso_cam_dot" android:layout_width="8dp" android:layout_height="8dp" android:background="@drawable/punto_verde" />
                             <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="12dp" android:orientation="vertical">
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="Cámara / linterna" android:textColor="@color/tx" android:textSize="16sp" android:textStyle="bold" />
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="Destello SOS" android:textColor="#7C858D" android:textSize="12.5sp" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="@string/lbl_camara_linterna" android:textColor="@color/tx" android:textSize="16sp" android:textStyle="bold" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="@string/lbl_destello_sos" android:textColor="#7C858D" android:textSize="12.5sp" />
                             </LinearLayout>
-                            <TextView android:id="@+id/permiso_cam_txt" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/mono" android:text="CONCEDIDO" android:textColor="#90CA50" android:textSize="11sp" />
+                            <TextView android:id="@+id/permiso_cam_txt" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/mono" android:text="@string/chip_concedido" android:textColor="#90CA50" android:textSize="11sp" />
                         </LinearLayout>
 
                         <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#161C21" />
@@ -2857,10 +2857,10 @@
                             android:padding="14dp">
                             <View android:id="@+id/permiso_ubi_dot" android:layout_width="8dp" android:layout_height="8dp" android:background="@drawable/punto_rojo" />
                             <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="12dp" android:orientation="vertical">
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="Ubicación en segundo plano" android:textColor="@color/tx" android:textSize="16sp" android:textStyle="bold" />
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="Baliza con pantalla apagada" android:textColor="#7C858D" android:textSize="12.5sp" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="@string/lbl_ubicacion_en_segundo_plano" android:textColor="@color/tx" android:textSize="16sp" android:textStyle="bold" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="@string/lbl_baliza_con_pantalla_apagada" android:textColor="#7C858D" android:textSize="12.5sp" />
                             </LinearLayout>
-                            <TextView android:id="@+id/permiso_ubi_txt" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/mono" android:text="CONCEDER" android:textColor="#E53035" android:textSize="11sp" />
+                            <TextView android:id="@+id/permiso_ubi_txt" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/mono" android:text="@string/ob_conceder" android:textColor="#E53035" android:textSize="11sp" />
                         </LinearLayout>
                     </LinearLayout>
 
@@ -2872,7 +2872,7 @@
                         android:layout_marginBottom="10dp"
                         android:fontFamily="@font/mono"
                         android:letterSpacing="0.2"
-                        android:text="ATAJOS"
+                        android:text="@string/lbl_atajos"
                         android:textColor="#7C858D"
                         android:textSize="10sp" />
 
@@ -2896,8 +2896,8 @@
                                 android:gravity="center_vertical"
                                 android:orientation="horizontal">
                                 <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
-                                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="Atajo de volumen" android:textColor="@color/tx" android:textSize="16sp" android:textStyle="bold" />
-                                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="Tres pulsaciones de subir volumen" android:textColor="#7C858D" android:textSize="12.5sp" />
+                                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="@string/ob_teclas" android:textColor="@color/tx" android:textSize="16sp" android:textStyle="bold" />
+                                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="@string/lbl_tres_pulsaciones_de_subir_volu" android:textColor="#7C858D" android:textSize="12.5sp" />
                                 </LinearLayout>
                                 <View
                                     android:id="@+id/sw_atajo_volumen_dot"
@@ -2911,9 +2911,9 @@
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="14dp"
                                 android:orientation="horizontal">
-                                <TextView android:layout_width="0dp" android:layout_height="34dp" android:layout_weight="1" android:layout_marginEnd="3dp" android:background="@drawable/btn_outline" android:fontFamily="@font/mono" android:gravity="center" android:text="VOL +" android:textColor="#BCC3C9" android:textSize="11sp" />
-                                <TextView android:layout_width="0dp" android:layout_height="34dp" android:layout_weight="1" android:layout_marginStart="3dp" android:layout_marginEnd="3dp" android:background="@drawable/btn_outline" android:fontFamily="@font/mono" android:gravity="center" android:text="VOL +" android:textColor="#BCC3C9" android:textSize="11sp" />
-                                <TextView android:layout_width="0dp" android:layout_height="34dp" android:layout_weight="1" android:layout_marginStart="3dp" android:background="@drawable/btn_sens_activo" android:fontFamily="@font/mono" android:gravity="center" android:text="VOL +" android:textColor="#0A0405" android:textSize="11sp" android:textStyle="bold" />
+                                <TextView android:layout_width="0dp" android:layout_height="34dp" android:layout_weight="1" android:layout_marginEnd="3dp" android:background="@drawable/btn_outline" android:fontFamily="@font/mono" android:gravity="center" android:text="@string/lbl_vol" android:textColor="#BCC3C9" android:textSize="11sp" />
+                                <TextView android:layout_width="0dp" android:layout_height="34dp" android:layout_weight="1" android:layout_marginStart="3dp" android:layout_marginEnd="3dp" android:background="@drawable/btn_outline" android:fontFamily="@font/mono" android:gravity="center" android:text="@string/lbl_vol" android:textColor="#BCC3C9" android:textSize="11sp" />
+                                <TextView android:layout_width="0dp" android:layout_height="34dp" android:layout_weight="1" android:layout_marginStart="3dp" android:background="@drawable/btn_sens_activo" android:fontFamily="@font/mono" android:gravity="center" android:text="@string/lbl_vol" android:textColor="#0A0405" android:textSize="11sp" android:textStyle="bold" />
                             </LinearLayout>
                         </LinearLayout>
 
@@ -2929,8 +2929,8 @@
                             android:gravity="center_vertical"
                             android:padding="15dp">
                             <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="Confirmar antes de la sirena" android:textColor="@color/tx" android:textSize="16sp" android:textStyle="bold" />
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="Desactivado: dispara directo" android:textColor="#7C858D" android:textSize="12.5sp" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="@string/lbl_confirmar_antes_de_la_sirena" android:textColor="@color/tx" android:textSize="16sp" android:textStyle="bold" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="@string/lbl_desactivado_dispara_directo" android:textColor="#7C858D" android:textSize="12.5sp" />
                             </LinearLayout>
                             <View
                                 android:id="@+id/sw_confirmar_sirena_dot"
@@ -2951,8 +2951,8 @@
                             android:gravity="center_vertical"
                             android:padding="15dp">
                             <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="Servicio al arrancar el móvil" android:textColor="@color/tx" android:textSize="16sp" android:textStyle="bold" />
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="Wake lock parcial" android:textColor="#7C858D" android:textSize="12.5sp" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="@string/lbl_servicio_al_arrancar_el_movil" android:textColor="@color/tx" android:textSize="16sp" android:textStyle="bold" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="@string/lbl_wake_lock_parcial" android:textColor="#7C858D" android:textSize="12.5sp" />
                             </LinearLayout>
                             <View
                                 android:id="@+id/sw_servicio_arrancar_dot"
@@ -3057,6 +3057,62 @@
                         </LinearLayout>
                     </LinearLayout>
 
+                    <!-- Sección INTERNET -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="18dp"
+                        android:layout_marginBottom="9dp"
+                        android:fontFamily="@font/mono"
+                        android:letterSpacing="0.2"
+                        android:text="@string/rot_internet"
+                        android:textColor="#7C858D"
+                        android:textSize="10sp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/campo_fondo"
+                        android:orientation="vertical">
+
+                        <LinearLayout
+                            android:id="@+id/sw_envio"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="?attr/selectableItemBackground"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:paddingStart="16dp"
+                            android:paddingEnd="16dp"
+                            android:paddingTop="15dp"
+                            android:paddingBottom="15dp">
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="@font/barlow"
+                                    android:text="@string/ajustes_envio"
+                                    android:textColor="@color/tx"
+                                    android:textSize="16sp" />
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="2dp"
+                                    android:layout_marginEnd="12dp"
+                                    android:fontFamily="@font/barlow"
+                                    android:text="@string/ajustes_envio_sub"
+                                    android:textColor="#7C858D"
+                                    android:textSize="13sp" />
+                            </LinearLayout>
+                            <include layout="@layout/sw_tactico" />
+                        </LinearLayout>
+                    </LinearLayout>
+
                     <!-- Sección MÁS OPCIONES -->
                     <TextView
                         android:layout_width="wrap_content"
@@ -3065,7 +3121,7 @@
                         android:layout_marginBottom="10dp"
                         android:fontFamily="@font/mono"
                         android:letterSpacing="0.2"
-                        android:text="MÁS OPCIONES"
+                        android:text="@string/lbl_mas_opciones"
                         android:textColor="#7C858D"
                         android:textSize="10sp" />
 
@@ -3085,8 +3141,8 @@
                             android:gravity="center_vertical"
                             android:padding="15dp">
                             <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="Consola de registros" android:textColor="@color/tx" android:textSize="16sp" android:textStyle="bold" />
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="Eventos del sistema y depuración en vivo" android:textColor="#7C858D" android:textSize="12.5sp" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="@string/lbl_consola_de_registros" android:textColor="@color/tx" android:textSize="16sp" android:textStyle="bold" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="@string/lbl_eventos_del_sistema_y_depuraci" android:textColor="#7C858D" android:textSize="12.5sp" />
                             </LinearLayout>
                             <ImageView android:layout_width="16dp" android:layout_height="16dp" android:rotation="180" android:src="@drawable/ic_atras" android:tint="#7C858D" />
                         </LinearLayout>
@@ -3103,8 +3159,8 @@
                             android:gravity="center_vertical"
                             android:padding="15dp">
                             <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="Acerca de SismoRed" android:textColor="@color/tx" android:textSize="16sp" android:textStyle="bold" />
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="Filosofía, reglas y código fuente" android:textColor="#7C858D" android:textSize="12.5sp" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="@string/lbl_acerca_de_sismored" android:textColor="@color/tx" android:textSize="16sp" android:textStyle="bold" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="@string/lbl_filosofia_reglas_y_codigo_fuen" android:textColor="#7C858D" android:textSize="12.5sp" />
                             </LinearLayout>
                             <ImageView android:layout_width="16dp" android:layout_height="16dp" android:rotation="180" android:src="@drawable/ic_atras" android:tint="#7C858D" />
                         </LinearLayout>
@@ -3125,8 +3181,8 @@
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:orientation="vertical">
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="Apagar del todo" android:textColor="#E53035" android:textSize="16sp" android:textStyle="bold" />
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="Detiene la vigilancia y el servicio en segundo plano" android:textColor="#7C858D" android:textSize="12.5sp" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="@string/lbl_apagar_del_todo" android:textColor="#E53035" android:textSize="16sp" android:textStyle="bold" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="@string/lbl_detiene_la_vigilancia_y_el_ser" android:textColor="#7C858D" android:textSize="12.5sp" />
                             </LinearLayout>
                             <ImageView android:layout_width="16dp" android:layout_height="16dp" android:rotation="180" android:src="@drawable/ic_atras" android:tint="#E53035" />
                         </LinearLayout>
@@ -3165,7 +3221,7 @@
                                 android:paddingEnd="12dp"
                                 android:paddingTop="7dp"
                                 android:paddingBottom="7dp"
-                                android:text="TODO · 412"
+                                android:text="@string/lbl_todo_412"
                                 android:textColor="#E8EBED"
                                 android:textSize="10sp"
                                 android:textStyle="bold" />
@@ -3182,7 +3238,7 @@
                                 android:paddingEnd="12dp"
                                 android:paddingTop="7dp"
                                 android:paddingBottom="7dp"
-                                android:text="ERROR · 2"
+                                android:text="@string/lbl_error_2"
                                 android:textColor="#E53035"
                                 android:textSize="10sp" />
 
@@ -3198,7 +3254,7 @@
                                 android:paddingEnd="12dp"
                                 android:paddingTop="7dp"
                                 android:paddingBottom="7dp"
-                                android:text="WARN · 9"
+                                android:text="@string/lbl_warn_9"
                                 android:textColor="#F0A02A"
                                 android:textSize="10sp" />
 
@@ -3214,7 +3270,7 @@
                                 android:paddingEnd="12dp"
                                 android:paddingTop="7dp"
                                 android:paddingBottom="7dp"
-                                android:text="MALLA"
+                                android:text="@string/rot_malla"
                                 android:textColor="#7C858D"
                                 android:textSize="10sp" />
 
@@ -3230,7 +3286,7 @@
                                 android:paddingEnd="12dp"
                                 android:paddingTop="7dp"
                                 android:paddingBottom="7dp"
-                                android:text="SONDA"
+                                android:text="@string/rot_sonda"
                                 android:textColor="#7C858D"
                                 android:textSize="10sp" />
 
@@ -3245,7 +3301,7 @@
                                 android:paddingEnd="12dp"
                                 android:paddingTop="7dp"
                                 android:paddingBottom="7dp"
-                                android:text="BLE"
+                                android:text="@string/filtro_ble"
                                 android:textColor="#7C858D"
                                 android:textSize="10sp" />
                         </LinearLayout>
@@ -3276,7 +3332,7 @@
                             android:gravity="center"
                             android:paddingTop="15dp"
                             android:paddingBottom="15dp"
-                            android:text="EXPORTAR .TXT"
+                            android:text="@string/lbl_exportar_txt"
                             android:textColor="@color/tx_sec"
                             android:textSize="18sp"
                             android:textStyle="bold" />
@@ -3291,7 +3347,7 @@
                             android:gravity="center"
                             android:paddingTop="15dp"
                             android:paddingBottom="15dp"
-                            android:text="LIMPIAR"
+                            android:text="@string/lbl_limpiar"
                             android:textColor="#7C858D"
                             android:textSize="18sp"
                             android:textStyle="bold" />
@@ -3354,7 +3410,7 @@
                                 android:paddingEnd="11dp"
                                 android:paddingTop="5dp"
                                 android:paddingBottom="5dp"
-                                android:text="CALIBRACIÓN PENDIENTE"
+                                android:text="@string/lbl_calibracion_pendiente"
                                 android:textColor="#F0A02A"
                                 android:textSize="11sp" />
                         </LinearLayout>
@@ -3375,7 +3431,7 @@
                             android:fontFamily="@font/saira"
                             android:letterSpacing="0.01"
                             android:lineSpacingMultiplier="0.95"
-                            android:text="SIN INTERNET, SIN CUENTA\nY SIN SERVIDOR"
+                            android:text="@string/lbl_sin_internet_sin_cuenta_ny_sin"
                             android:textColor="#FFFFFF"
                             android:textSize="23sp"
                             android:textStyle="bold|italic" />
@@ -3386,9 +3442,10 @@
                             android:layout_marginTop="10dp"
                             android:fontFamily="@font/barlow"
                             android:lineSpacingMultiplier="1.5"
-                            android:text="Pensada para el momento en que no hay cobertura, no hay luz y nadie va a mirar la pantalla."
+                            android:text="@string/lbl_pensada_para_el_momento_en_que"
                             android:textColor="@color/tx_sec"
                             android:textSize="15sp" />
+
                     </LinearLayout>
 
                     <!-- LAS DOS REGLAS DEL PROYECTO -->
@@ -3399,7 +3456,7 @@
                         android:layout_marginBottom="9dp"
                         android:fontFamily="@font/mono"
                         android:letterSpacing="0.2"
-                        android:text="LAS DOS REGLAS DEL PROYECTO"
+                        android:text="@string/lbl_las_dos_reglas_del_proyecto"
                         android:textColor="#7C858D"
                         android:textSize="10sp" />
 
@@ -3421,7 +3478,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_marginEnd="12dp"
                                 android:fontFamily="@font/mono"
-                                android:text="01"
+                                android:text="@string/lbl_01"
                                 android:textColor="#E53035"
                                 android:textSize="13sp"
                                 android:textStyle="bold" />
@@ -3436,7 +3493,7 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:fontFamily="@font/barlow"
-                                    android:text="Ningún indicador se inventa nada"
+                                    android:text="@string/lbl_ningun_indicador_se_inventa_na"
                                     android:textColor="#E8EBED"
                                     android:textSize="15sp"
                                     android:textStyle="bold" />
@@ -3447,7 +3504,7 @@
                                     android:layout_marginTop="2dp"
                                     android:fontFamily="@font/barlow"
                                     android:lineSpacingMultiplier="1.4"
-                                    android:text="Si un dato no se puede medir, se dice que no se puede medir. Preferimos «no lo sé» a un número bonito."
+                                    android:text="@string/lbl_si_un_dato_no_se_puede_medir_s"
                                     android:textColor="#7C858D"
                                     android:textSize="12.5sp" />
                             </LinearLayout>
@@ -3467,7 +3524,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_marginEnd="12dp"
                                 android:fontFamily="@font/mono"
-                                android:text="02"
+                                android:text="@string/lbl_02"
                                 android:textColor="#E53035"
                                 android:textSize="13sp"
                                 android:textStyle="bold" />
@@ -3482,7 +3539,7 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:fontFamily="@font/barlow"
-                                    android:text="Nada sale del móvil sin que se vea"
+                                    android:text="@string/lbl_nada_sale_del_movil_sin_que_se"
                                     android:textColor="#E8EBED"
                                     android:textSize="15sp"
                                     android:textStyle="bold" />
@@ -3493,7 +3550,7 @@
                                     android:layout_marginTop="2dp"
                                     android:fontFamily="@font/barlow"
                                     android:lineSpacingMultiplier="1.4"
-                                    android:text="No hay telemetría. Lo único que se emite es la baliza y la ficha, solo con la alarma o el rescate activos."
+                                    android:text="@string/lbl_no_hay_telemetria_lo_unico_que"
                                     android:textColor="#7C858D"
                                     android:textSize="12.5sp" />
                             </LinearLayout>
@@ -3513,8 +3570,8 @@
                             android:layout_height="wrap_content"
                             android:gravity="center_vertical"
                             android:padding="13dp">
-                            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="@font/barlow" android:text="Probado en" android:textColor="#7C858D" android:textSize="15sp" />
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/mono" android:text="ANDROID 10 · 11 · 15" android:textColor="@color/tx" android:textSize="13sp" />
+                            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="@font/barlow" android:text="@string/lbl_probado_en" android:textColor="#7C858D" android:textSize="15sp" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/mono" android:text="@string/lbl_android_10_11_15" android:textColor="@color/tx" android:textSize="13sp" />
                         </LinearLayout>
 
                         <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#161C21" />
@@ -3524,8 +3581,8 @@
                             android:layout_height="wrap_content"
                             android:gravity="center_vertical"
                             android:padding="13dp">
-                            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="@font/barlow" android:text="Licencia" android:textColor="#7C858D" android:textSize="15sp" />
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/mono" android:text="CÓDIGO ABIERTO" android:textColor="@color/tx" android:textSize="13sp" />
+                            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="@font/barlow" android:text="@string/lbl_licencia" android:textColor="#7C858D" android:textSize="15sp" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/mono" android:text="@string/lbl_codigo_abierto" android:textColor="@color/tx" android:textSize="13sp" />
                         </LinearLayout>
 
                         <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#161C21" />
@@ -3541,8 +3598,8 @@
                             android:gravity="center_vertical"
                             android:minHeight="56dp"
                             android:padding="13dp">
-                            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="@font/barlow" android:text="Contribuir" android:textColor="#7C858D" android:textSize="15sp" />
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/mono" android:text="CONTRIBUIR.MD" android:textColor="#E53035" android:textSize="13sp" android:textStyle="bold" />
+                            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="@font/barlow" android:text="@string/lbl_contribuir" android:textColor="#7C858D" android:textSize="15sp" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/mono" android:text="@string/lbl_contribuir_md" android:textColor="#E53035" android:textSize="13sp" android:textStyle="bold" />
                         </LinearLayout>
                     </LinearLayout>
 
@@ -3555,7 +3612,7 @@
                         android:fontFamily="@font/barlow"
                         android:gravity="center"
                         android:lineSpacingMultiplier="1.45"
-                        android:text="Falta lo más importante y no necesita programar: grabaciones de golpes reales sobre hormigón, hierro y tubería."
+                        android:text="@string/lbl_falta_lo_mas_importante_y_no_n"
                         android:textColor="#5C666E"
                         android:textSize="12.5sp" />
                 </LinearLayout>
@@ -3604,7 +3661,7 @@
                 android:gravity="center"
                 android:letterSpacing="0.03"
                 android:padding="17dp"
-                android:text="PASAR A TRABAJO CON SONIDO"
+                android:text="@string/lbl_pasar_a_trabajo_con_sonido"
                 android:textColor="#0A0F06"
                 android:textSize="20sp"
                 android:textStyle="bold|italic" />
@@ -3615,7 +3672,7 @@
                 android:layout_marginTop="8dp"
                 android:fontFamily="@font/mono"
                 android:letterSpacing="0.1"
-                android:text="SOLO CUANDO ESTÉS ENCIMA"
+                android:text="@string/lbl_solo_cuando_estes_encima"
                 android:textColor="#7C858D"
                 android:textSize="10sp" />
         </LinearLayout>
@@ -3713,7 +3770,7 @@
                         android:layout_height="wrap_content"
                         android:fontFamily="@font/mono"
                         android:letterSpacing="0.24"
-                        android:text="EMITIENDO"
+                        android:text="@string/chip_emitiendo"
                         android:textColor="#FF7B7E"
                         android:textSize="11sp"
                         android:textStyle="bold" />
@@ -3727,7 +3784,7 @@
                         android:letterSpacing="-0.015"
                         android:maxLines="1"
                         android:singleLine="true"
-                        android:text="ALARMA"
+                        android:text="@string/panico_activo_titulo"
                         android:textColor="#FFFFFF"
                         android:textSize="64sp"
                         android:textStyle="bold|italic" />
@@ -3739,7 +3796,7 @@
                         android:layout_marginTop="2dp"
                         android:fontFamily="@font/mono"
                         android:letterSpacing="-0.01"
-                        android:text="04:12"
+                        android:text="@string/lbl_04_12"
                         android:textColor="#E53035"
                         android:textSize="38sp"
                         android:textStyle="bold" />
@@ -3778,7 +3835,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:fontFamily="@font/mono"
-                            android:text="112 dB"
+                            android:text="@string/lbl_112_db"
                             android:textColor="#1A0507"
                             android:textSize="15sp"
                             android:textStyle="bold" />
@@ -3813,7 +3870,7 @@
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/saira"
                                 android:letterSpacing="0.03"
-                                android:text="SIRENA · CANAL ALARMA"
+                                android:text="@string/lbl_sirena_canal_alarma_2"
                                 android:textAllCaps="true"
                                 android:textColor="#FFFFFF"
                                 android:textSize="17sp"
@@ -3823,7 +3880,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/barlow"
-                                android:text="Suena en silencio y bloqueado"
+                                android:text="@string/lbl_suena_en_silencio_y_bloqueado"
                                 android:textColor="#C9CFD4"
                                 android:textSize="13sp" />
                         </LinearLayout>
@@ -3855,7 +3912,7 @@
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/saira"
                                 android:letterSpacing="0.03"
-                                android:text="LINTERNA · SOS"
+                                android:text="@string/lbl_linterna_sos"
                                 android:textAllCaps="true"
                                 android:textColor="#FFFFFF"
                                 android:textSize="17sp"
@@ -3865,7 +3922,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/mono"
-                                android:text="· · · — — — · · ·"
+                                android:text="@string/lbl_txt"
                                 android:textColor="#C9CFD4"
                                 android:textSize="12sp" />
                         </LinearLayout>
@@ -3897,7 +3954,7 @@
                                 android:layout_weight="1"
                                 android:fontFamily="@font/saira"
                                 android:letterSpacing="0.03"
-                                android:text="MALLA · SALTOS"
+                                android:text="@string/lbl_malla_saltos"
                                 android:textAllCaps="true"
                                 android:textColor="#FFFFFF"
                                 android:textSize="17sp"
@@ -3908,7 +3965,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/mono"
-                                android:text="1 / 4"
+                                android:text="@string/lbl_1_4"
                                 android:textColor="#90CA50"
                                 android:textSize="13sp"
                                 android:textStyle="bold" />
@@ -4016,7 +4073,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:backgroundTint="#1A2024"
-                    android:text="PASAR A MODO RESCATE"
+                    android:text="@string/lbl_pasar_a_modo_rescate"
                     android:textColor="#90CA50"
                     android:textSize="14sp" />
             </LinearLayout>
@@ -4053,7 +4110,7 @@
             android:layout_height="wrap_content"
             android:fontFamily="@font/mono"
             android:letterSpacing="0.2"
-            android:text="01 / 04"
+            android:text="@string/lbl_01_04"
             android:textColor="@color/dim"
             android:textSize="10sp" />
 
