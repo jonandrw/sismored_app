@@ -1363,21 +1363,30 @@ class MainActivity : AppCompatActivity() {
 
             val horaMinSegMil = if (horaRaw.length > 5) horaRaw.substring(3) + ".000" else "00:00.000"
 
+            val isCascada = cuerpoRaw.contains("cascada", ignoreCase = true) || cuerpoRaw.contains("decision", ignoreCase = true)
+            val isPruebas = cuerpoRaw.contains("pruebas", ignoreCase = true)
+
             val isError = cuerpoRaw.contains("err", ignoreCase = true) || cuerpoRaw.contains("falló", ignoreCase = true) || cuerpoRaw.contains("PÁNICO", ignoreCase = true) || cuerpoRaw.contains("denegado", ignoreCase = true)
             val isWarn = cuerpoRaw.contains("warn", ignoreCase = true) || cuerpoRaw.contains("aviso", ignoreCase = true) || cuerpoRaw.contains("sin confirmar", ignoreCase = true) || cuerpoRaw.contains("descartado", ignoreCase = true) || cuerpoRaw.contains("posible", ignoreCase = true)
 
             val tagLetra = when {
+                isCascada -> "C"
+                isPruebas -> "P"
                 isError -> "E"
                 isWarn -> "W"
                 else -> "I"
             }
             val tagColor = when {
+                isCascada -> 0xFFFFA000.toInt()
+                isPruebas -> 0xFF64D2FF.toInt()
                 isError -> 0xFFE53035.toInt()
                 isWarn -> 0xFFF0A02A.toInt()
                 else -> 0xFF90CA50.toInt()
             }
 
             val moduleTag = when {
+                isCascada -> "CSC"
+                isPruebas -> "PRB"
                 cuerpoRaw.contains("ble", ignoreCase = true) || cuerpoRaw.contains("baliza", ignoreCase = true) -> "BLE"
                 cuerpoRaw.contains("malla", ignoreCase = true) || cuerpoRaw.contains("salto", ignoreCase = true) -> "MSH"
                 cuerpoRaw.contains("sonda", ignoreCase = true) -> "SND"
@@ -1387,6 +1396,8 @@ class MainActivity : AppCompatActivity() {
             }
 
             val textColor = when {
+                isCascada -> 0xFFFFA000.toInt()
+                isPruebas -> 0xFF64D2FF.toInt()
                 isError -> 0xFFFF8A8D.toInt()
                 isWarn -> 0xFFE3CFA8.toInt()
                 else -> 0xFFBCC3C9.toInt()
@@ -1411,7 +1422,12 @@ class MainActivity : AppCompatActivity() {
             ssb.append(cuerpoRaw)
             ssb.setSpan(ForegroundColorSpan(textColor), startMsg, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
             
-            if (isError) {
+            if (isCascada) {
+                ssb.setSpan(android.text.style.StyleSpan(android.graphics.Typeface.BOLD), startMsg, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                ssb.setSpan(android.text.style.BackgroundColorSpan(0x28F0A02A), startHora, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            } else if (isPruebas) {
+                ssb.setSpan(android.text.style.BackgroundColorSpan(0x1864D2FF), startHora, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            } else if (isError) {
                 ssb.setSpan(android.text.style.BackgroundColorSpan(0x11E53035), startHora, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
             }
 
@@ -2593,21 +2609,33 @@ class MainActivity : AppCompatActivity() {
         }
 
         val ssb = SpannableStringBuilder()
+        val density = tvRegistro.resources.displayMetrics.scaledDensity
+        val indentNormal = (72 * density).toInt()
+        val indentSub = (84 * density).toInt()
+
         for ((idx, l) in lineas.withIndex()) {
             val partes = l.split("  ", limit = 2)
             val horaRaw = partes.getOrNull(0) ?: ""
             val cuerpoRaw = partes.getOrNull(1) ?: l
 
+            val isCascada = cuerpoRaw.startsWith("cascada(", ignoreCase = true) ||
+                            cuerpoRaw.contains("cascada(", ignoreCase = true) ||
+                            cuerpoRaw.startsWith("decision ·", ignoreCase = true)
+            val isPruebas = cuerpoRaw.startsWith("pruebas ·", ignoreCase = true) ||
+                            cuerpoRaw.contains("pruebas ·", ignoreCase = true)
+
             val isError = cuerpoRaw.contains("err", ignoreCase = true) || cuerpoRaw.contains("falló", ignoreCase = true) || cuerpoRaw.contains("PÁNICO", ignoreCase = true) || cuerpoRaw.contains("denegado", ignoreCase = true)
             val isWarn = cuerpoRaw.contains("warn", ignoreCase = true) || cuerpoRaw.contains("aviso", ignoreCase = true) || cuerpoRaw.contains("sin confirmar", ignoreCase = true) || cuerpoRaw.contains("descartado", ignoreCase = true) || cuerpoRaw.contains("posible", ignoreCase = true)
 
-            val tagColor = when {
-                isError -> 0xFFE53035.toInt()
-                isWarn -> 0xFFF0A02A.toInt()
-                else -> 0xFF90CA50.toInt()
-            }
-            
+            val prevCuerpo = lineas.elementAtOrNull(idx - 1)?.split("  ", limit = 2)?.getOrNull(1) ?: ""
+            val nextCuerpo = lineas.elementAtOrNull(idx + 1)?.split("  ", limit = 2)?.getOrNull(1) ?: ""
+            val agrupaConCascada = (isCascada && (nextCuerpo.contains("pruebas ·") || prevCuerpo.contains("pruebas ·"))) ||
+                                   (isPruebas && (nextCuerpo.contains("cascada(") || nextCuerpo.contains("decision ·") ||
+                                                  prevCuerpo.contains("cascada(") || prevCuerpo.contains("decision ·")))
+
             val textColor = when {
+                isCascada -> 0xFFFFA000.toInt()
+                isPruebas -> 0xFF64D2FF.toInt()
                 isError -> 0xFFFF8A8D.toInt()
                 isWarn -> 0xFFE3CFA8.toInt()
                 else -> 0xFFBCC3C9.toInt()
@@ -2619,14 +2647,26 @@ class MainActivity : AppCompatActivity() {
             ssb.append("  ")
 
             val startCuerpo = ssb.length
-            ssb.append(cuerpoRaw)
+            val prefijo = when {
+                isCascada -> "▸ "
+                isPruebas && agrupaConCascada -> "  └─ "
+                isPruebas -> "  "
+                else -> ""
+            }
+            ssb.append(prefijo).append(cuerpoRaw)
             ssb.setSpan(ForegroundColorSpan(textColor), startCuerpo, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
 
-            if (isError) {
+            if (isCascada) {
+                ssb.setSpan(android.text.style.StyleSpan(android.graphics.Typeface.BOLD), startCuerpo, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                ssb.setSpan(android.text.style.BackgroundColorSpan(0x28F0A02A), startHora, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            } else if (isPruebas) {
+                val bg = if (agrupaConCascada) 0x20F0A02A else 0x1864D2FF
+                ssb.setSpan(android.text.style.BackgroundColorSpan(bg), startHora, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            } else if (isError) {
                 ssb.setSpan(android.text.style.BackgroundColorSpan(0x11E53035), startHora, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
             }
 
-            val indent = (72 * tvRegistro.resources.displayMetrics.scaledDensity).toInt()
+            val indent = if (isPruebas) indentSub else indentNormal
             ssb.setSpan(android.text.style.LeadingMarginSpan.Standard(0, indent), startHora, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
 
             if (idx < lineas.size - 1) ssb.append("\n")
@@ -2954,6 +2994,11 @@ class MainActivity : AppCompatActivity() {
            permiso del fabricante no se puede consultar y es el que faltaba en
            el Redmi: darlo por bueno seria justo lo que este proyecto no hace. */
         val hayFabricante = intentFabricante() != null
+        findViewById<TextView>(R.id.txt_fsi_desc)?.text = if (hayFabricante) {
+            androidx.core.text.HtmlCompat.fromHtml(getString(R.string.fsi_texto_fabricante), androidx.core.text.HtmlCompat.FROM_HTML_MODE_COMPACT)
+        } else {
+            getString(R.string.fsi_texto)
+        }
         findViewById<View>(R.id.aviso_pantalla_completa)?.visibility =
             if (pantallaCompletaOk && !hayFabricante) View.GONE else View.VISIBLE
         findViewById<View>(R.id.btn_fsi_android)?.visibility =
