@@ -8,6 +8,7 @@ local.properties
 
 # Android Studio
 .idea/
+.kotlin/
 *.iml
 captures/
 .externalNativeBuild/

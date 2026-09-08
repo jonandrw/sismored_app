@@ -23,8 +23,62 @@ No lo puedo hacer yo: el Redmi no acepta `input tap` por adb (falta
       corte está en 10°. Se lee en Inicio, en la línea de estado.
 - [ ] **Sacudir el móvil en la mesa y no tocarlo en 60 s.** Es la prueba de que la
       baliza sale, y se arregló a ciegas.
-- [ ] **Respiración a centímetros**, con el ventilador apagado. Ahora mide fase, no
-      bandas laterales, y nadie la ha probado con una persona.
+- [ ] **Probar el Bio-Sonar (chasquidos continuos estilo A Quiet Place)**:
+      - **ECO**: Apuntar a una pared a 1,5 m. Escuchar los 8 chasquidos secos (2,5 a 4,2 kHz) y comprobar si devuelve la distancia.
+      - **MOVIMIENTO / DOPPLER**: Encenderlo y pasar la mano a 1 m del móvil; verificar que el pulso visual y el nivel se activan con los ecos móviles.
+      - **RESPIRACIÓN**: Apuntar al pecho de una persona quieta a 0,5 - 1,0 m durante los 25 segundos y observar la detección de ritmo (12 a 36 rpm).
+
+---
+
+## 0.5. ~~Watchdog de suceso y desacoplamiento del micrófono~~ — HECHA Y PROBADA EN DISPOSITIVO (4 de septiembre)
+
+- `SUCESO_TIMEOUT_MS = 15_000L` y `reprogramarWatchdogSuceso()` en `ServicioSos.kt`: cancela y cierra automáticamente cualquier suceso que no escale a pregunta o alarma tras 15 segundos. Corrige el fallo del 3 de septiembre donde la app preguntaba en bucle al quedar el estado anclado.
+- `onEstruendo` desacoplado: el micrófono ya no abre un suceso sísmico si el suelo no se estaba moviendo. Solo evalúa si `sucesoDesde > 0L`.
+- Probado por el usuario en hardware real: verificado funcionamiento perfecto sin falsas preguntas.
+
+---
+
+## 0.6. ~~STA/LTA sismológico recursivo en Sismografo.kt~~ — HECHA (4 de septiembre)
+
+- Reemplazado `calma.copyOf().sortedArray()` que asignaba y ordenaba arrays de 256 `Double` en el sensor thread cada 32 muestras.
+- Estimador LTA recursivo `ltaH` (~15 s) con congelación automática ante movimiento (`congelarLta = hayMano || sta > ltaH * 2.0 || sta > umbral * 0.4`).
+- Relación `ratioStaLta = sta / ltaPiso` agregada a `sueloDeFiar` (`ratioStaLta >= 1.8`).
+- Compilado y verificado limpio sin pausas de GC.
+
+---
+
+## 0.7. ~~Sabores de compilación `libre` vs `play`~~ — HECHA (4 de septiembre)
+
+- Resuelto el conflicto de Google Play con `BIND_ACCESSIBILITY_SERVICE` (atajo de volumen).
+- Sabor `libre` (F-Droid / GitHub): Mantiene `ServicioTeclas` en manifiesto y código (`teclasDisponibles() = true`).
+- Sabor `play` (Google Play Store): `ServicioTeclas` totalmente excluido del APK y manifiesto; `teclasDisponibles() = false`. Interfaz oculta limpiamente el atajo de volumen sin errores ni alertas engañosas.
+- Verificado y empaquetado: `app-libre-debug.apk` y `app-play-debug.apk` ensamblados con éxito.
+
+---
+
+## 0.8. ~~Bio-Sonar Acústico de Impulso en Sonda.kt~~ — HECHA (4 de septiembre)
+
+- Reemplazado el tono continuo ultrasónico de 18,5 kHz por un **biosonar de chasquidos audibles** de 8 ms en la banda dulce del altavoz (2,5 kHz a 4,2 kHz), inspirado en la ecolocalización de murciélagos/cetáceos y el sonido de *A Quiet Place*.
+- **Eco / Sondear**: 8 chasquidos en ~1,6 s, con zona ciega reducida a < 70 cm y resolución de ~10 cm.
+- **Movimiento / Doppler MTI**: Emite 10 chasquidos/s y analiza diferencias cuadro a cuadro de los ecos entre 0,4 y 3,5 m.
+- **Respiración**: Range-Gated Phase Biosonar a 10 Hz rastreando la fase del reflector principal respecto al camino directo para medir la oscilación del pecho (12 a 36 rpm) sin verse afectado por fluctuaciones de latencia del sistema.
+- Compilado y empaquetado limpio en APK.
+
+---
+
+## 0.9. ~~Filtro Acústico Anti-Maquinaria y Detección de Golpes SOS~~ — HECHA (4 de septiembre)
+
+- Reducidos los falsos estruendos de **32,7 a 5,4 por hora** en el banco de audio (`banco.py`) manteniendo **8 de 8 (100%) aciertos en derrumbes**.
+- Implementado filtro aperiódico de envolvente (`mod < 0.25`), umbral de cataclismo (`novedad > 20 dB`), límite de sostenido (`sostenido <= 35 ticks`) y energía grave (`rumble > 0.60`) en `Escucha.kt`: anula falsos colapsos por generadores diésel, camiones y helicópteros.
+- Implementada compuerta de cadencia biológica de golpes humanos (250 ms a 1250 ms) y filtro de resonancia estructural (`rumble > 0.10`): eliminados los falsos disparos provocados por crepitación de fuego en `Ambiente` (bajó de 408,5 a 0 falsos/h).
+
+---
+
+## 0.10. ~~Paquete Legal y Privacidad Google Play~~ — HECHA (4 de septiembre)
+
+- Creado documento oficial público `PRIVACIDAD.md` en la raíz del repositorio, detallando la arquitectura *Local-First*, procesamiento de audio exclusivamente en RAM y ausencia de telemetría.
+- Integrado aviso legal obligatorio (*disclaimer* de emergencia) en el paso 3 de Bienvenida (`ob3_txt`) y en `Acerca de`: SismoRed no sustituye al 911/112 ni a los servicios oficiales de protección civil.
+- Compilación validada en sabores `libre` y `play`.
 
 ---
 

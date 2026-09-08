@@ -85,6 +85,66 @@ funciona sin red, sin otro móvil y sin nada que calibrar.
 Todo esto salió de usar la app en los tres móviles. Está compilando e instalado en los
 tres, y lo verificado se dice como verificado.
 
+### Watchdog de sucesos y desacoplamiento del micrófono (4 de septiembre de 2026)
+
+Arreglado el error del registro de campo del 3 de septiembre («la app preguntó cuatro veces en una hora sin que hubiera pasado nada»):
+
+1. **El suceso atrapado**: `pruebaNueva()` ponía `sucesoDesde = System.currentTimeMillis()`. Cuando `Cascada` devolvía `NADA`, `cerrarSuceso()` solo se llamaba si `(haContestado || preguntaVencida)`. En un falso positivo nadie contesta y la pregunta nunca venció (porque no se llegó a preguntar), así que `sucesoDesde` **se quedaba abierto para siempre**, congelando `sucesoRegimen` y anclando `sucesoEstruendo`. Cualquier movimiento posterior se sumaba a ese estado residual y disparaba la pregunta.
+   - **Solución**: `SUCESO_TIMEOUT_MS = 15_000L` y `reprogramarWatchdogSuceso()` en `ServicioSos.kt`. Si un suceso se abre y en 15 segundos no escala a pregunta o alarma, el watchdog llama automáticamente a `cerrarSuceso()`.
+2. **El micrófono ya no abre un terremoto**: El micrófono oye la habitación (roces, portazos, tráfico), no las ondas S del suelo. Antes, `onEstruendo` llamaba a `pruebaNueva("estruendo por micrófono")`. Ahora, si no hay sacudida en curso (`sucesoDesde == 0L`), el estruendo solo se anota en el registro sin abrir ningún suceso. Solo si el suelo ya se estaba moviendo (`sucesoDesde > 0L`), el estruendo se suma como evidencia del temblor.
+
+### STA/LTA sismológico recursivo en Sismografo.kt (4 de septiembre de 2026)
+
+Reemplazo de la estimación de calma por ordenación de arrays por un filtro recursivo de largo plazo (LTA):
+1. **Eliminación de pausas de GC**: Antes se hacía `calma.copyOf(cn).sortedArray()` cada 32 muestras (~640 ms) directamente en el hilo del sensor del acelerómetro. Eso creaba y ordenaba un array de 256 `Double` en la memoria dinámica continuamente, provocando micro-congelamientos de la recolección de basura de Android.
+2. **Estimador adaptativo LTA con congelación**: Ahora `ltaH` se actualiza mediante suavizado exponencial con constante de tiempo lenta (~15 segundos): `alphaLta = (1.0 / (maxOf(20.0, srMedido) * 15.0))`. Si hay movimiento transitorio (`sta > ltaH * 2.0` o `sta > umbral * 0.4`) o si el móvil está siendo manipulado (`hayMano`), la adaptación **se congela inmediatamente**, evitando que la energía de un terremoto o de un golpe eleve el piso de ruido.
+3. **Relación STA/LTA en sueloDeFiar**: Se calcula `ratioStaLta = sta / ltaPiso`. En modo fino (`umbral <= umbralFinoMax`), `sueloDeFiar` exige que la relación de energía instantánea contra el piso de ruido supere al menos 1.8 (`ratioStaLta >= 1.8`), blindando aún más al detector contra vibraciones constantes de mesa.
+
+### Sabores de compilación `libre` vs `play` (4 de septiembre de 2026)
+
+Separación arquitectónica para cumplir con las políticas de Google Play sin sacrificar las funciones de la versión de código abierto:
+1. **El conflicto de política**: Google Play rechaza sistemáticamente apps que usen `BIND_ACCESSIBILITY_SERVICE` para capturar teclas físicas de volumen con pantalla bloqueada si la app no está catalogada exclusivamente como herramienta de asistencia para discapacitados.
+2. **Dimensión de sabor `distribucion`**:
+   - **`libre` (F-Droid / GitHub)**: Contiene `ServicioTeclas : AccessibilityService` en `src/libre/java/red/sismo/` y su declaración en `src/libre/AndroidManifest.xml`. `teclasDisponibles()` devuelve `true`. El atajo de 3 toques de volumen con pantalla apagada funciona al 100%.
+   - **`play` (Google Play Store)**: Contiene un stub sin dependencias en `src/play/java/red/sismo/` donde `teclasDisponibles()` y `teclasActivas()` devuelven `false`. El manifiesto resultante tiene **cero** menciones a accesibilidad. La interfaz (`MainActivity.kt`) oculta automáticamente la tarjeta en onboarding y en ajustes sin arrojar advertencias ni inconsistencias al usuario ni a los revisores de Google Play.
+3. **Compilación**:
+   - `.\gradlew.bat assembleLibreDebug` -> genera `app-libre-debug.apk`
+   - `.\gradlew.bat assemblePlayDebug` -> genera `app-play-debug.apk`
+
+### Bio-Sonar Acústico de Impulso en Sonda.kt (4 de septiembre de 2026)
+
+Reemplazo del tono ultrasónico continuo (18,5 kHz) por un **biosonar de impulsos/chasquidos secos** en la banda de máxima resonancia del altavoz (2,5 kHz a 4,2 kHz), inspirado en la ecolocalización animal (cetáceos, murciélagos) y las criaturas de *A Quiet Place*:
+1. **La limitación física de 18,5 kHz**: En smartphones (especialmente gama media/baja como el Samsung A10s), los transductores piezoeléctricos/dinámicos caen entre 25 dB y 40 dB en ultrasonido. Además, 18,5 kHz sufre atenuación extrema contra escombros, mantas y polvo. Por el contrario, a 2,5–4,2 kHz el altavoz alcanza su máxima presión acústica (SPL) y penetra huecos difractando en aristas.
+2. **El chasquido biológico (`DUR_BIO_CHASQUIDO = 8 ms`, Tukey 15%)**: Un paquete ultracorto con ventana suave que no produce pops de DC ni distorsión por recorte. Su duración de 8 ms reduce la zona ciega de ecolocalización a menos de 70 cm y su ancho de banda de 1,7 kHz proporciona una resolución de ~10 cm.
+3. **Movimiento / Doppler MTI por tren de chasquidos**: Emite 10 chasquidos/segundo (`CADENCIA_RESP_HZ = 10`). Calcula la diferencia marco a marco del eco en ventanas de 2,5 a 21 ms (0,4 m a 3,5 m). Si un objeto se mueve en el hueco, la correlación de su eco fluctúa drásticamente respecto al fondo estático, encendiendo el nivel Doppler y detectando actividad biológica sin cegar la malla acústica (16–18 kHz).
+4. **Respiración por biosonar de impulsos con compuerta de distancia (Range-Gated Phase Tracking)**:
+   - Emite 10 chasquidos/segundo durante 25 segundos.
+   - En cada disparo identifica la llegada del reflector principal entre 0,35 m y 3,0 m y extrae la fase de la portadora referenciada contra la llegada directa $d_0$ (eliminando por completo el jitter de latencia del AudioTrack de Android).
+   - La serie temporal de fase se analiza a 10 Hz buscando oscilaciones rítmicas de 12 a 36 respiraciones por minuto (0,20 a 0,60 Hz).
+
+### Filtro Acústico Anti-Maquinaria y Detección de Golpes SOS en Escucha.kt (4 de septiembre de 2026)
+
+Calibración de los detectores de sonido contra la biblioteca real (`fx sounds/`), reduciendo los falsos estruendos de **32,7 a 5,4 por hora** (-84%) y eliminando por completo falsos disparos en fuego y ruido ambiente:
+1. **Filtro de Catástrofe y Aperiodicidad para Derrumbe**:
+   - `NOV_ESTRUENDO = 20.0 dB`: Exige un cataclismo acústico sobre el fondo adaptativo (los derrumbes reales dan de 46 a 63 dB de novedad). Descarta motores y ruidos que antes pasaban con 6–12 dB.
+   - `MOD_ESTRUENDO_MAX = 0.25`: Exige que la modulación de envolvente sea caótica y aperiódica (los derrumbes reales dan `<= 0.17`). Descarta maquinaria rotativa, camiones y generadores diésel con régimen de giro fijo (`mod > 0.30`).
+   - `SOSTENIDO_ESTRUENDO_MAX = 35 ticks`: Limita la duración máxima de la fase violenta de colapso a ~3,7 s. Si un sonido fuerte persiste de forma continua, es un motor o compresor en marcha, no un derrumbe.
+   - `rumble > 0.60`: Exige masa física sónica en frecuencias graves, eliminando falsos positivos en voces de fondo (que daban 0,51).
+   - **Resultado en banco**: `Derrumbe` mantiene **8 de 8 (100%) aciertos en 0,9 s de mediana**; `Rescatistas` baja a **0,0 falsos/h** (antes 59,5); `Humanos` baja a **0,0 falsos/h** (antes 12,5).
+2. **Compuerta de Cadencia Biológica para Golpes SOS**:
+   - `INTERVALO_GOLPE_MIN = 250 ms` y `INTERVALO_GOLPE_MAX = 1250 ms`: La serie de impactos de auxilio contra tuberías o losas (`tap-tap-tap`) debe pertenecer a la cadencia manual humana (50 a 240 golpes por minuto).
+   - `rumble > 0.10`: Exige cuerpo de impacto resonante estructural en los ataques bruscos.
+   - **Resultado en banco**: En la carpeta `Ambiente`, las crepitaciones de fuego (`zehendrew-fire-sound-ambience`) quedaron completamente silenciadas (**0 falsos/hora** en Ambiente, frente a 408,5/h anteriores).
+
+### Paquete Legal y Política de Privacidad para Google Play (4 de septiembre de 2026)
+
+1. **`PRIVACIDAD.md` pública**: Creado documento maestro en el repositorio raíz conforme a las directrices de datos de Google Play, GDPR y F-Droid. Documenta la arquitectura *Local-First*, la ausencia de servidores/telemetría y el procesamiento de audio exclusivamente en RAM sin grabación a disco.
+2. **Descargos Legales Explícitos (*Disclaimers*)**:
+   - Integrado aviso legal obligatorio en el paso 3 de Bienvenida (`ob3_txt`) y visible en `Acerca de`: SismoRed no sustituye a los servicios oficiales de emergencia (911/112/Protección Civil).
+3. **Flujo de Publicación**:
+   - Sabores `libre` y `play` probados y compilando con R8 y minificación listos.
+   - Manifiesto limpio de accesibilidad en sabor `play`.
+
 ### Sonido: por qué el chasquido no se oía
 
 Tres causas a la vez, y hacían falta las tres:
