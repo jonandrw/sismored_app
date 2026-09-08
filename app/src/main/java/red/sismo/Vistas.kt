@@ -544,30 +544,7 @@ class VistaRadar @JvmOverloads constructor(ctx: Context, attrs: AttributeSet? = 
         c.drawLine(cx, cy, cx + rMax, cy, pSweepLine)
         c.restore()
 
-        // 3. Nodos acústicos vecinos (respirando)
-        val now = android.os.SystemClock.uptimeMillis()
-        val breath1 = (sin((now % 2000L) / 2000.0 * 2.0 * Math.PI).toFloat() + 1f) / 2f
-        val breath2 = (sin(((now + 500L) % 2000L) / 2000.0 * 2.0 * Math.PI).toFloat() + 1f) / 2f
-
-        // Nodo 1: izquierda superior (14 dp)
-        val n1R = px(this, 5.5f + breath1 * 1.5f)
-        pNode.color = android.graphics.Color.parseColor("#90CA50")
-        c.drawCircle(cx - rMax * 0.58f, cy - rMax * 0.42f, n1R, pNode)
-
-        // Nodo 2: derecha superior (11 dp)
-        val n2R = px(this, 4.5f + breath2 * 1.5f)
-        pNode.color = android.graphics.Color.parseColor("#90CA50")
-        c.drawCircle(cx + rMax * 0.52f, cy - rMax * 0.60f, n2R, pNode)
-
-        // Nodo 3: derecha inferior (9 dp atenuado)
-        pNode.color = android.graphics.Color.parseColor("#7390CA50")
-        c.drawCircle(cx + rMax * 0.68f, cy + rMax * 0.42f, px(this, 4.5f), pNode)
-
-        // Nodo 4: izquierda inferior (9 dp atenuado)
-        pNode.color = android.graphics.Color.parseColor("#7390CA50")
-        c.drawCircle(cx - rMax * 0.38f, cy + rMax * 0.64f, px(this, 4.5f), pNode)
-
-        // Nodos reales adicionales según saltos detectados
+        // 3. Nodos acústicos reales según saltos detectados (Regla 01: no inventar contactos)
         for (hop in 1..MallaAcustica.MAX_HOP) {
             val count = if (hop - 1 < porSalto.size) porSalto[hop - 1] else 0
             if (count > 0) {
@@ -1796,13 +1773,13 @@ class VistaEspectroMalla @JvmOverloads constructor(
     }
     private val rect = RectF()
 
-    /* Escala en dB. Por debajo de -95 no hay nada que enseñar y por encima de
-       -20 el tono está saturando el micro. */
-    private val dbMin = -95.0
+    /* Escala en dB. Con N=2048 a 48 kHz el piso físico de Goertzel en reposo
+       ronda -115 dB. Por encima de -20 dB el tono satura el micro. */
+    private val dbMin = -120.0
     private val dbMax = -20.0
 
-    private var niveles = DoubleArray(0)
     private var frecuencias = DoubleArray(0)
+    private var niveles = DoubleArray(0)
     private var suelo = -80.0
     private var viva = false
 
@@ -1810,12 +1787,20 @@ class VistaEspectroMalla @JvmOverloads constructor(
     private var picos = DoubleArray(0)
 
     fun pintar(niveles: DoubleArray, frecuencias: DoubleArray, suelo: Double, viva: Boolean) {
-        this.niveles = niveles
-        this.frecuencias = frecuencias
+        if (frecuencias.isNotEmpty() && frecuencias.size == niveles.size) {
+            val ordenados = frecuencias.indices
+                .map { frecuencias[it] to niveles[it] }
+                .sortedBy { it.first }
+            this.frecuencias = ordenados.map { it.first }.toDoubleArray()
+            this.niveles = ordenados.map { it.second }.toDoubleArray()
+        } else if (niveles.isNotEmpty()) {
+            this.niveles = niveles
+            this.frecuencias = frecuencias
+        }
         this.suelo = suelo
         this.viva = viva
-        if (picos.size != niveles.size) picos = DoubleArray(niveles.size) { dbMin }
-        for (i in niveles.indices) if (niveles[i] > picos[i]) picos[i] = niveles[i]
+        if (picos.size != this.niveles.size) picos = DoubleArray(this.niveles.size) { dbMin }
+        for (i in this.niveles.indices) if (this.niveles[i] > picos[i]) picos[i] = this.niveles[i]
         invalidate()
     }
 
@@ -1858,22 +1843,26 @@ class VistaEspectroMalla @JvmOverloads constructor(
 
             /* Barra apagada de fondo hasta el pico que va cayendo, y encima la
                lectura de ahora. Así se ve a la vez lo que hay y lo que hubo. */
-            val yPico = alto - alto(picos[i], alto)
-            if (picos[i] > dbMin) {
+            val hPico = alto(picos[i], alto)
+            if (hPico > 0f) {
+                val yPico = alto - hPico
                 rect.set(x, yPico, x + ancho, alto)
                 pBarra.color = 0xFF1E252A.toInt()
                 pBarra.alpha = 255
                 c.drawRoundRect(rect, r, r, pBarra)
             }
 
-            val y = alto - alto(db, alto)
-            rect.set(x, y, x + ancho, alto)
-            /* Verde cuando el tono pasa el suelo —eso es señal de la malla— y
-               gris cuando es solo el ruido de la sala. El rojo se reserva para
-               lo que sale de este móvil, y aquí no sale nada. */
-            pBarra.color = if (pasa) 0xFF90CA50.toInt() else 0xFF39424A.toInt()
-            pBarra.alpha = if (viva) 255 else 90
-            c.drawRoundRect(rect, r, r, pBarra)
+            val hValor = alto(db, alto)
+            if (hValor > 0f) {
+                val y = alto - hValor
+                rect.set(x, y, x + ancho, alto)
+                /* Verde cuando el tono pasa el suelo —eso es señal de la malla— y
+                   gris cuando es solo el ruido de la sala. El rojo se reserva para
+                   lo que sale de este móvil, y aquí no sale nada. */
+                pBarra.color = if (pasa) 0xFF90CA50.toInt() else 0xFF39424A.toInt()
+                pBarra.alpha = if (viva) 255 else 90
+                c.drawRoundRect(rect, r, r, pBarra)
+            }
 
             if (i == 0 || i == n - 1) {
                 val khz = frecuencias.getOrElse(i) { 0.0 } / 1000.0
