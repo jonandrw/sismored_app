@@ -3801,7 +3801,7 @@
                         android:layout_marginTop="2dp"
                         android:fontFamily="@font/mono"
                         android:letterSpacing="-0.01"
-                        android:text="@string/lbl_04_12"
+                        tools:text="04:12"
                         android:textColor="#E53035"
                         android:textSize="38sp"
                         android:textStyle="bold" />
@@ -4115,7 +4115,7 @@
             android:layout_height="wrap_content"
             android:fontFamily="@font/mono"
             android:letterSpacing="0.2"
-            android:text="@string/lbl_01_04"
+            tools:text="01 / 04"
             android:textColor="@color/dim"
             android:textSize="10sp" />
 

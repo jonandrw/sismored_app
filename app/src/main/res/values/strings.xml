@@ -556,7 +556,7 @@ Para leerla hace falta el permiso de acceso a notificaciones, que Android da ent
     <string name="rescate_autonomia">AUTONOMÍA ESTIMADA</string>
     <string name="rescate_desactivar">DESACTIVAR MODO RESCATE</string>
     <string name="autotest_titulo">AUTOCOMPROBACIÓN AL ARRANCAR</string>
-    <string name="autotest_malla">Malla · tonos 16–18 kHz</string>
+    <string name="autotest_malla">Malla · tonos 15,2–18,8 kHz</string>
     <string name="autotest_sismo">Detector sísmico</string>
     <string name="autotest_micro">Micrófono de campo</string>
     <string name="autotest_hw">Altavoz y linterna</string>
@@ -707,9 +707,7 @@ En Xiaomi y Redmi hacen falta &lt;b&gt;los dos&lt;/b&gt;: el de Android y el pro
     <string name="f_grupo">GRUPO</string>
     <string name="f_medicacion">MEDICACIÓN</string>
     <string name="lbl_01">01</string>
-    <string name="lbl_01_04">01 / 04</string>
     <string name="lbl_02">02</string>
-    <string name="lbl_04_12">04:12</string>
     <string name="lbl_112_db">112 dB</string>
     <string name="lbl_12">12</string>
     <string name="lbl_16_0">16.0</string>
@@ -792,7 +790,7 @@ En Xiaomi y Redmi hacen falta &lt;b&gt;los dos&lt;/b&gt;: el de Android y el pro
     <string name="lbl_permisos">PERMISOS</string>
     <string name="lbl_portadora">PORTADORA</string>
     <string name="lbl_probado_en">Probado en</string>
-    <string name="lbl_propaga_en_1618_khz">Propaga en 16–18 kHz</string>
+    <string name="lbl_propaga_en_1618_khz">Propaga en 15,2–18,8 kHz</string>
     <string name="lbl_pulso_sonoro">Pulso sonoro</string>
     <string name="lbl_reemitidas">REEMITIDAS</string>
     <string name="lbl_repetir_autocomprobacion">REPETIR AUTOCOMPROBACIÓN</string>
