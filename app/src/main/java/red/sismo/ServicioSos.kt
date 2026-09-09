@@ -155,6 +155,11 @@ class ServicioSos : Service() {
         /** Las frecuencias de `mallaNiveles`, en el mismo orden. */
         val mallaFrecuencias = doubleArrayOf(MallaAcustica.MARK) + MallaAcustica.TONOS
 
+        /** El array VIVO del motor, sin la copia de medio segundo. Lo lee el
+         *  espectro en cada fotograma; `mallaNiveles` sigue siendo la foto para
+         *  quien no necesite ir tan deprisa. */
+        @Volatile var mallaNivelesVivos: (() -> DoubleArray)? = null; private set
+
         /**
          * Hay alguien usando la vista de Búsqueda con el rastreo encendido.
          *
@@ -565,6 +570,7 @@ class ServicioSos : Service() {
            Oír una baliza confirmada es exactamente igual de serio que notar el
            terremoto uno mismo: se dispara la alarma completa y se reemite. */
         mic = Microfono(this)
+        mallaNivelesVivos = { malla?.niveles ?: mallaNiveles }
         malla = MallaAcustica(mic!!,
             onConfirmada = { hop ->
                 saltoEntrante = hop

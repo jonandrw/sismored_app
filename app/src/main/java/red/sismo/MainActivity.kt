@@ -1477,6 +1477,12 @@ class MainActivity : AppCompatActivity() {
         findViewById<View>(R.id.g_enviar)?.setOnClickListener {
             arrancarServicio(ServicioSos.ACCION_MALLA_ALERTA)
         }
+        /* El espectro lee el motor por su cuenta en cada fotograma. Si esperara
+           al repintado general vería dos medidas por segundo de una malla que
+           analiza veinticuatro. */
+        findViewById<VistaEspectroMalla>(R.id.malla_espectro)?.fuente {
+            ServicioSos.mallaNivelesVivos?.invoke() ?: ServicioSos.mallaNiveles
+        }
     }
 
     /** Pestaña activa de la sonda: 0=ECO, 1=DOPPLER, 2=RESPIRA, 3=BARRIDO */

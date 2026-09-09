@@ -1786,16 +1786,29 @@ class VistaEspectroMalla @JvmOverloads constructor(
     /** Picos que caen despacio, para que un tono de 42 ms se llegue a ver. */
     private var picos = DoubleArray(0)
 
+    /** De qué posición del array del motor sale cada barra, ya ordenada por
+     *  frecuencia. Se calcula una vez y sirve para leer la fuente en crudo. */
+    private var orden = IntArray(0)
+
+    /* La malla analiza a unas 24 medidas por segundo y el servicio las copia a
+       la pantalla dos veces por segundo: 22 de cada 24 se tiraban antes de que
+       nadie las viera, y una ráfaga de 250 ms podía caer entera entre dos
+       copias. Con la fuente puesta, el lienzo lee el array del motor en cada
+       fotograma. Es lo mismo que hace `VistaOnda` y por la misma razón. */
+    private var fuente: (() -> DoubleArray)? = null
+
+    fun fuente(f: () -> DoubleArray) { fuente = f }
+
     fun pintar(niveles: DoubleArray, frecuencias: DoubleArray, suelo: Double, viva: Boolean) {
         if (frecuencias.isNotEmpty() && frecuencias.size == niveles.size) {
-            val ordenados = frecuencias.indices
-                .map { frecuencias[it] to niveles[it] }
-                .sortedBy { it.first }
-            this.frecuencias = ordenados.map { it.first }.toDoubleArray()
-            this.niveles = ordenados.map { it.second }.toDoubleArray()
+            val idx = frecuencias.indices.sortedBy { frecuencias[it] }
+            orden = idx.toIntArray()
+            this.frecuencias = DoubleArray(idx.size) { frecuencias[idx[it]] }
+            this.niveles = DoubleArray(idx.size) { niveles[idx[it]] }
         } else if (niveles.isNotEmpty()) {
             this.niveles = niveles
             this.frecuencias = frecuencias
+            orden = IntArray(niveles.size) { it }
         }
         this.suelo = suelo
         this.viva = viva
@@ -1819,6 +1832,16 @@ class VistaEspectroMalla @JvmOverloads constructor(
            bajase a distinta velocidad según lo ocupada que estuviera la app.
            Cae despacio a propósito — una ráfaga de la malla son seis tonos de
            250 ms, y sin rastro no daría tiempo a leerla. */
+        /* La lectura de este fotograma, directa del motor y puesta en el mismo
+           orden que las barras. Si no hay fuente se pinta lo último que dejó
+           `pintar()`, que es como se comportaba antes. */
+        fuente?.let { f ->
+            val crudo = f()
+            if (crudo.size == orden.size) {
+                for (i in orden.indices) niveles[i] = crudo[orden[i]]
+            }
+        }
+
         val ahora = android.os.SystemClock.uptimeMillis()
         val dt = if (ultimoDibujo == 0L) 0.0 else (ahora - ultimoDibujo) / 1000.0
         ultimoDibujo = ahora
