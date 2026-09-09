@@ -615,7 +615,12 @@ class MallaAcustica(
             val now = System.currentTimeMillis()
             if (now - ultimoAvisoCandidato > RELAY_MS) {
                 ultimoAvisoCandidato = now
-                reg("he oído algo que puede ser una alerta; espero a confirmarlo")
+                /* Con los tres numeros delante: cual de las tres condiciones
+                   falta. Sin ellos hay que deducirlo desde fuera, y eso ya ha
+                   costado tiempo una vez. */
+                val span = if (corrob.isEmpty()) 0L else now - corrob[0].first
+                reg("he oído algo que puede ser una alerta; espero a confirmarlo " +
+                    "(cadencia=$cadencia/$RAFAGAS_MIN ecos=${corrob.size}/2 span=${span}/${CORROB_MIN}ms)")
             }
             return
         }

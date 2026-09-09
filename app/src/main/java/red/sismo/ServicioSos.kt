@@ -1464,6 +1464,18 @@ class ServicioSos : Service() {
         preguntaTarea?.let { reloj.removeCallbacks(it) }
         preguntaTarea = null
         try { sirena.stop() } catch (_: Exception) {}
+        /* Callar la sirena no era contestar: paraba el ruido y dejaba encendido
+           todo lo demás que dice «aquí hay una víctima». Quien acaba de decir
+           que está bien seguía con la linterna haciendo SOS, la pantalla
+           parpadeando y la baliza de radio emitiendo su ficha médica, o sea
+           mandando a los rescatistas a buscar a alguien que está de pie.
+           `enAlarma` se apaga con ellos; el relevo no depende de esa bandera
+           sino de `repetidor`, así que la malla sigue en pie. */
+        enAlarma = false
+        try { linterna?.parar() } catch (_: Exception) {}
+        try { vibrador?.cancel() } catch (_: Exception) {}
+        try { radio?.parar(); radioEmitiendo = false; radioMotivo = "estoy bien" } catch (_: Exception) {}
+        try { fichaLan?.emitir(false) } catch (_: Exception) {}
         /* Y desde este momento el móvil trabaja para los demás. Encender la
            malla aquí es la única vez que se enciende sin que la pida el usuario,
            y se dice en el registro en vez de hacerlo por la espalda: quien acaba
