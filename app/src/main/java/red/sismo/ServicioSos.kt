@@ -480,6 +480,18 @@ class ServicioSos : Service() {
        por qué se preguntaba. */
     private var sucesoSacudida = false
     private var sucesoFuerte = false
+
+    /** Cual de los dos terminos puso `sacudidaFuerte`. Solo para el registro.
+     *  Se evaluan los dos SIEMPRE: con `||` el segundo no se calcularia cuando
+     *  el primero es cierto, y el registro diria «false» sin haberlo mirado. */
+    @Volatile private var fuertePorSuceso = false
+    @Volatile private var fuertePorReciente = false
+
+    private fun fuerteAhora(): Boolean {
+        fuertePorSuceso = sucesoFuerte
+        fuertePorReciente = System.currentTimeMillis() - sismo.ultimaFuerte < 60_000L
+        return fuertePorSuceso || fuertePorReciente
+    }
     private var sucesoEstruendo = false
     private var sucesoCorroborada = false
     private var sucesoRegimen = Postura.Regimen.DESCONOCIDO
@@ -1196,8 +1208,7 @@ class ServicioSos : Service() {
             sacudida = sucesoSacudida || temblando,
             /* Y si fue lo bastante grande como para no confundirse con una mano.
                Se acumula igual que el resto de la evidencia del suceso. */
-            sacudidaFuerte = sucesoFuerte ||
-                System.currentTimeMillis() - sismo.ultimaFuerte < 60_000L,
+            sacudidaFuerte = fuerteAhora(),
             ondaP = sismo.hayOndaP,
             estruendo = sucesoEstruendo || estruendoAhora,
             corroborada = sucesoCorroborada || saltoEntrante > 0,
@@ -1272,7 +1283,15 @@ class ServicioSos : Service() {
            pero no con que evidencia, y las reglas de la cascada dejan de poder
            comprobarse contra lo que de verdad paso. */
         if (d.accion != Cascada.Accion.NADA) anotar(
-            "pruebas · ${pr.regimen} sac=${pr.sacudida} fuerte=${pr.sacudidaFuerte} " +
+            /* `fuerte` tiene dos origenes y el registro no decia cual: el latch
+               del suceso abierto, o que el sismografo marcara algo fuerte en los
+               ultimos 60 s. La noche del 8 al 9 de septiembre dispararon tres
+               veces con amplitudes de 0,25 a 0,51 y ciclo del 15 %, que no ponen
+               ninguno de los dos. Sin separarlos no se puede saber por donde
+               entra, asi que se separan. */
+            "pruebas · ${pr.regimen} sac=${pr.sacudida} " +
+            "fuerte=${pr.sacudidaFuerte}(suceso=$fuertePorSuceso reciente=$fuertePorReciente " +
+            "hace=${(System.currentTimeMillis() - sismo.ultimaFuerte) / 1000}s) " +
             "estruendo=${pr.estruendo} malla=${pr.corroborada} alerta=${pr.alertaExterna} " +
             "ciclo=${"%.0f".format(sismo.cicloTrabajo * 100)}%"
         )
