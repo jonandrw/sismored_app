@@ -259,7 +259,28 @@ class MallaAcustica(
         private const val RAF_PER_MIN_MS = 340L
         private const val RAF_PER_MAX_MS = 460L
         /** Dos marcos. Entre ráfaga y ráfaga el periodo real no se mueve más. */
-        private const val RAF_PER_JITTER_MS = 45L
+        /**
+         * Cuánto puede moverse el periodo de una ráfaga a la siguiente.
+         *
+         * **Estaba en 45 ms, que es el ruido de la propia medida.** El
+         * decodificador avanza de marco en marco, y un marco son
+         * `SALTO/sr` = 21,3 ms. El periodo se mide sumando el OFF y el ON, cada
+         * uno cuantizado a ese paso, así que dos ráfagas idénticas pueden
+         * medirse con hasta **±43 ms** de diferencia sin que nada vaya mal.
+         * Con el listón en 45 el margen era de 2 ms: cualquier marco perdido
+         * rompía el tren, `cadencia` volvía a 1 y una trama de seis ráfagas ya
+         * no daba las cuatro seguidas que se exigen.
+         *
+         * Medido el 9 de septiembre de 2026 entre el Redmi y el Huawei: el
+         * receptor acumulaba 47 ecos con 12 s de span —de sobra para las otras
+         * dos condiciones— y se quedaba en `cadencia=0/4`.
+         *
+         * 90 ms son cuatro marcos, el doble del error de cuantización. No
+         * afloja la defensa: el periodo tiene que seguir cayendo dentro de
+         * [RAF_PER_MIN_MS]..[RAF_PER_MAX_MS], que es una ventana de 120 ms, y
+         * ese rango es el que descarta al ruido.
+         */
+        private const val RAF_PER_JITTER_MS = 90L
 
         /* CUATRO ráfagas seguidas, de las seis que trae la trama. Medido contra
            ruido que parpadea a todas las velocidades posibles (`rechazo.py`),
