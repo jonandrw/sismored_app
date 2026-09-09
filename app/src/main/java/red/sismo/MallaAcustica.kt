@@ -157,7 +157,26 @@ class MallaAcustica(
         private const val BURST_ON = 0.25       // s de tono
         private const val BURST_OFF = 0.15      // s de silencio
         private const val BURST_N = 6           // trama de ~2,4 s
-        const val RELAY_MS = 4000L              // repetición de trama mientras dure la alarma
+        /**
+         * Cada cuánto se repite la trama mientras dura la alarma.
+         *
+         * **Estaba en 4000 y dejaba sordo al que retransmite.** La cuenta: una
+         * trama son seis ráfagas de 400 ms = 2,4 s, y la puerta que evita oírse
+         * a sí mismo dura 600 ms más, o sea 3,0 s sin micrófono. Repitiendo cada
+         * 4,0 s quedaba **1,0 s de escucha**, y confirmar exige [RAFAGAS_MIN]
+         * ráfagas seguidas = 1,6 s de escucha CONTINUA, porque la puerta llama a
+         * `perderSincronismo()` y la racha empieza de cero cada vez.
+         *
+         * 1,0 < 1,6: no era mala suerte ni cuestión de fase, era imposible. Dos
+         * móviles con la alarma puesta uno al lado del otro no se oían nunca.
+         * Medido el 9 de septiembre de 2026 entre el Huawei y el Redmi: la
+         * primera alerta cruzó en 3,9 s —el receptor aún no emitía— y a partir
+         * de ahí ninguna.
+         *
+         * Con 6,0 s quedan 3,0 s de escucha, casi el doble de lo que hace falta.
+         * Un relevo más lento que funciona vale más que uno rápido y sordo.
+         */
+        const val RELAY_MS = 6000L
 
         /* ---------- análisis ----------
            Ventana de 2048 muestras (42 ms a 48 kHz), que es la que sirve
@@ -695,7 +714,15 @@ class MallaAcustica(
         relay?.let { h.removeCallbacks(it) }
         val h0 = hop.coerceIn(1, TONOS.size)
         val tarea = object : Runnable {
-            override fun run() { emitirUna(h0); h.postDelayed(this, relayMs) }
+            /* Con un periodo fijo, dos móviles se enganchan en fase y sus
+               ventanas de escucha coinciden con las emisiones del otro para
+               siempre. El desorden es lo que garantiza que tarde o temprano se
+               solapen; es el mismo motivo por el que las demás emisiones de
+               este fichero salen con jitter. */
+            override fun run() {
+                emitirUna(h0)
+                h.postDelayed(this, relayMs + (Math.random() * 1500).toLong())
+            }
         }
         relay = tarea
         h.post(tarea)
