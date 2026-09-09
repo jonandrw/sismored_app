@@ -523,6 +523,14 @@ class MallaAcustica(
     private fun msDe(marcos: Int): Long = marcos.toLong() * Microfono.SALTO * 1000L / srRx
 
     /** Se pierde el tren de ráfagas que se estaba siguiendo. */
+    /* Por que se olvida la cadencia. Son tres causas con remedios distintos y
+       desde fuera se ven iguales —todas dejan `cadencia=0`—, asi que se cuentan
+       por separado y se dicen en el registro. */
+    @Volatile var olvidoPuerta = 0; private set      // sordo por emision propia
+    @Volatile var olvidoTonoLargo = 0; private set   // el tono no se corta nunca
+    @Volatile var olvidoOnFuera = 0; private set     // la rafaga no dura lo que debe
+    @Volatile var onMasLargoMs = 0L; private set     // la racha de tono mas larga vista
+
     private fun olvidarCadencia() { cadencia = 0; msPeriodoPrevio = 0L }
 
     /** Hemos dejado de oír por nuestra propia culpa —emisión propia, interfono—,
@@ -553,7 +561,11 @@ class MallaAcustica(
             /* Un tono que no se acaba nunca no es una baliza: es un generador, o
                alguien reproduciendo un tono. No hay que esperar a que la racha
                cierre para saberlo, y esperar dejaría viva una cadencia vieja. */
-            if (hayTono && msDe(marcosRacha) > RAF_ON_MAX_MS) olvidarCadencia()
+            if (hayTono) {
+                val racha = msDe(marcosRacha)
+                if (racha > onMasLargoMs) onMasLargoMs = racha
+                if (racha > RAF_ON_MAX_MS) { olvidoTonoLargo++; olvidarCadencia() }
+            }
             return
         }
         val ms = msDe(marcosRacha)
@@ -566,7 +578,7 @@ class MallaAcustica(
             return
         }
         // se cerró una ráfaga de tono: es aquí donde se juzga
-        if (ms !in RAF_ON_MIN_MS..RAF_ON_MAX_MS) { olvidarCadencia(); return }
+        if (ms !in RAF_ON_MIN_MS..RAF_ON_MAX_MS) { olvidoOnFuera++; olvidarCadencia(); return }
         val periodo = msOffPrevio + ms
         val sigueElTren = offPrevioOk &&
             periodo in RAF_PER_MIN_MS..RAF_PER_MAX_MS &&
@@ -627,7 +639,7 @@ class MallaAcustica(
 
     private fun procesar(marco: ShortArray) {
         // no oírse a sí mismo. La racha en curso queda partida: no se juzga.
-        if (System.currentTimeMillis() < puertaHasta) { perderSincronismo(); return }
+        if (System.currentTimeMillis() < puertaHasta) { olvidoPuerta++; perderSincronismo(); return }
         val hop = decodificar(marco)
         verCadencia(tonoCrudo)
         if (hop == 0) return
@@ -641,7 +653,10 @@ class MallaAcustica(
                    costado tiempo una vez. */
                 val span = if (corrob.isEmpty()) 0L else now - corrob[0].first
                 reg("he oído algo que puede ser una alerta; espero a confirmarlo " +
-                    "(cadencia=$cadencia/$RAFAGAS_MIN ecos=${corrob.size}/2 span=${span}/${CORROB_MIN}ms)")
+                    "(cadencia=$cadencia/$RAFAGAS_MIN ecos=${corrob.size}/2 span=${span}/${CORROB_MIN}ms" +
+                    " · olvidos: puerta=$olvidoPuerta tonoLargo=$olvidoTonoLargo onFuera=$olvidoOnFuera" +
+                    " · onMax=${onMasLargoMs}ms)")
+                olvidoPuerta = 0; olvidoTonoLargo = 0; olvidoOnFuera = 0; onMasLargoMs = 0L
             }
             return
         }
