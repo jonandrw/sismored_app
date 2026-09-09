@@ -1283,13 +1283,18 @@ class ServicioSos : Service() {
            pero no con que evidencia, y las reglas de la cascada dejan de poder
            comprobarse contra lo que de verdad paso. */
         if (d.accion != Cascada.Accion.NADA) anotar(
-            /* `fuerte` tiene dos origenes y el registro no decia cual: el latch
-               del suceso abierto, o que el sismografo marcara algo fuerte en los
-               ultimos 60 s. La noche del 8 al 9 de septiembre dispararon tres
-               veces con amplitudes de 0,25 a 0,51 y ciclo del 15 %, que no ponen
-               ninguno de los dos. Sin separarlos no se puede saber por donde
-               entra, asi que se separan. */
-            "pruebas · ${pr.regimen} sac=${pr.sacudida} " +
+            /* El motivo va DELANTE, y esto no es cosmetica. El motivo —que trae
+               la amplitud y el ciclo del disparo— solo se anotaba en la rama
+               NADA, asi que del disparo que SI decidia algo no quedaba escrita
+               ni la amplitud. Analizando la noche del 8 al 9 de septiembre
+               emparejé la linea de un NADA de 0,25 m/s² con las pruebas del
+               disparo siguiente, un segundo despues, y sali persiguiendo una
+               contradiccion que no existia.
+
+               Y `fuerte` tiene dos origenes que el registro daba juntos: el
+               latch del suceso abierto, o que el sismografo marcara algo fuerte
+               en los ultimos 60 s. Van separados por lo mismo. */
+            "pruebas · $motivo · ${pr.regimen} sac=${pr.sacudida} " +
             "fuerte=${pr.sacudidaFuerte}(suceso=$fuertePorSuceso reciente=$fuertePorReciente " +
             "hace=${(System.currentTimeMillis() - sismo.ultimaFuerte) / 1000}s) " +
             "estruendo=${pr.estruendo} malla=${pr.corroborada} alerta=${pr.alertaExterna} " +
