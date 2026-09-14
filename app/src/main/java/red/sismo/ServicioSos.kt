@@ -70,6 +70,7 @@ class ServicioSos : Service() {
         const val ACCION_BARRIDO = "red.sismo.BARRIDO"
         const val ACCION_RESPIRA = "red.sismo.RESPIRA"
         const val ACCION_INTERFONO = "red.sismo.INTERFONO"
+        const val ACCION_INTERFONO_PARAR = "red.sismo.INTERFONO_PARAR"
         /** Un solo destello del flash. Lo pide la vista de Búsqueda al acercarse:
          *  el flash lo tiene la cámara y la cámara la lleva el servicio. */
         const val ACCION_PULSO = "red.sismo.PULSO"
@@ -258,6 +259,8 @@ class ServicioSos : Service() {
          *  ciclo de diez segundos con pasos distintos y hay que ir leyéndolo. */
         @Volatile var interfonoSalida = "—"
         @Volatile var interfonoOcupado = false; private set
+        @Volatile var interfonoFase: Interfono.Fase = Interfono.Fase.CERRADO
+        @Volatile var interfonoNivelDb: Float = -120f
 
         /** Si la baliza de radio está emitiendo, y si no, por qué no. */
         @Volatile var radioEmitiendo = false; private set
@@ -816,6 +819,12 @@ class ServicioSos : Service() {
                 { p -> logInterfono(p, paso = true) },
                 { r -> logInterfono(r, paso = false); anotar(r) }
             )
+            ACCION_INTERFONO_PARAR -> {
+                interfono?.parar()
+                interfonoOcupado = false
+                interfonoFase = Interfono.Fase.CERRADO
+                anotar("interfono cerrado")
+            }
             ACCION_RESPIRA -> if (sonda?.quienTono == "respiracion") {
                 sonda?.respiracion(false, {}, { r -> respiraSalida = r })
             } else {
@@ -2288,7 +2297,11 @@ class ServicioSos : Service() {
             sonda?.volTono = opciones.volSenal / 10.0
             sonda?.fDoppler = opciones.dopplerKhz * 1000
         } catch (_: Exception) {}
-        sismo.umbral = opciones.umbral
+        val nuevo = if (enReposoAhora) opciones.umbralReposo else opciones.umbral
+        sismo.umbral = nuevo
+        umbralActivo = nuevo
+        sismo.ajustarPerfil(opciones.perfilEntorno)
+        anotar("perfil sísmico: ${opciones.perfilEntorno.name} · reposo ${opciones.umbralReposo} m/s²")
         sonda?.fDoppler = opciones.dopplerKhz * 1000
         if (enAlarma) {
             if (opciones.sirena) { if (!sirena.estaSonando()) try { sirena.start() } catch (_: Exception) {} }
@@ -2378,6 +2391,8 @@ class ServicioSos : Service() {
                     barridoActivo = barridoOn
                 }
                 interfonoOcupado = interfono?.ocupado ?: false
+                interfonoFase = interfono?.fase ?: Interfono.Fase.CERRADO
+                interfonoNivelDb = interfono?.vozDb?.toFloat() ?: -120f
                 fichaLan?.let {
                     fichasWifi = if (it.fichas().isEmpty()) "" else it.comoTexto()
                     fichaLanEstado = it.estado()

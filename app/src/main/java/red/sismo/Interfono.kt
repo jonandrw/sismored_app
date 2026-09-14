@@ -99,6 +99,16 @@ class Interfono(
     private fun linea(vararg partes: String) = partes.joinToString(System.lineSeparator())
     private fun reg(s: String) = h.post { onRegistro(s) }
 
+    enum class Fase {
+        CERRADO,
+        CALIBRANDO,
+        GRABANDO_VOZ,
+        ENVIANDO,
+        ESCUCHANDO,
+        CONTESTANDO
+    }
+
+    @Volatile var fase: Fase = Fase.CERRADO; private set
     @Volatile var ocupado = false; private set
 
     /** Lo baja `parar()`. Mismo motivo que en la sonda: cualquier cosa que suene
@@ -107,7 +117,7 @@ class Interfono(
     @Volatile private var cancelado = false
 
     /** Corta el ciclo donde esté. Lo llama DETENER. */
-    fun parar() { if (ocupado) cancelado = true }
+    fun parar() { if (ocupado) cancelado = true; fase = Fase.CERRADO }
     /** Lo que la pantalla enseña del ciclo en marcha. */
     @Volatile var estado = "—"; private set
 
@@ -120,7 +130,7 @@ class Interfono(
 
     /** Nivel en la banda de la voz del último marco, en dB. Lo escribe el hilo
      *  del micrófono y lo lee el del ciclo, de ahí el @Volatile. */
-    @Volatile private var vozDb = -120.0
+    @Volatile var vozDb = -120.0; private set
 
     private fun medidor(sr: Int): Microfono.Oyente {
         val res = sr.toDouble() / Microfono.N
@@ -202,6 +212,7 @@ class Interfono(
                 mic.registrar(grab)
 
                 // 1. fondo
+                fase = Fase.CALIBRANDO
                 paso(linea("Midiendo el ruido de este sitio.", "No hables todavia."))
                 var fondo = 0.0; var n = 0
                 val t0 = System.currentTimeMillis()
@@ -212,6 +223,7 @@ class Interfono(
                 val umbral = fondo + SOBRE_FONDO_DB
 
                 // 2. grabar al rescatista
+                fase = Fase.GRABANDO_VOZ
                 paso(linea("HABLA AHORA.", "Tienes ${HABLA_MS / 1000} segundos."))
                 grab.vaciar(); grab.grabando = true
                 Thread.sleep(HABLA_MS)
@@ -223,6 +235,7 @@ class Interfono(
                       único que sale es un pitido. */
                 mic.quitar(medidor); mic.quitar(grab)
                 mic.cerrar(Microfono.USA_INTERFONO)
+                fase = Fase.ENVIANDO
                 paso(linea("Hablando hacia abajo, a todo volumen.", "Aparta la oreja del altavoz."))
                 sacar(dicho, sr)
 
@@ -233,6 +246,7 @@ class Interfono(
                 }
                 mic.registrar(medidor); mic.registrar(grab)
                 grab.vaciar()
+                fase = Fase.ESCUCHANDO
                 paso(linea("ESCUCHANDO.", "Calla y no muevas el movil."))
 
                 var contesto = false
@@ -253,6 +267,7 @@ class Interfono(
                         if (!contesto && ahora - desdeVoz >= SOSTENIDO_MS) {
                             contesto = true
                             grab.grabando = true
+                            fase = Fase.CONTESTANDO
                             paso("TE ESTAN CONTESTANDO.")
                             reg("Interfono: respuesta en la banda de la voz")
                         }
@@ -308,6 +323,7 @@ class Interfono(
                 mic.quitar(grab)
                 mic.cerrar(Microfono.USA_INTERFONO)
                 ocupado = false
+                fase = Fase.CERRADO
             }
         }
     }

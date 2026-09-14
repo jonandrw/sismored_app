@@ -833,4 +833,17 @@ En Xiaomi y Redmi hacen falta &lt;b&gt;los dos&lt;/b&gt;: el de Android y el pro
     <string name="notif_sismored_alarma_activa">SISMORED · ALARMA ACTIVA</string>
     <string name="notif_un_movil_cercano_pidio_ayuda_h">Un móvil cercano pidió ayuda hace 20 s</string>
     <string name="preg_20">20</string>
+    <!-- Perfiles de entorno sísmico -->
+    <string name="lbl_perfil_entorno_seccion">PERFIL DE ENTORNO SÍSMICO</string>
+    <string name="lbl_perfil_entorno_titulo">VIBRACIÓN DEL SUELO Y ENTORNO</string>
+    <string name="lbl_perfil_entorno_sub">Calibra el umbral de los algoritmos según el nivel de ruido y vibración de tu zona para evitar falsas alarmas.</string>
+    <string name="lbl_perfil_tranquilo">TRANQUILO</string>
+    <string name="lbl_perfil_normal">NORMAL</string>
+    <string name="lbl_perfil_ruidoso">RUIDOSO</string>
+    <string name="lbl_perfil_tranquilo_desc">🟢 TRANQUILO · Alta sensibilidad (0.20 m/s²)
+Pisos altos, suburbios o campo. Máxima sensibilidad a ondas sísmicas leves.</string>
+    <string name="lbl_perfil_normal_desc">🟡 NORMAL · Estándar recomendado (0.25 m/s²)
+Casas y oficinas estándar. Filtra pasos y vibraciones domésticas comunes.</string>
+    <string name="lbl_perfil_ruidoso_desc">🟠 RUIDOSO · Umbral reforzado (0.35 m/s²)
+Avenidas principales, obras o tráfico pesado. Requiere mayor confirmación STA/LTA.</string>
 </resources>
