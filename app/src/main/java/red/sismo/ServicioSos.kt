@@ -422,6 +422,10 @@ class ServicioSos : Service() {
          *  permanente y no puede convertirse en la pregunta y luego volver. */
         const val ID_PREGUNTA = 2
         const val ID_FICHA = 3
+        const val ID_PREGUNTA_DISCRETA = 14
+        const val CANAL_DISCRETO = "sismored_discreto"
+        const val ACCION_FALSA_ALARMA = "red.sismo.FALSA_ALARMA"
+
         /** Cuánto vale una caída libre como prueba: pasado esto ya no cuenta. */
         private const val CAIDA_VALE_MS = 120_000L
     }
@@ -448,6 +452,12 @@ class ServicioSos : Service() {
     /** Saltos que lleva recorridos la alerta que estamos propagando. 0 = nace aquí. */
     private var saltoEntrante = 0
     private val reloj = Handler(Looper.getMainLooper())
+
+    private var detectorPanico: DetectorPanicoVoz? = null
+    @Volatile private var sucesoVozPanico = false
+    @Volatile private var sucesoVozPanicoHasta = 0L
+    private var receptorOnline: ReceptorSismicoOnline? = null
+    private var oyentePanico: Microfono.Oyente? = null
 
     /* ---------- la cascada ----------
        El estado del suceso en curso. Todo esto es de un solo suceso: se pone en
@@ -556,6 +566,7 @@ class ServicioSos : Service() {
         sismo = Sismografo(this) { motivo -> pruebaNueva(motivo) }
         sismo.umbral = opciones.umbral
         sismo.armado = opciones.armado
+        sismo.ajustarPerfil(opciones.perfilEntorno)
         armado = sismo.armado
         sismo.arrancar()
         postura = Postura(this) { m -> anotar(m) }
@@ -570,6 +581,30 @@ class ServicioSos : Service() {
            Oír una baliza confirmada es exactamente igual de serio que notar el
            terremoto uno mismo: se dispara la alarma completa y se reemite. */
         mic = Microfono(this)
+        detectorPanico = DetectorPanicoVoz(
+            onPanicoConfirmado = { frase, conf ->
+                sucesoVozPanico = true
+                sucesoVozPanicoHasta = System.currentTimeMillis() + 60_000L
+                anotar("PÁNICO POR VOZ CORROBORADO ($frase, " + (conf * 100).toInt() + "%)")
+                evaluar("pánico por voz: $frase")
+            },
+            onRegistro = { m -> anotar(m) }
+        )
+        oyentePanico = Microfono.Oyente { marco ->
+            detectorPanico?.procesarMarco(marco, marco.size, mic?.sr?.toDouble() ?: 48000.0)
+        }
+        receptorOnline = ReceptorSismicoOnline(
+            getUbicacion = {
+                if (ubicacion?.hay() == true) Pair(ubicacion!!.lat(), ubicacion!!.lon()) else null
+            },
+            onAlertaSismica = { mag, dist, lugar ->
+                alertaExternaHasta = System.currentTimeMillis() + 180_000L
+                anotar("alerta externa (red sísmica abierta FDSN/EMSC): M$mag en $lugar (~" + dist.toInt() + " km)")
+                evaluar("alerta sísmica online EMSC M$mag")
+            },
+            onRegistro = { m -> anotar(m) }
+        )
+        try { receptorOnline?.arrancar() } catch (_: Exception) {}
         mallaNivelesVivos = { malla?.niveles ?: mallaNiveles }
         malla = MallaAcustica(mic!!,
             onConfirmada = { hop ->
@@ -806,6 +841,7 @@ class ServicioSos : Service() {
                sin tapar el sonido de los escombros. */
             ACCION_PULSO -> try { linterna?.destello(90) } catch (_: Exception) {}
             ACCION_ESTOY_BIEN -> estoyBien()
+            ACCION_FALSA_ALARMA -> falsaAlarma()
             ACCION_SILENCIO_ZONA -> silencioZona()
             ACCION_APAGAR -> { apagarDelTodo(); return START_NOT_STICKY }
             ACCION_PROBAR_FICHA_LAN -> {
@@ -1184,6 +1220,9 @@ class ServicioSos : Service() {
                sola no decide nada y no merece estar encendida todo el día. */
             try { postura?.vigilarLuz(true) } catch (_: Exception) {}
             try { ubicacion?.refrescar() } catch (_: Exception) {}
+            detectorPanico?.activarVentana(10_000L)
+            mic?.abrir(Microfono.USA_PANICO)
+            oyentePanico?.let { mic?.registrar(it) }
             reprogramarWatchdogSuceso()
         }
         evaluar(motivo)
@@ -1215,6 +1254,8 @@ class ServicioSos : Service() {
             /* Y si fue lo bastante grande como para no confundirse con una mano.
                Se acumula igual que el resto de la evidencia del suceso. */
             sacudidaFuerte = fuerteAhora(),
+            ratioStaLta = sismo.ratioStaLta,
+            vozPanico = sucesoVozPanico && System.currentTimeMillis() < sucesoVozPanicoHasta,
             ondaP = sismo.hayOndaP,
             estruendo = sucesoEstruendo || estruendoAhora,
             corroborada = sucesoCorroborada || saltoEntrante > 0,
@@ -1319,6 +1360,10 @@ class ServicioSos : Service() {
                     reprogramarWatchdogSuceso()
                 }
             }
+            Cascada.Accion.PREGUNTAR_DISCRETA -> {
+                cancelarWatchdogSuceso()
+                preguntarDiscreta(d.motivo)
+            }
             Cascada.Accion.PREGUNTAR -> {
                 cancelarWatchdogSuceso()
                 preguntar(false, d.motivo)
@@ -1422,6 +1467,80 @@ class ServicioSos : Service() {
      * puede pasar nunca es que no se pregunte**, y por eso hay dos caminos y
      * ninguno depende del otro.
      */
+    private fun preguntarDiscreta(motivo: String) {
+        cancelarWatchdogSuceso()
+        val ahoraP = System.currentTimeMillis()
+        if (preguntaHasta > ahoraP) return
+        if (ahoraP - ultimaPregunta < PREGUNTA_REPOSO_MS) {
+            anotar("aviso discreto omitido: ya pregunté hace poco")
+            return
+        }
+        ultimaPregunta = ahoraP
+        preguntaHasta = ahoraP + PREGUNTA_MS
+        anotar("SISMO EN REPOSO — aviso discreto no invasivo (sin sirena) — $motivo")
+        try { reloj.post { sacarPreguntaDiscreta(motivo) } } catch (_: Exception) {}
+        preguntaTarea?.let { reloj.removeCallbacks(it) }
+        val t = Runnable {
+            // El aviso discreto expira en silencio si nadie contesta.
+            // NUNCA escala a sirena, baliza ni pánico para evitar falsos positivos y desinstalaciones.
+            preguntaHasta = 0L
+            quitarPreguntaDiscreta()
+            anotar("aviso discreto expiró sin respuesta: cerrado en silencio (seguridad ante falsos positivos)")
+            cerrarSuceso()
+        }
+        preguntaTarea = t
+        reloj.postDelayed(t, PREGUNTA_MS)
+    }
+
+    private fun sacarPreguntaDiscreta(motivo: String) {
+        val abrir = PendingIntent.getActivity(
+            this, 14, Intent(this, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val canalId = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val nm = getSystemService(NotificationManager::class.java)
+            if (nm.getNotificationChannel(CANAL_DISCRETO) == null) {
+                val c = NotificationChannel(
+                    CANAL_DISCRETO, "Avisos no invasivos", NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "Avisos suaves de corroboración sísmica sin falsa alarma"
+                    setShowBadge(true)
+                }
+                nm.createNotificationChannel(c)
+            }
+            CANAL_DISCRETO
+        } else CANAL
+
+        val b = Notification.Builder(this, canalId)
+            .setSmallIcon(android.R.drawable.ic_dialog_alert)
+            .setContentTitle("¿Sentiste un temblor?")
+            .setContentText("Detectamos movimiento en reposo. Pulsa si estás bien o si fue falsa alarma.")
+            .setCategory(Notification.CATEGORY_STATUS)
+            .setAutoCancel(true)
+            .setContentIntent(abrir)
+            .addAction(Notification.Action.Builder(null, "ESTOY BIEN", pi(ACCION_ESTOY_BIEN)).build())
+            .addAction(Notification.Action.Builder(null, "FALSA ALARMA", pi(ACCION_FALSA_ALARMA)).build())
+
+        try {
+            (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
+                .notify(ID_PREGUNTA_DISCRETA, b.build())
+        } catch (_: Exception) {}
+    }
+
+    private fun quitarPreguntaDiscreta() {
+        try { (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).cancel(ID_PREGUNTA_DISCRETA) }
+        catch (_: Exception) {}
+    }
+
+    private fun falsaAlarma() {
+        preguntaHasta = 0L
+        quitarPreguntaDiscreta()
+        preguntaTarea?.let { reloj.removeCallbacks(it); preguntaTarea = null }
+        anotar("usuario descartó el movimiento como falsa alarma")
+        cerrarSuceso()
+    }
+
     private fun sacarPregunta() {
         val abrir = PendingIntent.getActivity(
             this, 7, Intent(this, PreguntaActivity::class.java)
@@ -1451,6 +1570,7 @@ class ServicioSos : Service() {
     private fun quitarPregunta() {
         try { (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).cancel(ID_PREGUNTA) }
         catch (_: Exception) {}
+        quitarPreguntaDiscreta()
     }
 
     /** Ha pulsado ESTOY BIEN, en la pantalla o en la notificación. */
@@ -1716,6 +1836,11 @@ class ServicioSos : Service() {
         preguntaTarea?.let { reloj.removeCallbacks(it) }
         preguntaTarea = null
         quitarPregunta()
+        sucesoVozPanico = false
+        detectorPanico?.cancelarVentana()
+        oyentePanico?.let { mic?.quitar(it) }
+        mic?.cerrar(Microfono.USA_PANICO)
+        quitarPreguntaDiscreta()
         try { postura?.vigilarLuz(false) } catch (_: Exception) {}
     }
 
@@ -2432,6 +2557,9 @@ class ServicioSos : Service() {
         } else {
             try { WatchdogReceiver.cancelar(this) } catch (_: Exception) {}
         }
+        try { receptorOnline?.parar() } catch (_: Exception) {}
+        detectorPanico?.cancelarVentana()
+        oyentePanico?.let { mic?.quitar(it) }
         try { sismo.parar() } catch (_: Exception) {}
         try { postura?.parar() } catch (_: Exception) {}
         try { escucha?.parar() } catch (_: Exception) {}
