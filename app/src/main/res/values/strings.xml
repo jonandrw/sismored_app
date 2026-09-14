@@ -297,12 +297,12 @@ Mientras no lo hagas, SismoRed solo vigila con la app abierta.</string>
 
 <b>Qué sale del móvil, y cuándo.</b> Únicamente con la alarma o el modo rescate activos: por radio (Bluetooth) viajan tu nombre de pila y tu grupo sanguíneo, que ocupan 31 bytes; por Wi‑Fi, si existe una red local, viaja la ficha completa junto con la última posición conocida, y la recibe quien esté en esa misma red. Todo se interrumpe en cuanto detienes la alarma.
 
-Y solo si tú lo activas a mano en «Si aparece internet»: un parte con la hora, el motivo y los saltos. Nada más.
+<b>El sonido no se graba jamás.</b> El micrófono se analiza al vuelo en memoria volátil y se descarta de inmediato. Tras una sacudida, abre una ventana breve de 10 segundos buscando posibles expresiones de auxilio para corroborar el sismo localmente. No se almacena audio en disco ni se sube a ningún servidor.
 
-<b>El sonido no se graba.</b> El micrófono se analiza al vuelo y se descarta. No se almacena audio, no se sube a ningún servidor y no se puede recuperar.</string>
+<b>Consultas sísmicas abiertas.</b> Si dispones de internet, la app puede consultar catálogos públicos y abiertos (EMSC/USGS) para saber si tiembla cerca. Es una consulta de solo lectura: nunca envía tu posición, ni identificadores, ni datos personales. El cálculo de distancia se hace 100% en tu teléfono.</string>
 
     <string name="ac_rot_permisos">POR QUÉ CADA PERMISO</string>
-    <string name="ac_permisos"><b>Micrófono.</b> Para oír los avisos de otros móviles y reconocer un derrumbe, un grito o unos golpes. No graba.
+    <string name="ac_permisos"><b>Micrófono.</b> Para oír los avisos de otros móviles, reconocer un derrumbe o golpes, y confirmar expresiones de auxilio durante un sismo. No graba en disco ni transmite voz.
 
 <b>Accesibilidad.</b> Solo para enterarse de que pulsas el botón de volumen tres veces con la pantalla bloqueada. Es el único mecanismo de Android que recibe esas teclas con la pantalla apagada. SismoRed <i>no</i> lee el contenido de la pantalla, ni lo que escribes, ni la actividad de otras aplicaciones.
 
@@ -321,13 +321,16 @@ Todos son opcionales. Sin ellos la aplicación funciona a medias, y te indica en
 Vigilando, poco: el acelerómetro y el micrófono a ratos. La sirena, la linterna y la sonda sí consumen, y por eso no se encienden solas salvo en una emergencia.
 
 <b>¿Funciona sin internet?</b>
-Por completo. Es aquello para lo que está hecha. Internet solo se usa si tú activas el envío de partes.
+Por completo. Es aquello para lo que está hecha. Los sensores y la malla funcionan 100% desconectados. Internet solo se usa de forma opcional y pasiva para corroborar sismos con catálogos públicos abiertos o para enviar partes si tú lo activas.
 
 <b>¿Sigue vigilando con la aplicación cerrada?</b>
 En la mayoría de los móviles, sí. En algunos, sobre todo Xiaomi y Redmi, el sistema la detiene al deslizarla fuera de recientes; cuando eso ocurre la aplicación te avisa y te lleva al ajuste que lo corrige. Puedes consultarlo en Diagnóstico, en «Sigue vigilando con la app cerrada».
 
 <b>¿Por qué a veces pregunta si estoy bien?</b>
-Porque ningún sensor puede distinguir a una persona atrapada de un móvil que se cayó detrás del sofá. Preguntar resulta más fiable que adivinar: si contestas, se calla; si no contestas, empieza a pedir ayuda por ti.
+Porque ningún sensor puede distinguir a una persona atrapada de un móvil que se cayó detrás del sofá. En sacudidas leves en reposo, SismoRed muestra un aviso discreto («¿Sentiste un temblor?») con botones [ESTOY BIEN] y [FALSA ALARMA]; si no contestas en un minuto, se cierra solo en silencio sin hacer ruido. Solo ante sacudidas fuertes o confirmadas pasa a la alarma completa.
+
+<b>¿Puedo calibrar según el ruido de mi entorno?</b>
+Sí. En Ajustes puedes elegir perfil de entorno: Tranquilo (campo/piso alto), Normal (doméstico estándar) o Ruidoso (cerca a avenida o tráfico pesado), adaptando la sensibilidad para evitar falsas alarmas.
 
 <b>¿Puedo apagarla del todo?</b>
 Sí. En Diagnóstico, mediante «Apagar del todo». Se detiene todo, incluido el servicio en segundo plano, y no vuelve a encenderse sola.
