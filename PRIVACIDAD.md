@@ -1,83 +1,95 @@
-# Política de Privacidad de SismoRed
+# Política de Privacidad y Términos de SismoRed
 
-**Última actualización:** 4 de septiembre de 2026  
+**Última actualización:** 14 de septiembre de 2026  
 **Proyecto:** SismoRed Android (Código Abierto)  
+**Licencia:** Software Libre / Código Abierto  
 **Repositorio oficial:** [https://github.com/jonandrw/sismored_app](https://github.com/jonandrw/sismored_app)
 
 ---
 
 ## 1. Declaración de Principios y Privacidad por Diseño
 
-SismoRed es una aplicación comunitaria de código abierto orientada a la asistencia en situaciones de colapso de infraestructuras y catástrofes sísmicas. Su arquitectura se fundamenta en el principio de **cero telemetría y privacidad absoluta**:
+SismoRed es una herramienta comunitaria de código abierto orientada a la detección inercial de terremotos, asistencia en colapsos estructurales y localización de personas en situaciones de emergencia. Su arquitectura se fundamenta en los principios de **cero telemetría de usuario, privacidad absoluta y soberanía de datos (*Local-First*)**:
 
-1. **Sin servidores externos:** La aplicación no se conecta a servidores de recopilación de datos, analítica, publicidad ni rastreo.
-2. **Sin cuentas de usuario:** No se requiere registro, correo electrónico, número telefónico ni credenciales para utilizar la aplicación.
-3. **Tratamiento exclusivamente local (*Local-First*):** Todos los cálculos, análisis de sensores y almacenamiento residen únicamente en la memoria y almacenamiento interno de su propio dispositivo.
+1. **Sin servidores privados ni recopilación de usuarios:** La aplicación no cuenta con servidores centrales de rastreo, analítica de uso, publicidad ni registro de perfiles.
+2. **Sin cuentas ni credenciales:** No se solicita correo electrónico, nombre de usuario, número telefónico ni credenciales para su funcionamiento.
+3. **Cálculo y procesamiento estrictamente local:** Los algoritmos sismológicos, el filtrado inercial, el análisis acústico y la toma de decisiones se ejecutan de manera autónoma en el procesador y la memoria RAM de su propio dispositivo.
 
 ---
 
-## 2. Datos Tratados en el Dispositivo
+## 2. Datos Tratados en el Dispositivo y Sensores
 
-### A. Ficha Médica de Emergencia
-- **Qué datos contiene:** Nombre de pila, grupo sanguíneo, edad aproximada, alergias, medicación relevante y teléfono de contacto de emergencia.
-- **Dónde se guarda:** Exclusivamente en el almacenamiento privado de la app en su dispositivo (`SharedPreferences`), al que ninguna otra aplicación tiene acceso. No está cifrada: un teléfono con acceso de superusuario podría leerla, igual que cualquier otro dato de cualquier otra app.
-- **Control del usuario:** Estos datos son de carácter opcional. El usuario puede editarlos o eliminarlos en cualquier momento desde la pestaña *Ficha*. Al desinstalar la aplicación, todos estos datos son borrados definitivamente de forma automática por el sistema operativo.
+### A. Ficha Médica de Emergencia (Opcional)
+- **Datos que comprende:** Nombre de pila, grupo sanguíneo, edad orientativa, alergias, medicación vital y número telefónico de contacto de emergencia.
+- **Almacenamiento:** Se guarda de forma exclusiva en el almacenamiento privado de la aplicación (`SharedPreferences`) en su teléfono. Ninguna otra aplicación estándar tiene acceso a este espacio.
+- **Control total:** Completar esta ficha es 100% voluntario. Puede modificarse o borrarse en cualquier momento desde la pestaña *Ficha*. Al desinstalar la app, el sistema operativo destruye estos datos de forma definitiva.
 
-### B. Análisis del Micrófono (Audio Forense)
-- **Uso:** El micrófono se utiliza para la detección local de sonidos característicos de derrumbes, gritos de auxilio, ruidos rítmicos de impacto (SOS) y para las herramientas de ecolocalización e interfono de rescate.
-- **Privacidad estricta del audio:** **El audio NUNCA se graba en archivos, NUNCA se almacena en disco y NUNCA se transmite a través de internet ni a terceros.** La señal acústica se procesa exclusivamente en la memoria RAM volátil en bloques temporales de milisegundos mediante transformadas matemáticas de Fourier (FFT) y se descarta inmediatamente tras su evaluación.
+### B. Análisis del Micrófono (Audio Forense y KWS de Pánico por Voz)
+- **Propósito:** El micrófono se utiliza para la detección acústica de colapsos estructurales, golpes rítmicos de auxilio (patrón SOS), herramientas de ecolocalización/interfono y para el **reconocimiento acústico de expresiones espontáneas de auxilio y pánico** (*"¡temblor!"*, *"¡Dios mío!"*, *"¡ayúdame!"*, *"¡terremoto!"*).
+- **Activación por eventos (Event-Driven / Cero escucha continua en reposo):**  
+  El motor de reconocimiento de frases de pánico **permanece inactivo en reposo**. Se activa únicamente en una **ventana temporal de 10 segundos** tras detectarse una perturbación inercial en el acelerómetro (STA/LTA anómalo). Si transcurren los 10 segundos sin detección de formantes de alarma, el analizador se apaga.
+- **Privacidad estricta y descarte inmediato:**  
+  **El audio NUNCA se graba en archivos de sonido, NUNCA se guarda en disco y NUNCA se transmite por internet ni a terceros.** La señal se analiza en la memoria RAM volátil mediante ventanas de milisegundos (transformadas matemáticas de Fourier y cruces por cero) y se purga instantáneamente. No existe grabación acústica recuperable.
 
-### C. Sensores de Movimiento (Acelerómetro)
-- **Uso:** El acelerómetro se analiza en tiempo real en la memoria del dispositivo para detectar ondas sísmicas anómalas (filtro recursivo STA/LTA) y vibraciones de colapso.
-- **Almacenamiento:** Ninguna serie temporal de aceleración continua se envía fuera del dispositivo.
+### C. Sensores de Movimiento (Acelerómetro y Sismógrafo STA/LTA)
+- **Uso:** El acelerómetro opera en segundo plano para registrar variaciones mecánicas y ondas sísmicas en el plano horizontal (ondas S) y vertical (ondas P) contra el piso de ruido dinámico (algoritmo recursivo STA/LTA).
+- **Calibración y perfiles de entorno:** La app permite elegir o ajustar automáticamente perfiles de entorno (*Tranquilo*, *Normal*, *Ruidoso*) para evitar que vibraciones domésticas o tráfico pesado generen falsos disparos. Ninguna serie de datos de movimiento continuo se envía al exterior.
 
 ### D. Ubicación Geográfica
-- **Uso:** SismoRed **NUNCA activa el chip GPS por su propia cuenta**. La app únicamente lee de forma pasiva la "última ubicación conocida" (*last known location*) que otra aplicación o el propio sistema operativo ya hayan determinado con anterioridad.
-- **Propósito:** Facilitar las labores de localización en caso de que el usuario quede atrapado bajo escombros. Esta coordenada solo viaja si la alarma o el modo rescate son activados expresamente.
+- **Uso pasivo:** SismoRed **NUNCA enciende el receptor GPS por su propia cuenta**. Únicamente lee de manera pasiva la "última ubicación conocida" (*last known location*) registrada con anterioridad por el sistema o por otras aplicaciones.
+- **Propósito:** En caso de que el usuario quede atrapado, esta coordenada ayuda a las brigadas de rescate a acotar el área de búsqueda. La coordenada solo se transmite en la baliza cuando la alarma o el modo rescate han sido activados expresamente.
 
 ---
 
-## 3. Emisión de Señales en Caso de Emergencia Activa
+## 3. Conectividad y Redes Abiertas
 
-Únicamente cuando la alarma o el modo rescate se encuentran **activamente encendidos** (por orden del usuario o por confirmación sísmica), el dispositivo emite señales de baliza en su entorno físico inmediato:
+### A. Consulta Pasiva a Redes Sísmicas Abiertas Internacionales (EMSC / USGS / FDSN)
+- **Qué es:** Para evitar que un sismo real pase inadvertido cuando el usuario se encuentra solo o sin otros nodos de la malla cercanos, SismoRed puede consultar periódicamente los catálogos sismológicos públicos y abiertos internacionales (FDSN GeoJSON vía EMSC / USGS).
+- **Privacidad y unidireccionalidad:**  
+  - Esta comunicación es **estrictamente de solo lectura (recepción unidireccional)**.
+  - **SismoRed NUNCA envía su ubicación, ni su dirección IP con fines de identificación, ni identificadores de hardware (IMEI, Android ID), ni datos de la ficha médica a los servicios sísmicos.**
+  - El filtrado de proximidad (distancia ortodrómica por fórmula de Haversine inferior a 450 km) y la verificación de magnitud se calculan **100% de manera local en el teléfono**.
+  - Si el dispositivo se encuentra sin internet, la aplicación sigue funcionando plenamente con sus sensores locales y malla peer-to-peer.
 
-1. **Baliza de Radio Bluetooth Low Energy (BLE):**  
-   Emite un paquete estándar de baliza publicitaria (*advertisement*) de alcance local (10 a 30 metros según obstáculos). La primera trama lleva el identificador de la app, el nombre de pila y el grupo sanguíneo. **Con la alarma o el rescate encendidos se emiten además, en tramas sucesivas, la edad, las alergias, la medicación y el teléfono de contacto de emergencia** — es decir, la ficha médica completa que usted haya rellenado.
+### B. Emisiones Locales en Caso de Emergencia Confirmada
+Únicamente cuando se activa la **alarma** o el **modo rescate** (manualmente o tras confirmación sísmica sin respuesta del usuario):
+1. **Baliza Bluetooth Low Energy (BLE):** Emite paquetes de radio local abierta (alcance de 10 a 30 metros) para que los rescatistas puedan orientar sus receptores. Los datos médicos opcionales viajan en tramas abiertas para permitir la asistencia inmediata de brigadistas.
+2. **Difusión Wi-Fi Local (UDP):** Si el móvil está en una red Wi-Fi local de emergencia, difunde su estado y coordenada a los dispositivos de auxilio conectados a la misma subred.
+3. **Malla Acústica Ultrasónica y Sirena:** Emite tonos de alta frecuencia o sirenas de advertencia audibles según la gravedad del evento.
 
-   Esta emisión **no va cifrada**: es una baliza abierta, y cualquiera con un receptor Bluetooth en el radio de alcance puede leerla, no solo los equipos de rescate. Es una decisión deliberada — una baliza que hubiera que descifrar no serviría para que le encuentren —, pero conviene que la conozca antes de rellenar la ficha. Los campos son todos opcionales: lo que deje en blanco no se emite.
-2. **Difusión Wi-Fi Local (UDP):**  
-   Si el dispositivo está conectado a una red Wi-Fi local (por ejemplo, el punto de acceso de un campamento o equipo de rescate), difunde un paquete con la ficha médica y la última ubicación conocida a la subred local para permitir su lectura rápida en pantallas de mando de brigadas de búsqueda.
-3. **Malla Acústica de Emergencia:**  
-   Emite tonos y pulsos acústicos audibles o de alta frecuencia por el altavoz para alertar a brigadistas y teléfonos cercanos.
-
-**En cuanto el usuario pulsa "DETENER" o desactiva la emergencia, toda emisión de radio y sonido cesa inmediatamente.**
-
----
-
-## 4. Desistimiento, Supresión de Datos y Ejercicio de Derechos
-
-Al no existir servidores ni bases de datos remotas gestionadas por los desarrolladores de SismoRed, no existen registros de sus datos en posesión de terceros. Para eliminar cualquier rastro de información almacenada:
-- Pulse el botón *Borrar ficha* en la pestaña de Ficha.
-- O bien desinstale la aplicación desde el menú de Ajustes de Android. La desinstalación destruye de forma irreversible todas las bases de datos locales creadas por la app.
+**En cuanto el usuario pulsa "ESTOY BIEN", "DETENER" o cancela la alerta, toda emisión de radio y sonido cesa de inmediato.**
 
 ---
 
-## 5. Descargo de Responsabilidad y Aviso Legal de Emergencia (*Disclaimer*)
+## 4. Escalonamiento Gradual y Protección contra Alarmas Falsas
 
-> ### ⚠️ AVISO LEGAL IMPORTANTE:
+Para evitar situaciones invasivas que perturben la tranquilidad del usuario o provoquen desinstalaciones por falsos positivos:
+- **Aviso Discreto (*¿Sentiste un temblor?*):** Ante sacudidas en reposo sin confirmación externa destructiva, SismoRed despliega una notificación flotante no invasiva con opciones directas de `[ESTOY BIEN]` y `[FALSA ALARMA]`.
+- **Cierre silencioso automático:** Si el usuario no responde al aviso discreto tras 60 segundos, **el aviso se cierra solo en absoluto silencio**, sin activar sirenas, linternas ni balizas de emergencia.
+- **Escalón de Emergencia Mayor:** Las sirenas audibles y la pantalla de emergencia a brillo completo se reservan estrictamente para sismos violentos de alta destructividad comprobada o confirmados concurrentemente por la red sísmica, la malla local o gritos de auxilio acústicos.
+
+---
+
+## 5. Ejercicio de Derechos y Borrado de Datos
+
+Al no almacenar información en servidores externos, no existen bases de datos remotas que gestionar. Para eliminar cualquier dato de su dispositivo:
+- Pulse el botón *Borrar ficha* en la pestaña *Ficha*.
+- O desinstale la aplicación desde el gestor de aplicaciones de Android. La desinstalación purga de forma inmediata e irreversible la base de datos local y las preferencias.
+
+---
+
+## 6. Descargo de Responsabilidad y Aviso Legal de Emergencia (*Disclaimer*)
+
+> ### ⚠️ AVISO LEGAL Y CONDICIONES DE USO:
 >
-> 1. **No sustituye a los servicios públicos de emergencia:**  
->    SismoRed es una herramienta tecnológica experimental de código abierto diseñada como apoyo comunitario en casos extremos de colapso de redes convencionales. **En ningún caso sustituye la llamada a los números y servicios oficiales de emergencia (911, 112, Cruz Roja, Bomberos, Defensa Civil o Policía Nacional).** Siempre que disponga de cobertura telefónica o acceso a comunicaciones convencionales, debe comunicarse inmediatamente con las autoridades oficiales.
+> 1. **No sustituye a los servicios de emergencia del Estado:**  
+>    SismoRed es una herramienta tecnológica de soporte y alerta comunitaria basada en código abierto. **En ningún caso reemplaza las llamadas a las líneas oficiales de emergencia (123 en Colombia, 911, 112, Cruz Roja, Defensa Civil o Bomberos).** Siempre que disponga de cobertura, comuníquese con las autoridades competentes.
 >
-> 2. **No es un dispositivo médico ni de seguridad certificado:**  
->    SismoRed no está certificado como equipo médico de soporte vital ni como instrumento industrial de protección civil. Su eficacia depende de factores externos incontrolables, tales como el estado de la batería, daños mecánicos en el teléfono provocados por el sismo, la atenuación física de los escombros sobre las ondas electromagnéticas y acústicas, y la presencia de receptores en el área circundante.
+> 2. **Sin garantía absoluta de detección o rescate:**  
+>    La detección y la eficacia de localización dependen de factores físicos imprevistos: nivel de carga de la batería, aplastamiento o daño mecánico del teléfono durante el terremoto, grosor y apantallamiento de los escombros sobre las señales de radio y sonido, y presencia de personas con receptores compatibles en las proximidades.
 >
-> 3. **No predicción sísmica:**  
->    La aplicación no predice terremotos con anticipación; responde únicamente a perturbaciones mecánicas y acústicas ya iniciadas en el entorno del dispositivo o a alertas externas compatibles.
-
----
-
-## 6. Contacto y Transparencia
-
-El código fuente íntegro de SismoRed es público y auditable bajo licencia libre en:  
-[https://github.com/jonandrw/sismored_app](https://github.com/jonandrw/sismored_app)
+> 3. **No predicción previa:**  
+>    SismoRed no predice cuándo ocurrirá un terremoto en el futuro; actúa como sensor inercial y acústico en tiempo real una vez que el movimiento telúrico ha comenzado o tras la difusión de eventos por redes sismológicas abiertas.
+>
+> 4. **Aceptación:**  
+>    El uso de esta aplicación implica la comprensión y aceptación de la naturaleza experimental y solidaria del proyecto.
