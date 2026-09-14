@@ -3406,6 +3406,25 @@
 
                         <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#161C21" />
 
+                        <!-- Políticas y Privacidad -->
+                        <LinearLayout
+                            android:id="@+id/op_politicas"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="?attr/selectableItemBackground"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:padding="15dp">
+                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="@string/lbl_politicas_titulo" android:textColor="@color/tx" android:textSize="16sp" android:textStyle="bold" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="@string/lbl_politicas_sub" android:textColor="#7C858D" android:textSize="12.5sp" />
+                            </LinearLayout>
+                            <ImageView android:layout_width="16dp" android:layout_height="16dp" android:rotation="180" android:src="@drawable/ic_atras" android:tint="#7C858D" />
+                        </LinearLayout>
+
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#161C21" />
+
                         <!-- Acerca de -->
                         <LinearLayout
                             android:id="@+id/op_acerca"
@@ -3858,6 +3877,20 @@
                             <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="@font/barlow" android:text="@string/lbl_contribuir" android:textColor="#7C858D" android:textSize="15sp" />
                             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/mono" android:text="@string/lbl_contribuir_md" android:textColor="#E53035" android:textSize="13sp" android:textStyle="bold" />
                         </LinearLayout>
+
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#161C21" />
+
+                        <LinearLayout
+                            android:id="@+id/acerca_politicas"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="?attr/selectableItemBackground"
+                            android:gravity="center_vertical"
+                            android:minHeight="56dp"
+                            android:padding="13dp">
+                            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="@font/barlow" android:text="@string/lbl_politicas_titulo_corto" android:textColor="#7C858D" android:textSize="15sp" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/mono" android:text="LEER →" android:textColor="#90CA50" android:textSize="13sp" android:textStyle="bold" />
+                        </LinearLayout>
                     </LinearLayout>
 
                     <!-- Pie final de pantalla 16 -->
@@ -3889,6 +3922,421 @@
                     <include android:id="@+id/cs_mantener" layout="@layout/casilla_respuesta" android:layout_width="match_parent" android:layout_height="wrap_content" />
                     <include android:id="@+id/cs_rescate" layout="@layout/casilla_respuesta" android:layout_width="match_parent" android:layout_height="wrap_content" />
                 </LinearLayout>
+
+                <!-- ==================== 18 POLÍTICAS Y PRIVACIDAD ==================== -->
+                <LinearLayout
+                    android:id="@+id/v_politicas"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <!-- Cabecera principal: Sin cuentas, sin servidor -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:background="@drawable/campo_fondo"
+                        android:orientation="vertical"
+                        android:padding="18dp">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/saira"
+                            android:letterSpacing="0.01"
+                            android:lineSpacingMultiplier="0.95"
+                            android:text="PRIVACIDAD Y DATOS LOCALES"
+                            android:textColor="#FFFFFF"
+                            android:textSize="22sp"
+                            android:textStyle="bold|italic" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:fontFamily="@font/barlow"
+                            android:lineSpacingMultiplier="1.45"
+                            android:text="Tus datos personales y de salud pertenecen únicamente a este dispositivo. SismoRed no recopila información para marketing ni telemetría, no vende datos a terceros y no almacena tu actividad en servidores externos."
+                            android:textColor="@color/tx_sec"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+
+                    <!-- SECCIÓN: REGLAS FUNDAMENTALES DE PRIVACIDAD -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:layout_marginBottom="9dp"
+                        android:fontFamily="@font/mono"
+                        android:letterSpacing="0.2"
+                        android:text="REGLAS FUNDAMENTALES DE PRIVACIDAD"
+                        android:textColor="#7C858D"
+                        android:textSize="10sp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <!-- Regla 01 -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/tarjeta"
+                            android:orientation="horizontal"
+                            android:padding="14dp">
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginEnd="12dp"
+                                android:fontFamily="@font/mono"
+                                android:text="01"
+                                android:textColor="#E53035"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="@font/barlow"
+                                    android:text="Cero cuentas y cero telemetría"
+                                    android:textColor="#E8EBED"
+                                    android:textSize="15sp"
+                                    android:textStyle="bold" />
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="3dp"
+                                    android:fontFamily="@font/barlow"
+                                    android:lineSpacingMultiplier="1.4"
+                                    android:text="La aplicación funciona de forma 100% anónima sin inicio de sesión, sin identificador publicitario, sin Google Analytics ni rastreo de comportamiento."
+                                    android:textColor="#7C858D"
+                                    android:textSize="12.5sp" />
+                            </LinearLayout>
+                        </LinearLayout>
+
+                        <!-- Regla 02 -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:background="@drawable/tarjeta"
+                            android:orientation="horizontal"
+                            android:padding="14dp">
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginEnd="12dp"
+                                android:fontFamily="@font/mono"
+                                android:text="02"
+                                android:textColor="#E53035"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="@font/barlow"
+                                    android:text="Ficha médica en aislamiento local"
+                                    android:textColor="#E8EBED"
+                                    android:textSize="15sp"
+                                    android:textStyle="bold" />
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="3dp"
+                                    android:fontFamily="@font/barlow"
+                                    android:lineSpacingMultiplier="1.4"
+                                    android:text="Tu nombre, grupo sanguíneo, alergias y contacto de auxilio se guardan exclusivamente en la memoria aislada de esta app. Puedes editarla o borrarla cuando quieras."
+                                    android:textColor="#7C858D"
+                                    android:textSize="12.5sp" />
+                            </LinearLayout>
+                        </LinearLayout>
+
+                        <!-- Regla 03 -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:background="@drawable/tarjeta"
+                            android:orientation="horizontal"
+                            android:padding="14dp">
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginEnd="12dp"
+                                android:fontFamily="@font/mono"
+                                android:text="03"
+                                android:textColor="#E53035"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="@font/barlow"
+                                    android:text="Audio al vuelo en RAM — Sin grabación"
+                                    android:textColor="#E8EBED"
+                                    android:textSize="15sp"
+                                    android:textStyle="bold" />
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="3dp"
+                                    android:fontFamily="@font/barlow"
+                                    android:lineSpacingMultiplier="1.4"
+                                    android:text="El micrófono procesa frecuencias de auxilio y golpes en paredes únicamente en memoria volátil (RAM). Ningún fragmento de sonido se graba en disco ni se envía por internet: se destruye cada 2 segundos."
+                                    android:textColor="#7C858D"
+                                    android:textSize="12.5sp" />
+                            </LinearLayout>
+                        </LinearLayout>
+
+                        <!-- Regla 04 -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:background="@drawable/tarjeta"
+                            android:orientation="horizontal"
+                            android:padding="14dp">
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginEnd="12dp"
+                                android:fontFamily="@font/mono"
+                                android:text="04"
+                                android:textColor="#E53035"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="@font/barlow"
+                                    android:text="GPS pasivo sin consumo de batería"
+                                    android:textColor="#E8EBED"
+                                    android:textSize="15sp"
+                                    android:textStyle="bold" />
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="3dp"
+                                    android:fontFamily="@font/barlow"
+                                    android:lineSpacingMultiplier="1.4"
+                                    android:text="SismoRed no activa el sensor GPS por su cuenta para no drenar la batería en caso de corte eléctrico. Solo lee las últimas coordenadas que el sistema ya tenía registradas."
+                                    android:textColor="#7C858D"
+                                    android:textSize="12.5sp" />
+                            </LinearLayout>
+                        </LinearLayout>
+
+                        <!-- Regla 05 -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:background="@drawable/tarjeta"
+                            android:orientation="horizontal"
+                            android:padding="14dp">
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginEnd="12dp"
+                                android:fontFamily="@font/mono"
+                                android:text="05"
+                                android:textColor="#E53035"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="@font/barlow"
+                                    android:text="Baliza de radio (BLE) de corto alcance"
+                                    android:textColor="#E8EBED"
+                                    android:textSize="15sp"
+                                    android:textStyle="bold" />
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="3dp"
+                                    android:fontFamily="@font/barlow"
+                                    android:lineSpacingMultiplier="1.4"
+                                    android:text="Únicamente durante una alarma o rescate activos: se emiten 31 bytes con tu nombre y grupo sanguíneo para que los equipos de emergencia sepan a quién buscar bajo los escombros."
+                                    android:textColor="#7C858D"
+                                    android:textSize="12.5sp" />
+                            </LinearLayout>
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- SECCIÓN: FINALIDAD DE CADA PERMISO -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:layout_marginBottom="9dp"
+                        android:fontFamily="@font/mono"
+                        android:letterSpacing="0.2"
+                        android:text="FINALIDAD DE CADA PERMISO DE ANDROID"
+                        android:textColor="#7C858D"
+                        android:textSize="10sp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/tarjeta"
+                        android:orientation="vertical">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="14dp">
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="Accesibilidad (Teclas de volumen)" android:textColor="@color/tx" android:textSize="15sp" android:textStyle="bold" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:fontFamily="@font/barlow" android:lineSpacingMultiplier="1.4" android:text="Únicamente para detectar 3 pulsaciones rápidas del botón de volumen con la pantalla bloqueada o en el bolsillo. SismoRed no lee el contenido de la pantalla ni lo que tecleas." android:textColor="#7C858D" android:textSize="12.5sp" />
+                        </LinearLayout>
+
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#161C21" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="14dp">
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="Bluetooth cercano (BLE)" android:textColor="@color/tx" android:textSize="15sp" android:textStyle="bold" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:fontFamily="@font/barlow" android:lineSpacingMultiplier="1.4" android:text="Para emitir la baliza de radio de auxilio y buscar señales de otros supervivientes sin depender de antenas de telefonía." android:textColor="#7C858D" android:textSize="12.5sp" />
+                        </LinearLayout>
+
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#161C21" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="14dp">
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="Cámara / Flash linterna" android:textColor="@color/tx" android:textSize="15sp" android:textStyle="bold" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:fontFamily="@font/barlow" android:lineSpacingMultiplier="1.4" android:text="Control del flash LED para destellos luminosos de señal SOS en la oscuridad. No toma fotos ni graba video." android:textColor="#7C858D" android:textSize="12.5sp" />
+                        </LinearLayout>
+
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#161C21" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="14dp">
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="Micrófono" android:textColor="@color/tx" android:textSize="15sp" android:textStyle="bold" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:fontFamily="@font/barlow" android:lineSpacingMultiplier="1.4" android:text="Malla acústica, sonda e interfono a través del hormigón. Sin almacenamiento persistente." android:textColor="#7C858D" android:textSize="12.5sp" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- SECCIÓN: TÉRMINOS Y CONDICIONES DE USO -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:layout_marginBottom="9dp"
+                        android:fontFamily="@font/mono"
+                        android:letterSpacing="0.2"
+                        android:text="TÉRMINOS Y CONDICIONES EN EMERGENCIAS"
+                        android:textColor="#7C858D"
+                        android:textSize="10sp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/tarjeta"
+                        android:orientation="vertical">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="14dp">
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="Herramienta ciudadana entre pares" android:textColor="@color/tx" android:textSize="15sp" android:textStyle="bold" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:fontFamily="@font/barlow" android:lineSpacingMultiplier="1.4" android:text="SismoRed es una red comunitaria descentralizada. No sustituye ni reemplaza a los servicios públicos oficiales de rescate y emergencias (112 / 911)." android:textColor="#7C858D" android:textSize="12.5sp" />
+                        </LinearLayout>
+
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#161C21" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="14dp">
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/barlow" android:text="Código abierto y sin garantías comerciales" android:textColor="@color/tx" android:textSize="15sp" android:textStyle="bold" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:fontFamily="@font/barlow" android:lineSpacingMultiplier="1.4" android:text="Distribuida bajo licencia MIT. La precisión física depende del hardware de los sensores del teléfono y la calibración del suelo en tu ubicación." android:textColor="#7C858D" android:textSize="12.5sp" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- SECCIÓN: BORRADO PERMANENTE -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:background="@drawable/campo_fondo"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/barlow"
+                            android:text="Control total de eliminación"
+                            android:textColor="#90CA50"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:fontFamily="@font/barlow"
+                            android:lineSpacingMultiplier="1.4"
+                            android:text="Al desinstalar SismoRed o pulsar 'Borrar datos de la app' en los ajustes de Android, toda tu información médica y registros se destruyen de manera inmediata e irrecuperable."
+                            android:textColor="@color/tx_sec"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+
+                    <!-- Botón Volver -->
+                    <TextView
+                        android:id="@+id/btn_volver_politicas"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="22dp"
+                        android:layout_marginBottom="32dp"
+                        android:background="@drawable/btn_outline"
+                        android:fontFamily="@font/saira"
+                        android:gravity="center"
+                        android:letterSpacing="0.04"
+                        android:paddingTop="15dp"
+                        android:paddingBottom="15dp"
+                        android:text="VOLVER A AJUSTES"
+                        android:textColor="@color/lectura"
+                        android:textSize="17sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
 
             </LinearLayout>
         </ScrollView>
@@ -4001,6 +4449,7 @@
             android:layout_height="match_parent" />
 
         <ScrollView
+            android:id="@+id/scroll_diag"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:fillViewport="true"

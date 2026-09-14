@@ -846,4 +846,8 @@ Pisos altos, suburbios o campo. Máxima sensibilidad a ondas sísmicas leves.</s
 Casas y oficinas estándar. Filtra pasos y vibraciones domésticas comunes.</string>
     <string name="lbl_perfil_ruidoso_desc">🟠 RUIDOSO · Umbral reforzado (0.35 m/s²)
 Avenidas principales, obras o tráfico pesado. Requiere mayor confirmación STA/LTA.</string>
+    <string name="rot_politicas">Políticas</string>
+    <string name="lbl_politicas_titulo">Políticas y Privacidad</string>
+    <string name="lbl_politicas_titulo_corto">Privacidad y términos</string>
+    <string name="lbl_politicas_sub">Tratamiento de datos, micrófono y permisos</string>
 </resources>

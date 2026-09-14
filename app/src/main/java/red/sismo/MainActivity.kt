@@ -105,7 +105,8 @@ class MainActivity : AppCompatActivity() {
         R.id.v_rescate to R.string.rot_rescate,
         R.id.v_consola to R.string.rot_consola,
         R.id.v_respuesta to R.string.v_respuesta,
-        R.id.v_acerca to R.string.v_acerca
+        R.id.v_acerca to R.string.v_acerca,
+        R.id.v_politicas to R.string.rot_politicas
     )
     private val todasLasVistas by lazy {
         pestanas.map { it.second } + subtitulos.keys
@@ -202,7 +203,13 @@ class MainActivity : AppCompatActivity() {
 
         // Barra superior y retroceso
         findViewById<View>(R.id.pildora_estado)?.setOnClickListener { ir(R.id.t_registro) }
-        findViewById<View>(R.id.go_back)?.setOnClickListener { ir(R.id.t_inicio) }
+        findViewById<View>(R.id.go_back)?.setOnClickListener {
+            if (vista in listOf(R.id.v_acerca, R.id.v_consola, R.id.v_politicas)) {
+                ir(R.id.t_ajustes)
+            } else {
+                ir(R.id.t_inicio)
+            }
+        }
 
         /* Las herramientas, el modo rescate y el registro se montaban dos
            veces: aquí y en `montarInicio`/`montarRescate`/`montarRegistro`.
@@ -245,6 +252,19 @@ class MainActivity : AppCompatActivity() {
                 "t_registro" -> ir(R.id.t_registro)
                 "t_ajustes" -> ir(R.id.t_ajustes)
                 "t_inicio" -> ir(R.id.t_inicio)
+                "v_interfono" -> ir(R.id.v_interfono)
+                "v_diag" -> ir(R.id.v_diag)
+                "v_entorno" -> ir(R.id.v_entorno)
+                "v_politicas" -> ir(R.id.v_politicas)
+                "v_acerca" -> ir(R.id.v_acerca)
+            }
+            if (intent.getBooleanExtra("scroll_abajo", false)) {
+                findViewById<ScrollView>(R.id.scroll_diag)?.post {
+                    findViewById<ScrollView>(R.id.scroll_diag)?.fullScroll(View.FOCUS_DOWN)
+                }
+                findViewById<ScrollView>(R.id.scroll)?.post {
+                    findViewById<ScrollView>(R.id.scroll)?.fullScroll(View.FOCUS_DOWN)
+                }
             }
             pintar()
         }
@@ -306,6 +326,10 @@ class MainActivity : AppCompatActivity() {
         if (enBienvenida && pasoBienvenida > 0) {
             pasoBienvenida--
             pintarPasoBienvenida()
+            return
+        }
+        if (vista in listOf(R.id.v_acerca, R.id.v_consola, R.id.v_politicas)) {
+            ir(R.id.t_ajustes)
             return
         }
         if (vista in subtitulos) ir(R.id.t_inicio) else @Suppress("DEPRECATION") super.onBackPressed()
@@ -379,6 +403,7 @@ class MainActivity : AppCompatActivity() {
                 R.id.v_rescate -> if (ServicioSos.enRescate) "ACTIVO" else "PARADO"
                 R.id.v_interfono -> if (ServicioSos.interfonoOcupado) "CANAL ABIERTO" else "CERRADO"
                 R.id.v_consola -> "EN VIVO"
+                R.id.v_politicas -> "PRIVADO"
                 else -> ""
             }
             if (chipText.isNotEmpty()) {
@@ -1848,7 +1873,7 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<View>(R.id.fila_atajo_volumen)?.setOnClickListener { abrirAjustesAccesibilidad() }
         findViewById<VistaInterruptor>(R.id.sw_atajo_volumen)?.let { sw ->
-            sw.colorActivo = getColor(R.color.gr)
+            sw.colorActivo = getColor(R.color.rd)
             sw.setOnCheckedChangeListener { _ -> abrirAjustesAccesibilidad() }
         }
 
@@ -1900,6 +1925,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         findViewById<View>(R.id.op_consola)?.setOnClickListener { ir(R.id.v_consola) }
+        findViewById<View>(R.id.op_politicas)?.setOnClickListener { ir(R.id.v_politicas) }
+        findViewById<View>(R.id.btn_volver_politicas)?.setOnClickListener { ir(R.id.t_ajustes) }
         findViewById<View>(R.id.op_acerca)?.setOnClickListener { ir(R.id.v_acerca) }
         findViewById<View>(R.id.op_apagar)?.setOnClickListener {
             AlertDialog.Builder(this)
@@ -2920,6 +2947,7 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, R.string.acerca_enlace_copiado, Toast.LENGTH_LONG).show()
             }
         }
+        findViewById<View>(R.id.acerca_politicas)?.setOnClickListener { ir(R.id.v_politicas) }
     }
 
     private fun pintarEntorno() {
