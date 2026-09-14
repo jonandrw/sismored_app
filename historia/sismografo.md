@@ -4,6 +4,18 @@ Registro histórico de problemas, experimentos, decisiones y física del detecto
 
 ---
 
+## Prueba de campo real con enjambre sísmico en Colombia (14 de septiembre de 2026)
+
+Primer terremoto real sentido por el usuario con la app instalada en el Redmi (M4.9, M4.4 en Chocó, Colombia).
+El acelerómetro y el sismógrafo funcionaron a la perfección, pero la Cascada descartó el sismo como «sacudida floja»:
+
+1. **Detección inercial impecable**: A las 15:04 y 15:05 el sismógrafo registró trenes de onda horizontal de hasta 0,60 m/s², con **ratio STA/LTA de hasta 39.9x** y un ciclo de trabajo del **100% de la ventana de 2 segundos**. El móvil estaba quieto en la mesa (`giroGrados = 0.0°`, `hayMano = false`). Cinco segundos después hubo voces en la habitación (`VOZ HUMANA CERCA (62%)`).
+2. **El fallo de la Cascada**: El sismo no llegó al listón de `sacudidaFuerte` (exige `FUERTE_MIN = 0.60 m/s²` y `CICLO_FUERTE = 0.85`). Como el usuario no tenía un segundo móvil emitiendo por ultrasonidos ni Google envió notificación, `opinionAjena` dio `false` y `Cascada.kt:260` arrojó `Decision(Accion.NADA, Quien.NADIE, "sacudida floja y sin nadie que la confirme: a este nivel no se distingue de una mano")`.
+3. **Decisión**: Separar la respuesta en dos niveles: un Nivel 1 no invasivo (notificación flotante que no despierta ni activa la baliza si nadie contesta) para sacudidas con `STA/LTA >= 10x` en reposo, y Nivel 2 (pantalla completa con sirena) solo si hay segunda opinión o sacudida destructiva.
+4. **Detalle exhaustivo**: Ver `INFORME-SISMICO-CAMPO-2026-09-14.md` en la raíz del repositorio.
+
+---
+
 ## STA/LTA sismológico recursivo en Sismografo.kt (4 de septiembre de 2026)
 
 Reemplazo de la estimación de calma por ordenación de arrays por un filtro recursivo de largo plazo (LTA):

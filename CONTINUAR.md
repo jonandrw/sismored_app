@@ -30,6 +30,14 @@ que falta no son funciones.
 > una sola función con doce escenarios comprobados en dos móviles. Lo de abajo
 > sigue siendo cierto sobre el detector; lo que ha cambiado es que ya no manda él.
 
+> [!IMPORTANT]
+> **Prueba de campo real — Enjambre sísmico en Colombia (14 de septiembre de 2026)**:
+> El usuario sintió 5 sismos reales (Chocó M4.9, M4.4). El acelerómetro midió ondas de 0,60 m/s²
+> con STA/LTA de 40x y 100% de ciclo a las 15:04 y 15:05, pero la Cascada descartó todo como
+> «sacudida floja» por exigir opinión ajena (malla o Google). En la BD hay 838 descartes idénticos.
+> Documentado con detalle exhaustivo, queries y propuesta de solución no invasiva de dos niveles en
+> [`INFORME-SISMICO-CAMPO-2026-09-14.md`](INFORME-SISMICO-CAMPO-2026-09-14.md) e [`historia/sismografo.md`](historia/sismografo.md).
+
 **Primero, lo que ya puede dañar.** El detector de estruendo ya no lanza PÁNICO solo
 —pide que el acelerómetro corrobore—, pero por el lado del micrófono el banco con
 audio real dice **32,7 estruendos por hora** sobre el material que tendría que callar.
