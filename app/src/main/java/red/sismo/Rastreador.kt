@@ -297,6 +297,27 @@ class Rastreador(private val ctx: Context) {
     fun hallazgos(): List<Hallazgo> {
         val ahora = System.currentTimeMillis()
         vistos.entries.removeAll { ahora - it.value.visto > CADUCA_MS }
+
+        /* El mismo móvil, dos veces. Los hallazgos se indexan por dirección
+           Bluetooth, y Android la rota cada pocos minutos y siempre que el
+           emisor se reinicia. Apagar y encender el modo rescate hacía aparecer
+           una dirección nueva mientras la vieja seguía viva sus veinte segundos,
+           así que quien buscaba veía dos personas donde hay una — y en un
+           derrumbe eso es un equipo de más yendo a un sitio que no existe.
+
+           Se juntan por nombre y grupo sanguíneo, que es la identidad que viaja
+           en la trama 0, y solo cuando una de las dos lleva ya tres segundos sin
+           dar señales: dos anuncios vivos a la vez SÍ son dos móviles. */
+        val vivos = vistos.values.toList()
+        val callados = vivos.filter { ahora - it.visto > 3000L }
+        for (viejo in callados) {
+            if (viejo.nombre.isEmpty() && viejo.sangre == 0) continue
+            val relevo = vivos.any {
+                it !== viejo && ahora - it.visto <= 3000L &&
+                    it.nombre == viejo.nombre && it.sangre == viejo.sangre
+            }
+            if (relevo) vistos.remove(viejo.id)
+        }
         return vistos.values.sortedByDescending { it.suave }
     }
 }
