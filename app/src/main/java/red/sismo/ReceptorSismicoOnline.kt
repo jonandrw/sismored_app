@@ -31,7 +31,27 @@ class ReceptorSismicoOnline(
         private const val EMSC_URL = "https://www.seismicportal.eu/fdsnws/event/1/query?format=json&limit=10"
         private const val RADIO_MAX_KM = 450.0
         private const val MAG_MIN = 3.8
-        private const val VENTANA_TIEMPO_MS = 180_000L // 3 minutos
+        /**
+         * Qué antigüedad se le admite a un sismo del catálogo.
+         *
+         * **Estaban en tres minutos y con eso esto no podía dispararse nunca.**
+         * El filtro mira la hora de ORIGEN del terremoto, pero un catálogo no
+         * publica en el instante en que tiembla: primero llega la onda a las
+         * estaciones, luego se calcula la solución y luego se publica. El M5.0
+         * del 16 de septiembre de 2026 tiene origen a las 20:12:52 UTC y USGS lo
+         * revisó a las 20:47 y otra vez a las 21:01. Con la ventana en tres
+         * minutos, para cuando el evento aparecía en la consulta ya era
+         * demasiado viejo y se descartaba — para siempre, porque cada evento se
+         * mira una sola vez.
+         *
+         * Veinte minutos es generoso a propósito: todavía no sabemos cuánto
+         * tarda EMSC en publicar, y equivocarse por corto deja la función
+         * muerta mientras que equivocarse por largo solo avisa de algo que pasó
+         * hace un rato — que es justo lo que uno quiere saber después de notar
+         * un temblor. El destinatario de esta prueba ya la acota: la ventana de
+         * `alertaCatalogo` dura diez minutos desde que llega.
+         */
+        private const val VENTANA_TIEMPO_MS = 20 * 60_000L
     }
 
     @Volatile var corriendo = false; private set
