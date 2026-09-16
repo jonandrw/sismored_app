@@ -414,6 +414,10 @@ class ServicioSos : Service() {
         /** Hasta cuándo vale una alerta externa. Volátil y estático porque lo
          *  mira la cascada desde el hilo del sensor. */
         @Volatile var alertaExternaHasta = 0L
+
+        /** Como la de arriba, pero de un catálogo que publica lo YA ocurrido
+         *  —EMSC/USGS— y no de una alerta temprana. Ver `Cascada.alertaCatalogo`. */
+        @Volatile var alertaCatalogoHasta = 0L
         val alertaExterna: Boolean get() = System.currentTimeMillis() < alertaExternaHasta
 
         /** Manda un datagrama de prueba por la Wi-Fi. No enseña la ficha real ni
@@ -602,6 +606,10 @@ class ServicioSos : Service() {
             },
             onAlertaSismica = { mag, dist, lugar ->
                 alertaExternaHasta = System.currentTimeMillis() + 180_000L
+                /* Marcado aparte de la alerta temprana: un catálogo publica lo
+                   que YA pasó, así que aquí no hay nada que anticipar y sí algo
+                   que contar. Es lo que enciende el aviso discreto. */
+                alertaCatalogoHasta = System.currentTimeMillis() + 180_000L
                 anotar("alerta externa (red sísmica abierta FDSN/EMSC): M$mag en $lugar (~" + dist.toInt() + " km)")
                 evaluar("alerta sísmica online EMSC M$mag")
             },
@@ -1275,6 +1283,7 @@ class ServicioSos : Service() {
                sustituye: sola no abre nada, pero mientras esté en pie una
                sacudida ya no necesita que además se oiga el derrumbe. */
             alertaExterna = alertaExterna,
+            alertaCatalogo = System.currentTimeMillis() < alertaCatalogoHasta,
             caidaImpacto = huboCaida,
             preguntado = preguntaVencida,
             contestado = haContestado,

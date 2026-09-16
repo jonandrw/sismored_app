@@ -167,8 +167,21 @@ object Cascada {
         val vozOGolpesCerca: Boolean = false,
         /** Relación STA/LTA medida en el sismógrafo contra el piso de ruido. */
         val ratioStaLta: Double = 1.0,
-        /** Detección de expresiones de alarma o pánico por voz («¡temblor!», «¡Dios mío!», etc.). */
-        val vozPanico: Boolean = false
+        /** Detección de expresiones de alarma o pánico por voz («¡temblor!», «¡Dios mío!», etc.).
+         *  Se anota y viaja en las pruebas, pero NO cuenta como opinión ajena: la oye
+         *  el micrófono de este mismo móvil. */
+        val vozPanico: Boolean = false,
+        /**
+         * Un catálogo sísmico oficial confirma un terremoto cerca, y **ya ha
+         * pasado**. No es lo mismo que [alertaExterna] de una alerta temprana,
+         * que llega SEGUNDOS ANTES de que sacuda: esto llega después, así que no
+         * hay nada que anticipar y sí algo que contar.
+         *
+         * Es la única prueba que hoy distingue un terremoto de un camión, porque
+         * el acelerómetro de un teléfono no llega: el M5.0 del 16 de septiembre
+         * de 2026, a 59 km de profundidad, no dejó ni una lectura en el registro.
+         */
+        val alertaCatalogo: Boolean = false
     )
 
     class Decision(val accion: Accion, val quien: Quien, val motivo: String) {
@@ -189,7 +202,14 @@ object Cascada {
            volver a sonar. Lo que se pierde: un accidente doméstico aislado, sin
            terremoto, ya no dispara nada. Es una decisión, no un descuido — sin
            el terremoto delante, los falsos se comen el sistema. */
-        val algoPasó = p.sacudida || p.corroborada
+        /* Un catálogo oficial también cuenta como «algo ha pasado», aunque aquí
+           no se haya movido nada. El 16 de septiembre de 2026 el M5.0 de las
+           14:32 no dejó ni una lectura en este acelerómetro —59 km de
+           profundidad—, y sin embargo había ocurrido. Que el sensor no llegue no
+           significa que no pasara: significa que el sensor no llega.
+           Ojo con la diferencia: la alerta TEMPRANA (Google) sigue fuera, porque
+           esa llega antes de que sacuda y ahí todavía no ha pasado nada. */
+        val algoPasó = p.sacudida || p.corroborada || p.alertaCatalogo
         if (!algoPasó) {
             if (p.estruendo) return Decision(Accion.NADA, Quien.NADIE,
                 "estruendo sin sacudida: se anota y no se dispara")
@@ -240,7 +260,14 @@ object Cascada {
            hacer —oír a alguien junto al móvil, en el paso 5—, pero ya no
            convierte una sacudida en un terremoto. */
         /* La corroboración externa o por pánico acústico evidente. */
-        val opinionAjena = p.corroborada || p.alertaExterna || p.vozPanico
+        /* La voz NO entra aquí. Una exclamación de pánico es una pista y se
+           anota, pero sale del micrófono de ESTE móvil, igual que la onda P sale
+           de su acelerómetro: el que la oye es el mismo que decide. Medido el 16
+           de septiembre de 2026 en el Redmi, diez detecciones en quince horas de
+           conversación normal, y una de ellas —a las 10:23— llegó a sacar el
+           «¿estás bien?» a pantalla completa sin que hubiera temblado nada. Una
+           segunda opinión tiene que venir de otro aparato. */
+        val opinionAjena = p.corroborada || p.alertaExterna
 
         /* Y una sacudida fuerte SOLA sigue siendo creíble —si no, un terremoto
            de verdad sin ningún vecino con la app no dispararía nada— pero de
@@ -264,15 +291,20 @@ object Cascada {
                prueba en la decisión. */
             else -> opinionAjena
         }
+        /* El aviso discreto es la respuesta a «ha temblado cerca y aquí casi no
+           se ha notado», y eso solo lo puede decir un catálogo oficial.
+           Antes lo decidía el propio acelerómetro con STA/LTA >= 10x, y el 16 de
+           septiembre de 2026 eso dio CATORCE avisos en quince horas, ninguno
+           coincidente con un sismo real — mientras el M5.0 de las 14:32, a 59 km
+           de profundidad, no movió la mesa lo suficiente para dejar ni una sola
+           lectura en el registro. Catorce avisos, cero aciertos y un terremoto
+           perdido: la relación señal/ruido de este sensor no da para más.
+           Si además aquí sacudió fuerte, manda la escalera de abajo. */
+        if (p.alertaCatalogo && !p.sacudidaFuerte && !p.preguntado && !p.contestado) {
+            return Decision(Accion.PREGUNTAR_DISCRETA, Quien.NADIE,
+                "un catálogo sísmico confirma un terremoto cerca: aviso discreto")
+        }
         if (!creible && p.regimen == Postura.Regimen.EN_REPOSO) {
-            /* SISMO SENTIDO EN SOLITARIO (Caso 14 de septiembre de 2026):
-               Si el ratio STA/LTA es alto (>= 10x), el suelo se ha movido inequívocamente
-               pero no hay nadie más alrededor. En vez de NADA (fallo que silenció el sismo),
-               se lanza PREGUNTAR_DISCRETA: una notificación flotante que NUNCA activa sirena ni baliza si expira. */
-            if (!p.preguntado && !p.contestado && p.ratioStaLta >= 10.0) {
-                return Decision(Accion.PREGUNTAR_DISCRETA, Quien.NADIE,
-                    "sismo en reposo (STA/LTA ${String.format(java.util.Locale.US, "%.1f", p.ratioStaLta)}x) sin corroborar: aviso discreto")
-            }
             return Decision(Accion.NADA, Quien.NADIE,
                 "sacudida floja y sin nadie que la confirme: a este nivel no se distingue de una mano")
         }
@@ -490,10 +522,17 @@ object Cascada {
                 Pruebas(regimen = Regimen.ENCIMA, alertaExterna = true, sacudida = true,
                     preguntado = true, pasosDespues = 0, quietoMs = 90_000L)),
             /* ---- Los casos de campo del 14 de septiembre de 2026 (Chocó M4.9 / M4.4) ---- */
-            Triple("sismo sentido en reposo (STA/LTA 28x) sin corroboración externa", Accion.PREGUNTAR_DISCRETA,
+            /* Un STA/LTA alto solo dice que el suelo se movio MAS que su propio
+               ruido de fondo. El 16 de septiembre de 2026 eso ocurrio catorce
+               veces en quince horas sin un solo sismo detras. */
+            Triple("sacudida en reposo con STA/LTA alto y nada que la confirme", Accion.NADA,
                 Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, ratioStaLta = 28.1)),
-            Triple("sismo con frase de pánico o auxilio por voz", Accion.AVISAR,
+            /* La voz la oye el micro de este mismo movil: es pista, no testigo. */
+            Triple("frase de pánico por voz, sin nadie mas que lo confirme", Accion.NADA,
                 Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, vozPanico = true, msDesdeInteraccion = 6 * 3600_000L)),
+            /* Lo que sí distingue un terremoto de un camión. */
+            Triple("un catálogo oficial confirma un sismo cerca y aquí apenas se notó", Accion.PREGUNTAR_DISCRETA,
+                Pruebas(regimen = Regimen.EN_REPOSO, alertaExterna = true, alertaCatalogo = true)),
             Triple("sismo con alerta externa de red (WebSocket / Google)", Accion.AVISAR,
                 Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, alertaExterna = true, msDesdeInteraccion = 6 * 3600_000L)),
 

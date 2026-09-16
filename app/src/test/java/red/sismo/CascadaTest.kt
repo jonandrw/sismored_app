@@ -14,11 +14,16 @@ class CascadaTest {
 
     @Test
     fun testCasoCampo14SeptiembreSismoEnReposoSinRed() {
-        // Caso de campo real del 14 de septiembre de 2026:
-        // Redmi en reposo en mesa (giro = 0°), sismo del Chocó (STA/LTA 28.1x, 0.45 m/s²).
-        // Sin otros nodos en la malla y sin alerta de Google:
-        // ANTES: emitía NADA (sismo desatendido y silenciado).
-        // AHORA: emite PREGUNTAR_DISCRETA (aviso no invasivo que no activa sirena ni baliza si expira).
+        // Caso de campo del 16 de septiembre de 2026, que corrige al del 14.
+        //
+        // Un STA/LTA alto solo dice que el suelo se movió más que su propio ruido
+        // de fondo, y eso pasa a todas horas. Ese día el Redmi dio CATORCE avisos
+        // discretos en quince horas y ninguno coincidió con un sismo real; el
+        // M5.0 de las 14:32 —59 km de profundidad, confirmado por USGS y EMSC—
+        // no dejó ni una sola lectura en el registro.
+        //
+        // Asi que esto vuelve a ser NADA, y lo que enciende el aviso discreto es
+        // un catálogo oficial. Ver el caso de abajo.
         val pruebas = Cascada.Pruebas(
             regimen = Postura.Regimen.EN_REPOSO,
             sacudida = true,
@@ -30,13 +35,27 @@ class CascadaTest {
         )
         val decision = Cascada.decidir(pruebas)
         assertEquals(
-            "Sismo en reposo con alto contraste STA/LTA debe preguntar de forma discreta",
-            Cascada.Accion.PREGUNTAR_DISCRETA,
+            "Un STA/LTA alto, solo, no distingue un terremoto de un camión",
+            Cascada.Accion.NADA,
             decision.accion
         )
-        assertTrue(
-            "Motivo debe registrar el ratio STA/LTA",
-            decision.motivo.contains("STA/LTA 28.1x")
+    }
+
+    @Test
+    fun testCatalogoOficialSiEnciendeElAvisoDiscreto() {
+        // Lo que sí acertó el 16 de septiembre: el catálogo tenía el M5.0 a las
+        // 14:32 mientras el acelerómetro no sentía nada. La app no tenía que
+        // sentirlo, tenía que preguntarlo.
+        val pruebas = Cascada.Pruebas(
+            regimen = Postura.Regimen.EN_REPOSO,
+            alertaExterna = true,
+            alertaCatalogo = true
+        )
+        val decision = Cascada.decidir(pruebas)
+        assertEquals(
+            "Un catálogo oficial que confirma un sismo cerca merece un aviso discreto",
+            Cascada.Accion.PREGUNTAR_DISCRETA,
+            decision.accion
         )
     }
 
@@ -63,8 +82,10 @@ class CascadaTest {
 
     @Test
     fun testCorroboracionPorVozDePanico() {
-        // Sismo con exclamación de auxilio o pánico por voz:
-        // Actúa como segunda opinión local inmediata.
+        // La voz NO es una segunda opinión: la oye el micrófono de este mismo
+        // móvil. Medido el 16 de septiembre de 2026 en el Redmi, diez detecciones
+        // en quince horas de conversación corriente, y una de ellas sacó el
+        // «¿estás bien?» a pantalla completa sin que hubiera temblado nada.
         val pruebas = Cascada.Pruebas(
             regimen = Postura.Regimen.EN_REPOSO,
             sacudida = true,
@@ -75,9 +96,13 @@ class CascadaTest {
         )
         val decision = Cascada.decidir(pruebas)
         assertEquals(
-            "Sismo corroborado por pánico acústico debe elevarse a AVISAR",
-            Cascada.Accion.AVISAR,
+            "El pánico por voz se anota, pero solo no puede levantar nada",
+            Cascada.Accion.NADA,
             decision.accion
+        )
+        assertTrue(
+            "y sigue viajando en las pruebas, que para eso se mide",
+            pruebas.vozPanico
         )
     }
 
