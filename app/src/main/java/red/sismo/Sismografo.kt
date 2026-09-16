@@ -83,6 +83,11 @@ class Sismografo(
      *  entre la energía instantánea y el piso de ruido ambiente. */
     @Volatile var ltaH = 0.02; private set
     @Volatile var ratioStaLta = 1.0; private set
+    var fuerteMin = FUERTE_MIN
+
+    fun ajustarPerfil(perfil: Opciones.PerfilEntorno) {
+        fuerteMin = perfil.fuerteMin
+    }
 
     /**
      * Cuánto ha girado el móvil en los últimos segundos, en grados.
@@ -946,7 +951,7 @@ class Sismografo(
                     .format(sta, manoGrados))
                 return
             }
-            if (cicloTrabajo >= CICLO_FUERTE && sta >= FUERTE_MIN) ultimaFuerte = System.currentTimeMillis()
+            if (cicloTrabajo >= CICLO_FUERTE && sta >= fuerteMin) ultimaFuerte = System.currentTimeMillis()
             an = 0; ai = 0                       // el anillo se vacía tras disparar
             Log.i("SismoRed", "sismografo %.2f m/s2 horizontal · STA/LTA %.1fx · ciclo %.2f (req %.2f) · P-wave %b · umbral real %.2f (calma %.3f)"
                 .format(sta, ratioStaLta, cicloTrabajo, cicloReq, hayOndaP, u, calmaMedida))

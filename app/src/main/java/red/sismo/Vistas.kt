@@ -1637,13 +1637,18 @@ class VistaInterfonoVu @JvmOverloads constructor(
     ctx: Context, attrs: AttributeSet? = null
 ) : View(ctx, attrs) {
 
-    var activo: Boolean = true
+    var fase: Interfono.Fase = Interfono.Fase.CERRADO
         set(v) { if (field != v) { field = v; invalidate() } }
 
-    var hablando: Boolean = true
-        set(v) { if (field != v) { field = v; invalidate() } }
+    var activo: Boolean
+        get() = fase != Interfono.Fase.CERRADO
+        set(v) { if (!v) fase = Interfono.Fase.CERRADO else if (fase == Interfono.Fase.CERRADO) fase = Interfono.Fase.ESCUCHANDO }
 
-    var dbfs: Float = -12f
+    var hablando: Boolean
+        get() = fase == Interfono.Fase.ENVIANDO || fase == Interfono.Fase.GRABANDO_VOZ
+        set(v) { if (v) fase = Interfono.Fase.ENVIANDO else fase = Interfono.Fase.ESCUCHANDO }
+
+    var dbfs: Float = -120f
         set(v) { if (field != v) { field = v; invalidate() } }
 
     private val pFondo = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -1661,41 +1666,53 @@ class VistaInterfonoVu @JvmOverloads constructor(
         val cx = w / 2f
         val cy = h / 2f
         val radioDisco = px(this, 88f)
+        val enCanal = fase != Interfono.Fase.CERRADO
 
-        // ── Anillo concéntrico expandible (sr-ring 3s) ─────────
-        if (activo) {
-            val periodo = 3000L
-            val t = (System.currentTimeMillis() % periodo).toFloat() / periodo
-            val radioRing = radioDisco + t * px(this, 18f)
-            val alphaRing = ((1f - t) * 70).toInt()
-            pAnillo.style = Paint.Style.STROKE
-            pAnillo.strokeWidth = px(this, 1.2f)
-            pAnillo.color = if (hablando) {
-                (alphaRing shl 24) or 0x00E53035
-            } else {
-                (alphaRing shl 24) or 0x0090CA50
+        // ── Anillo concéntrico expandible pulsante ─────────────
+        if (enCanal) {
+            val periodo = when (fase) {
+                Interfono.Fase.ENVIANDO -> 1200L
+                Interfono.Fase.CONTESTANDO -> 800L
+                Interfono.Fase.ESCUCHANDO -> 2000L
+                else -> 2500L
             }
+            val t = (System.currentTimeMillis() % periodo).toFloat() / periodo
+            val radioRing = radioDisco + t * px(this, 22f)
+            val alphaRing = ((1f - t) * 90).toInt().coerceIn(0, 255)
+            pAnillo.style = Paint.Style.STROKE
+            pAnillo.strokeWidth = px(this, 1.5f)
+            val colorBase = when (fase) {
+                Interfono.Fase.ENVIANDO -> 0x00E53035
+                Interfono.Fase.ESCUCHANDO, Interfono.Fase.CONTESTANDO -> 0x0090CA50
+                else -> 0x00F0A02A
+            }
+            pAnillo.color = (alphaRing shl 24) or colorBase
             c.drawCircle(cx, cy, radioRing, pAnillo)
         }
 
         // ── Fondo del disco central ────────────────────────────
         pFondo.style = Paint.Style.FILL
-        pFondo.color = 0xFF0D1113.toInt()
+        pFondo.color = if (enCanal) 0xFF0F1418.toInt() else 0xFF080B0D.toInt()
         c.drawCircle(cx, cy, radioDisco, pFondo)
 
-        // Borde del disco
+        // Borde del disco con brillo de estado
         pBorde.style = Paint.Style.STROKE
-        pBorde.strokeWidth = px(this, 1f)
-        pBorde.color = 0xFF2A3238.toInt()
+        pBorde.strokeWidth = px(this, if (enCanal) 1.5f else 1f)
+        pBorde.color = when (fase) {
+            Interfono.Fase.ENVIANDO -> 0xFFE53035.toInt()
+            Interfono.Fase.ESCUCHANDO, Interfono.Fase.CONTESTANDO -> 0xFF90CA50.toInt()
+            Interfono.Fase.CALIBRANDO, Interfono.Fase.GRABANDO_VOZ -> 0xFFF0A02A.toInt()
+            else -> 0xFF1E252A.toInt()
+        }
         c.drawCircle(cx, cy, radioDisco, pBorde)
 
         // ── Barras de VU (5 barras moduladas) ──────────────────
         val barW = px(this, 5f)
         val barGap = px(this, 4f)
-        val maxBarH = px(this, 44f)
+        val maxBarH = px(this, 42f)
         val totalBarsW = 5 * barW + 4 * barGap
         val startX = cx - totalBarsW / 2f
-        val baseBarY = cy + px(this, 4f)
+        val baseBarY = cy + px(this, 2f)
 
         val ahora = System.currentTimeMillis()
         val barFractions = floatArrayOf(0.45f, 0.70f, 1.00f, 0.65f, 0.40f)
@@ -1704,35 +1721,80 @@ class VistaInterfonoVu @JvmOverloads constructor(
         for (i in 0 until 5) {
             val bx = startX + i * (barW + barGap)
             val phase = i * 0.15f
-            val mod = if (activo) {
-                val wave = kotlin.math.sin((ahora / 180.0) + phase * Math.PI * 2).toFloat()
-                (0.35f + 0.65f * kotlin.math.abs(wave)) * barFractions[i]
-            } else {
-                0.2f * barFractions[i]
+            val curBarH = when (fase) {
+                Interfono.Fase.CERRADO -> px(this, 3.5f)
+                Interfono.Fase.ENVIANDO -> {
+                    val wave = kotlin.math.sin((ahora / 130.0) + phase * Math.PI * 2).toFloat()
+                    (maxBarH * (0.45f + 0.55f * kotlin.math.abs(wave)) * barFractions[i]).coerceAtLeast(px(this, 5f))
+                }
+                Interfono.Fase.ESCUCHANDO -> {
+                    val sensNivel = ((dbfs + 90f) / 90f).coerceIn(0.05f, 1f)
+                    val wave = kotlin.math.sin((ahora / 220.0) + phase * Math.PI * 2).toFloat()
+                    (maxBarH * sensNivel * (0.6f + 0.4f * kotlin.math.abs(wave)) * barFractions[i]).coerceAtLeast(px(this, 4f))
+                }
+                Interfono.Fase.CONTESTANDO -> {
+                    val wave = kotlin.math.sin((ahora / 100.0) + phase * Math.PI * 2).toFloat()
+                    (maxBarH * (0.6f + 0.4f * kotlin.math.abs(wave)) * barFractions[i]).coerceAtLeast(px(this, 6f))
+                }
+                else -> {
+                    val wave = kotlin.math.sin((ahora / 250.0) + phase * Math.PI * 2).toFloat()
+                    (maxBarH * 0.35f * (0.5f + 0.5f * kotlin.math.abs(wave)) * barFractions[i]).coerceAtLeast(px(this, 4f))
+                }
             }
-            val curBarH = (maxBarH * mod).coerceAtLeast(px(this, 4f))
             val byTop = baseBarY - curBarH
 
-            pBarra.color = if (i == 2) {
-                if (hablando) 0xFFE53035.toInt() else 0xFF90CA50.toInt()
-            } else {
-                0xFFBCC3C9.toInt()
+            pBarra.color = when (fase) {
+                Interfono.Fase.CERRADO -> 0xFF2A3238.toInt()
+                Interfono.Fase.ENVIANDO -> if (i == 2) 0xFFFF5055.toInt() else 0xFFE53035.toInt()
+                Interfono.Fase.ESCUCHANDO -> if (i == 2) 0xFF90CA50.toInt() else 0xFFBCC3C9.toInt()
+                Interfono.Fase.CONTESTANDO -> if (i == 2) 0xFF90CA50.toInt() else 0xFFF0A02A.toInt()
+                else -> if (i == 2) 0xFFF0A02A.toInt() else 0xFF7C858D.toInt()
             }
 
             rectBarra.set(bx, byTop, bx + barW, baseBarY)
             c.drawRoundRect(rectBarra, px(this, 1.5f), px(this, 1.5f), pBarra)
         }
 
-        // ── Texto dBFS ─────────────────────────────────────────
-        pTexto.textSize = px(this, 12f)
-        pTexto.color = 0xFF7C858D.toInt()
-        pTexto.letterSpacing = 0.10f
-        pTexto.typeface = android.graphics.Typeface.MONOSPACE
+        // ── Texto de estado central ────────────────────────────
+        pTexto.typeface = android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD)
         pTexto.textAlign = Paint.Align.CENTER
-        val signo = if (dbfs > 0) "+" else ""
-        c.drawText("${signo}${dbfs.toInt()} dBFS", cx, cy + px(this, 28f), pTexto)
 
-        if (activo && isShown) postInvalidateOnAnimation()
+        // Línea 1: Estado del canal
+        pTexto.textSize = px(this, 12.5f)
+        pTexto.letterSpacing = 0.12f
+        pTexto.color = when (fase) {
+            Interfono.Fase.CERRADO -> 0xFF7C858D.toInt()
+            Interfono.Fase.ENVIANDO -> 0xFFFF7B7E.toInt()
+            Interfono.Fase.ESCUCHANDO -> 0xFF90CA50.toInt()
+            Interfono.Fase.CONTESTANDO -> 0xFF90CA50.toInt()
+            else -> 0xFFF0A02A.toInt()
+        }
+        val titulo = when (fase) {
+            Interfono.Fase.CERRADO -> "CANAL CERRADO"
+            Interfono.Fase.CALIBRANDO -> "CALIBRANDO..."
+            Interfono.Fase.GRABANDO_VOZ -> "GRABANDO VOZ"
+            Interfono.Fase.ENVIANDO -> "ENVIANDO AUDIO"
+            Interfono.Fase.ESCUCHANDO -> "ESCUCHANDO"
+            Interfono.Fase.CONTESTANDO -> "¡RESPUESTA OÍDA!"
+        }
+        c.drawText(titulo, cx, cy + px(this, 26f), pTexto)
+
+        // Línea 2: Subtítulo / nivel
+        pTexto.textSize = px(this, 10f)
+        pTexto.letterSpacing = 0.08f
+        pTexto.color = 0xFF7C858D.toInt()
+        pTexto.typeface = android.graphics.Typeface.MONOSPACE
+        val sub = when (fase) {
+            Interfono.Fase.CERRADO -> "EN ESPERA"
+            Interfono.Fase.CALIBRANDO -> "RUIDO DE FONDO"
+            Interfono.Fase.GRABANDO_VOZ -> "HABLA AL MÓVIL"
+            Interfono.Fase.ENVIANDO -> "HACIA ABAJO"
+            Interfono.Fase.ESCUCHANDO -> "${dbfs.toInt().coerceIn(-90, 0)} dBFS"
+            Interfono.Fase.CONTESTANDO -> "EN ESCOMBROS"
+        }
+        c.drawText(sub, cx, cy + px(this, 40f), pTexto)
+
+        if (enCanal && isShown) postInvalidateOnAnimation()
     }
 }
 

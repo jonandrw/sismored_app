@@ -161,6 +161,27 @@ class Opciones(ctx: Context) {
         get() = p.getFloat("op_umbral_reposo_h", 0.25f).toDouble().coerceIn(0.05, 3.0)
         set(v) = p.edit().putFloat("op_umbral_reposo_h", v.coerceIn(0.05, 3.0).toFloat()).apply()
 
+    enum class PerfilEntorno(val id: Int, val umbralReposo: Double, val staLtaMin: Double, val fuerteMin: Double) {
+        /** Residencial, piso alto, zona de campo o poco tráfico. */
+        TRANQUILO(0, 0.20, 8.0, 0.40),
+        /** Entorno estándar doméstico. */
+        NORMAL(1, 0.25, 10.0, 0.60),
+        /** Avenida principal, camiones, zona industrial o cercana a obras. */
+        RUIDOSO(2, 0.35, 15.0, 0.80);
+
+        companion object {
+            fun desdeId(id: Int) = values().firstOrNull { it.id == id } ?: NORMAL
+        }
+    }
+
+    var perfilEntorno: PerfilEntorno
+        get() = PerfilEntorno.desdeId(p.getInt("op_perfil_entorno", PerfilEntorno.NORMAL.id))
+        set(v) {
+            p.edit().putInt("op_perfil_entorno", v.id).apply()
+            umbralReposo = v.umbralReposo
+        }
+
+
     /** kHz del tono del doppler. Por encima de 18 kHz para no pisar la malla más
      *  de lo imprescindible; ver el aviso de `Sonda.doppler()`. */
     var dopplerKhz: Double

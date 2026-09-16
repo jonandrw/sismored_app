@@ -39,6 +39,8 @@ object Cascada {
     enum class Accion {
         /** Anotar y seguir mirando. */
         NADA,
+        /** Notificación flotante no invasiva («¿Sentiste un temblor?»). Cierra sola en silencio y NUNCA activa baliza. */
+        PREGUNTAR_DISCRETA,
         /** Pantalla «ESTOY BIEN» con cuenta atrás. Silenciosa. */
         PREGUNTAR,
         /** Sirena de aviso + la misma pregunta: puede estar dormida. */
@@ -162,7 +164,11 @@ object Cascada {
         /** Milisegundos que lleva el móvil sin que el acelerómetro note nada. */
         val quietoMs: Long = 0L,
         /** El oído ha detectado voz o golpes junto al móvil. */
-        val vozOGolpesCerca: Boolean = false
+        val vozOGolpesCerca: Boolean = false,
+        /** Relación STA/LTA medida en el sismógrafo contra el piso de ruido. */
+        val ratioStaLta: Double = 1.0,
+        /** Detección de expresiones de alarma o pánico por voz («¡temblor!», «¡Dios mío!», etc.). */
+        val vozPanico: Boolean = false
     )
 
     class Decision(val accion: Accion, val quien: Quien, val motivo: String) {
@@ -233,7 +239,8 @@ object Cascada {
            midiendo, se sigue anotando y sigue sirviendo para lo que sí sabe
            hacer —oír a alguien junto al móvil, en el paso 5—, pero ya no
            convierte una sacudida en un terremoto. */
-        val opinionAjena = p.corroborada || p.alertaExterna
+        /* La corroboración externa o por pánico acústico evidente. */
+        val opinionAjena = p.corroborada || p.alertaExterna || p.vozPanico
 
         /* Y una sacudida fuerte SOLA sigue siendo creíble —si no, un terremoto
            de verdad sin ningún vecino con la app no dispararía nada— pero de
@@ -257,9 +264,18 @@ object Cascada {
                prueba en la decisión. */
             else -> opinionAjena
         }
-        if (!creible && p.regimen == Postura.Regimen.EN_REPOSO)
+        if (!creible && p.regimen == Postura.Regimen.EN_REPOSO) {
+            /* SISMO SENTIDO EN SOLITARIO (Caso 14 de septiembre de 2026):
+               Si el ratio STA/LTA es alto (>= 10x), el suelo se ha movido inequívocamente
+               pero no hay nadie más alrededor. En vez de NADA (fallo que silenció el sismo),
+               se lanza PREGUNTAR_DISCRETA: una notificación flotante que NUNCA activa sirena ni baliza si expira. */
+            if (!p.preguntado && !p.contestado && p.ratioStaLta >= 10.0) {
+                return Decision(Accion.PREGUNTAR_DISCRETA, Quien.NADIE,
+                    "sismo en reposo (STA/LTA ${String.format(java.util.Locale.US, "%.1f", p.ratioStaLta)}x) sin corroborar: aviso discreto")
+            }
             return Decision(Accion.NADA, Quien.NADIE,
                 "sacudida floja y sin nadie que la confirme: a este nivel no se distingue de una mano")
+        }
         if (!creible) return Decision(Accion.NADA, Quien.NADIE,
             "sacudida con el móvil encima y sin confirmar: no basta")
 
@@ -473,6 +489,14 @@ object Cascada {
             Triple("alerta de Google, sacudió y nadie contestó", Accion.BALIZA,
                 Pruebas(regimen = Regimen.ENCIMA, alertaExterna = true, sacudida = true,
                     preguntado = true, pasosDespues = 0, quietoMs = 90_000L)),
+            /* ---- Los casos de campo del 14 de septiembre de 2026 (Chocó M4.9 / M4.4) ---- */
+            Triple("sismo sentido en reposo (STA/LTA 28x) sin corroboración externa", Accion.PREGUNTAR_DISCRETA,
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, ratioStaLta = 28.1)),
+            Triple("sismo con frase de pánico o auxilio por voz", Accion.AVISAR,
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, vozPanico = true, msDesdeInteraccion = 6 * 3600_000L)),
+            Triple("sismo con alerta externa de red (WebSocket / Google)", Accion.AVISAR,
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, alertaExterna = true, msDesdeInteraccion = 6 * 3600_000L)),
+
             /* La contraprueba, que es la mitad del trabajo: sin la alerta, una
                sacudida sola con el móvil encima sigue sin bastar. Si esto se
                pusiera en verde, es que `alertaExterna` se habría quedado dada por

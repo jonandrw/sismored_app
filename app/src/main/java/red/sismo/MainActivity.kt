@@ -105,7 +105,8 @@ class MainActivity : AppCompatActivity() {
         R.id.v_rescate to R.string.rot_rescate,
         R.id.v_consola to R.string.rot_consola,
         R.id.v_respuesta to R.string.v_respuesta,
-        R.id.v_acerca to R.string.v_acerca
+        R.id.v_acerca to R.string.v_acerca,
+        R.id.v_politicas to R.string.rot_politicas
     )
     private val todasLasVistas by lazy {
         pestanas.map { it.second } + subtitulos.keys
@@ -202,7 +203,13 @@ class MainActivity : AppCompatActivity() {
 
         // Barra superior y retroceso
         findViewById<View>(R.id.pildora_estado)?.setOnClickListener { ir(R.id.t_registro) }
-        findViewById<View>(R.id.go_back)?.setOnClickListener { ir(R.id.t_inicio) }
+        findViewById<View>(R.id.go_back)?.setOnClickListener {
+            if (vista in listOf(R.id.v_acerca, R.id.v_consola, R.id.v_politicas)) {
+                ir(R.id.t_ajustes)
+            } else {
+                ir(R.id.t_inicio)
+            }
+        }
 
         /* Las herramientas, el modo rescate y el registro se montaban dos
            veces: aquí y en `montarInicio`/`montarRescate`/`montarRegistro`.
@@ -245,6 +252,19 @@ class MainActivity : AppCompatActivity() {
                 "t_registro" -> ir(R.id.t_registro)
                 "t_ajustes" -> ir(R.id.t_ajustes)
                 "t_inicio" -> ir(R.id.t_inicio)
+                "v_interfono" -> ir(R.id.v_interfono)
+                "v_diag" -> ir(R.id.v_diag)
+                "v_entorno" -> ir(R.id.v_entorno)
+                "v_politicas" -> ir(R.id.v_politicas)
+                "v_acerca" -> ir(R.id.v_acerca)
+            }
+            if (intent.getBooleanExtra("scroll_abajo", false)) {
+                findViewById<ScrollView>(R.id.scroll_diag)?.post {
+                    findViewById<ScrollView>(R.id.scroll_diag)?.fullScroll(View.FOCUS_DOWN)
+                }
+                findViewById<ScrollView>(R.id.scroll)?.post {
+                    findViewById<ScrollView>(R.id.scroll)?.fullScroll(View.FOCUS_DOWN)
+                }
             }
             pintar()
         }
@@ -306,6 +326,10 @@ class MainActivity : AppCompatActivity() {
         if (enBienvenida && pasoBienvenida > 0) {
             pasoBienvenida--
             pintarPasoBienvenida()
+            return
+        }
+        if (vista in listOf(R.id.v_acerca, R.id.v_consola, R.id.v_politicas)) {
+            ir(R.id.t_ajustes)
             return
         }
         if (vista in subtitulos) ir(R.id.t_inicio) else @Suppress("DEPRECATION") super.onBackPressed()
@@ -379,6 +403,7 @@ class MainActivity : AppCompatActivity() {
                 R.id.v_rescate -> if (ServicioSos.enRescate) "ACTIVO" else "PARADO"
                 R.id.v_interfono -> if (ServicioSos.interfonoOcupado) "CANAL ABIERTO" else "CERRADO"
                 R.id.v_consola -> "EN VIVO"
+                R.id.v_politicas -> "PRIVADO"
                 else -> ""
             }
             if (chipText.isNotEmpty()) {
@@ -1097,47 +1122,94 @@ class MainActivity : AppCompatActivity() {
            parpadeaban las cuatro hubiera eco o no. */
     }
 
+    fun cambiarPerfilEntorno(nuevo: Opciones.PerfilEntorno) {
+        op.perfilEntorno = nuevo
+        arrancarServicio(ServicioSos.ACCION_OPCIONES)
+        actualizarVistaPerfilEntorno()
+        Toast.makeText(
+            this,
+            "Perfil sísmico: ${nuevo.name} · Umbral reposo: ${nuevo.umbralReposo} m/s²",
+            Toast.LENGTH_SHORT
+        ).show()
+        pintar()
+    }
+
+    private fun actualizarVistaPerfilEntorno() {
+        val p = op.perfilEntorno
+        val cActivoTx = android.graphics.Color.parseColor("#0A0405")
+        val cInactivoTx = android.graphics.Color.parseColor("#7C858D")
+        val tfBold = android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD)
+        val tfNormal = android.graphics.Typeface.MONOSPACE
+
+        val esTranquilo = p == Opciones.PerfilEntorno.TRANQUILO
+        val esNormal = p == Opciones.PerfilEntorno.NORMAL
+        val esRuidoso = p == Opciones.PerfilEntorno.RUIDOSO
+
+        val descRes = when (p) {
+            Opciones.PerfilEntorno.TRANQUILO -> R.string.lbl_perfil_tranquilo_desc
+            Opciones.PerfilEntorno.NORMAL -> R.string.lbl_perfil_normal_desc
+            Opciones.PerfilEntorno.RUIDOSO -> R.string.lbl_perfil_ruidoso_desc
+        }
+
+        // 1. Controles en Ajustes (v_diag)
+        val bDiagTranquilo = findViewById<TextView>(R.id.btn_perfil_tranquilo)
+        val bDiagNormal = findViewById<TextView>(R.id.btn_perfil_normal)
+        val bDiagRuidoso = findViewById<TextView>(R.id.btn_perfil_ruidoso)
+        val txtDiagActual = findViewById<TextView>(R.id.txt_diag_perfil_actual)
+        val txtDiagDesc = findViewById<TextView>(R.id.txt_diag_perfil_desc)
+
+        bDiagTranquilo?.setBackgroundResource(if (esTranquilo) R.drawable.btn_sens_activo else R.drawable.btn_sens_inactivo)
+        bDiagTranquilo?.setTextColor(if (esTranquilo) cActivoTx else cInactivoTx)
+        bDiagTranquilo?.typeface = if (esTranquilo) tfBold else tfNormal
+
+        bDiagNormal?.setBackgroundResource(if (esNormal) R.drawable.btn_sens_activo else R.drawable.btn_sens_inactivo)
+        bDiagNormal?.setTextColor(if (esNormal) cActivoTx else cInactivoTx)
+        bDiagNormal?.typeface = if (esNormal) tfBold else tfNormal
+
+        bDiagRuidoso?.setBackgroundResource(if (esRuidoso) R.drawable.btn_sens_activo else R.drawable.btn_sens_inactivo)
+        bDiagRuidoso?.setTextColor(if (esRuidoso) cActivoTx else cInactivoTx)
+        bDiagRuidoso?.typeface = if (esRuidoso) tfBold else tfNormal
+
+        txtDiagActual?.text = p.name
+        txtDiagActual?.setTextColor(if (esRuidoso) getColor(R.color.ambar) else getColor(R.color.gr))
+        txtDiagDesc?.setText(descRes)
+
+        // 2. Controles en Detector (v_detector)
+        val bDetTranquilo = findViewById<TextView>(R.id.det_sens_baja)
+        val bDetNormal = findViewById<TextView>(R.id.det_sens_media)
+        val bDetRuidoso = findViewById<TextView>(R.id.det_sens_alta)
+        val txtDetActual = findViewById<TextView>(R.id.txt_det_sens_actual)
+        val txtDetDesc = findViewById<TextView>(R.id.txt_det_perfil_desc)
+        val traza = findViewById<VistaTraza>(R.id.traza_detector)
+
+        bDetTranquilo?.setBackgroundResource(if (esTranquilo) R.drawable.btn_sens_activo else R.drawable.btn_sens_inactivo)
+        bDetTranquilo?.setTextColor(if (esTranquilo) cActivoTx else cInactivoTx)
+        bDetTranquilo?.typeface = if (esTranquilo) tfBold else tfNormal
+
+        bDetNormal?.setBackgroundResource(if (esNormal) R.drawable.btn_sens_activo else R.drawable.btn_sens_inactivo)
+        bDetNormal?.setTextColor(if (esNormal) cActivoTx else cInactivoTx)
+        bDetNormal?.typeface = if (esNormal) tfBold else tfNormal
+
+        bDetRuidoso?.setBackgroundResource(if (esRuidoso) R.drawable.btn_sens_activo else R.drawable.btn_sens_inactivo)
+        bDetRuidoso?.setTextColor(if (esRuidoso) cActivoTx else cInactivoTx)
+        bDetRuidoso?.typeface = if (esRuidoso) tfBold else tfNormal
+
+        txtDetActual?.text = "${p.name} · ${p.umbralReposo} m/s²"
+        txtDetActual?.setTextColor(if (esRuidoso) getColor(R.color.ambar) else getColor(R.color.gr))
+        txtDetDesc?.setText(descRes)
+
+        traza?.umbral = p.umbralReposo / 9.81
+        traza?.invalidate()
+    }
+
     private fun montarDetector() {
         val bBaja = findViewById<TextView>(R.id.det_sens_baja)
         val bMedia = findViewById<TextView>(R.id.det_sens_media)
         val bAlta = findViewById<TextView>(R.id.det_sens_alta)
-        val txtSens = findViewById<TextView>(R.id.txt_det_sens_actual)
-        val traza = findViewById<VistaTraza>(R.id.traza_detector)
 
-        fun selectSens(baja: Boolean, media: Boolean, alta: Boolean) {
-            val cActivoTx = android.graphics.Color.parseColor("#0A0405")
-            val cInactivoTx = android.graphics.Color.parseColor("#7C858D")
-
-            bBaja?.setBackgroundResource(if (baja) R.drawable.btn_sens_activo else R.drawable.btn_sens_inactivo)
-            bBaja?.setTextColor(if (baja) cActivoTx else cInactivoTx)
-            bBaja?.typeface = if (baja) android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD) else android.graphics.Typeface.MONOSPACE
-
-            bMedia?.setBackgroundResource(if (media) R.drawable.btn_sens_activo else R.drawable.btn_sens_inactivo)
-            bMedia?.setTextColor(if (media) cActivoTx else cInactivoTx)
-            bMedia?.typeface = if (media) android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD) else android.graphics.Typeface.MONOSPACE
-
-            bAlta?.setBackgroundResource(if (alta) R.drawable.btn_sens_activo else R.drawable.btn_sens_inactivo)
-            bAlta?.setTextColor(if (alta) cActivoTx else cInactivoTx)
-            bAlta?.typeface = if (alta) android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD) else android.graphics.Typeface.MONOSPACE
-
-            txtSens?.text = when {
-                baja -> "BAJA"
-                alta -> "ALTA"
-                else -> "MEDIA"
-            }
-            traza?.umbral = if (baja) 0.65 else if (alta) 0.22 else 0.42
-            traza?.invalidate()
-        }
-
-        bBaja?.setOnClickListener { op.umbral = 0.65 * 9.81; selectSens(true, false, false); pintar() }
-        bMedia?.setOnClickListener { op.umbral = 0.42 * 9.81; selectSens(false, true, false); pintar() }
-        bAlta?.setOnClickListener { op.umbral = 0.22 * 9.81; selectSens(false, false, true); pintar() }
-
-        // Initial selection based on current threshold
-        val currentG = op.umbral / 9.81
-        if (currentG >= 0.55) selectSens(true, false, false)
-        else if (currentG <= 0.30) selectSens(false, false, true)
-        else selectSens(false, true, false)
+        bBaja?.setOnClickListener { cambiarPerfilEntorno(Opciones.PerfilEntorno.TRANQUILO) }
+        bMedia?.setOnClickListener { cambiarPerfilEntorno(Opciones.PerfilEntorno.NORMAL) }
+        bAlta?.setOnClickListener { cambiarPerfilEntorno(Opciones.PerfilEntorno.RUIDOSO) }
 
         val swCaidas = findViewById<VistaInterruptor>(R.id.sw_det_descartar_caidas)
         val swMalla = findViewById<VistaInterruptor>(R.id.sw_det_avisar_malla)
@@ -1180,28 +1252,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun montarInterfono() {
-        val vu = findViewById<VistaInterfonoVu>(R.id.interfono_vu)
-        val btnHablar = findViewById<TextView>(R.id.btn_interfono_hablar)
-        val btnEscuchar = findViewById<TextView>(R.id.btn_interfono_escuchar)
-        btnHablar?.setOnClickListener {
-            vu?.hablando = true
-            btnHablar.setBackgroundResource(R.drawable.btn_sens_activo)
-            btnHablar.setTextColor(android.graphics.Color.parseColor("#0A0405"))
-            btnEscuchar?.setBackgroundResource(R.drawable.btn_sens_inactivo)
-            btnEscuchar?.setTextColor(android.graphics.Color.parseColor("#7C858D"))
-            arrancarServicio(ServicioSos.ACCION_INTERFONO)
+        findViewById<View>(R.id.btn_interfono_hablar)?.setOnClickListener {
+            if (!ServicioSos.interfonoOcupado) {
+                arrancarServicio(ServicioSos.ACCION_INTERFONO)
+                pintar()
+            }
         }
-        btnEscuchar?.setOnClickListener {
-            vu?.hablando = false
-            btnEscuchar.setBackgroundResource(R.drawable.btn_sens_activo)
-            btnEscuchar.setTextColor(android.graphics.Color.parseColor("#0A0405"))
-            btnHablar?.setBackgroundResource(R.drawable.btn_sens_inactivo)
-            btnHablar?.setTextColor(android.graphics.Color.parseColor("#7C858D"))
-            arrancarServicio(ServicioSos.ACCION_INTERFONO)
-        }
-        findViewById<View>(R.id.btn_cerrar_interfono)?.setOnClickListener {
-            arrancarServicio(ServicioSos.ACCION_PARAR)
-            ir(R.id.t_inicio)
+        findViewById<View>(R.id.btn_interfono_parar)?.setOnClickListener {
+            arrancarServicio(ServicioSos.ACCION_INTERFONO_PARAR)
+            pintar()
         }
     }
 
@@ -1738,6 +1797,15 @@ class MainActivity : AppCompatActivity() {
         pintar()
     }
 
+        private fun abrirAjustesAccesibilidad() {
+        if (!teclasDisponibles()) return
+        try {
+            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        } catch (_: Exception) {
+            Toast.makeText(this, R.string.teclas_sin_ajustes, Toast.LENGTH_LONG).show()
+        }
+    }
+
     private fun montarDiagnostico() {
         /* El envío por internet no tenía ningún control desde el rediseño: se
            encendía desde el botón de la pantalla de malla que decía EMITIR
@@ -1784,22 +1852,55 @@ class MainActivity : AppCompatActivity() {
         findViewById<View>(R.id.btn_fsi_android)?.setOnClickListener { abrirPermisoPantallaCompleta() }
         findViewById<View>(R.id.btn_fsi_miui)?.setOnClickListener { abrirPermisosDelFabricante() }
 
-        findViewById<View>(R.id.fila_atajo_volumen)?.setOnClickListener {
-            if (!teclasDisponibles()) return@setOnClickListener
-            try {
-                startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-            } catch (_: Exception) {
-                Toast.makeText(this, R.string.teclas_sin_ajustes, Toast.LENGTH_LONG).show()
+        findViewById<View>(R.id.btn_perfil_tranquilo)?.setOnClickListener {
+            cambiarPerfilEntorno(Opciones.PerfilEntorno.TRANQUILO)
+        }
+        findViewById<View>(R.id.btn_perfil_normal)?.setOnClickListener {
+            cambiarPerfilEntorno(Opciones.PerfilEntorno.NORMAL)
+        }
+        findViewById<View>(R.id.btn_perfil_ruidoso)?.setOnClickListener {
+            cambiarPerfilEntorno(Opciones.PerfilEntorno.RUIDOSO)
+        }
+
+        val abrirAjustesAccesibilidad = {
+            if (teclasDisponibles()) {
+                try {
+                    startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                } catch (_: Exception) {
+                    Toast.makeText(this, R.string.teclas_sin_ajustes, Toast.LENGTH_LONG).show()
+                }
             }
+        }
+        findViewById<View>(R.id.fila_atajo_volumen)?.setOnClickListener { abrirAjustesAccesibilidad() }
+        findViewById<VistaInterruptor>(R.id.sw_atajo_volumen)?.let { sw ->
+            sw.colorActivo = getColor(R.color.rd)
+            sw.setOnCheckedChangeListener { _ -> abrirAjustesAccesibilidad() }
         }
 
         findViewById<View>(R.id.fila_confirmar_sirena)?.setOnClickListener {
             op.confirmarAntesDeSirena = !op.confirmarAntesDeSirena
             pintar()
         }
+        findViewById<VistaInterruptor>(R.id.sw_confirmar_sirena)?.let { sw ->
+            sw.colorActivo = getColor(R.color.gr)
+            sw.isChecked = op.confirmarAntesDeSirena
+            sw.setOnCheckedChangeListener { c ->
+                op.confirmarAntesDeSirena = c
+                pintar()
+            }
+        }
+
         findViewById<View>(R.id.fila_servicio_arrancar)?.setOnClickListener {
             op.arrancarAlIniciar = !op.arrancarAlIniciar
             pintar()
+        }
+        findViewById<VistaInterruptor>(R.id.sw_servicio_arrancar)?.let { sw ->
+            sw.colorActivo = getColor(R.color.gr)
+            sw.isChecked = op.arrancarAlIniciar
+            sw.setOnCheckedChangeListener { c ->
+                op.arrancarAlIniciar = c
+                pintar()
+            }
         }
 
         /* El ensayo. La app no se puede probar esperando a un terremoto, y la
@@ -1824,6 +1925,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         findViewById<View>(R.id.op_consola)?.setOnClickListener { ir(R.id.v_consola) }
+        findViewById<View>(R.id.op_politicas)?.setOnClickListener { ir(R.id.v_politicas) }
+        findViewById<View>(R.id.btn_volver_politicas)?.setOnClickListener { ir(R.id.t_ajustes) }
         findViewById<View>(R.id.op_acerca)?.setOnClickListener { ir(R.id.v_acerca) }
         findViewById<View>(R.id.op_apagar)?.setOnClickListener {
             AlertDialog.Builder(this)
@@ -2205,6 +2308,7 @@ class MainActivity : AppCompatActivity() {
 
     /** Pantalla 03. El umbral que se dibuja tiene que ser el que dispara. */
     private fun pintarDetector() {
+        actualizarVistaPerfilEntorno()
         findViewById<VistaTraza>(R.id.traza_detector)?.umbral = op.umbral / 9.81
 
         /* El interruptor de la vigilancia. `ServicioSos.armado` y la acción
@@ -2308,19 +2412,81 @@ class MainActivity : AppCompatActivity() {
         return fila
     }
 
-    /** Pantalla 08. El canal dice si está abierto, y la lista solo lo que se oyó. */
+    /** Pantalla 08. Interfono con control táctico de estados: activo, enviando, escuchando y cerrado. */
     private fun pintarInterfono() {
-        val abierto = ServicioSos.interfonoOcupado
-        findViewById<TextView>(R.id.interfono_estado)?.let {
-            it.setText(if (abierto) R.string.interfono_canal_abierto else R.string.interfono_canal_cerrado)
-            it.setTextColor(getColor(if (abierto) R.color.gr else R.color.dim))
+        val fase = ServicioSos.interfonoFase
+        val ocupado = ServicioSos.interfonoOcupado
+        val nivelDb = ServicioSos.interfonoNivelDb
+
+        val vu = findViewById<VistaInterfonoVu>(R.id.interfono_vu)
+        vu?.fase = fase
+        vu?.dbfs = nivelDb
+
+        // 1. Estado Táctico del Canal y Animaciones
+        val dot = findViewById<View>(R.id.interfono_estado_dot)
+        val txtTitulo = findViewById<TextView>(R.id.interfono_estado_titulo)
+        val txtSub = findViewById<TextView>(R.id.interfono_estado_sub)
+        val btnHablar = findViewById<TextView>(R.id.btn_interfono_hablar)
+        val btnParar = findViewById<TextView>(R.id.btn_interfono_parar)
+        val txtProgreso = findViewById<TextView>(R.id.interfono_progreso_paso)
+
+        when (fase) {
+            Interfono.Fase.CERRADO -> {
+                dot?.setBackgroundResource(R.drawable.punto_estado)
+                txtTitulo?.text = "CANAL CERRADO"
+                txtTitulo?.setTextColor(getColor(R.color.dim))
+                txtSub?.text = "Toca el botón inferior para iniciar ciclo simplex"
+            }
+            Interfono.Fase.CALIBRANDO -> {
+                dot?.setBackgroundResource(R.drawable.punto_ambar)
+                txtTitulo?.text = "CALIBRANDO RUIDO DE FONDO..."
+                txtTitulo?.setTextColor(getColor(R.color.ambar))
+                txtSub?.text = "Midiendo silencio del sitio · No hables todavía"
+            }
+            Interfono.Fase.GRABANDO_VOZ -> {
+                dot?.setBackgroundResource(R.drawable.punto_ambar)
+                txtTitulo?.text = "GRABANDO TU PREGUNTA"
+                txtTitulo?.setTextColor(getColor(R.color.ambar))
+                txtSub?.text = "Habla claro al micrófono · 4 segundos disponibles"
+            }
+            Interfono.Fase.ENVIANDO -> {
+                dot?.setBackgroundResource(R.drawable.punto_rojo)
+                txtTitulo?.text = "ENVIANDO AUDIO HACIA ABAJO"
+                txtTitulo?.setTextColor(getColor(R.color.rd))
+                txtSub?.text = "Micrófono cerrado · Proyectando voz a máximo volumen"
+            }
+            Interfono.Fase.ESCUCHANDO -> {
+                dot?.setBackgroundResource(R.drawable.punto_verde)
+                txtTitulo?.text = "ESCUCHANDO RESPUESTA"
+                txtTitulo?.setTextColor(getColor(R.color.gr))
+                txtSub?.text = "Altavoz silenciado · Esperando voz o golpes (300-3400 Hz)"
+            }
+            Interfono.Fase.CONTESTANDO -> {
+                dot?.setBackgroundResource(R.drawable.punto_verde)
+                txtTitulo?.text = "¡RESPUESTA OÍDA EN ESCOMBROS!"
+                txtTitulo?.setTextColor(getColor(R.color.gr))
+                txtSub?.text = "Energía de voz confirmada · Reproduciendo respuesta"
+            }
+        }
+
+        // 2. Botones de Control
+        btnHablar?.let {
+            it.isEnabled = !ocupado
+            it.alpha = if (ocupado) 0.5f else 1.0f
+            it.text = if (ocupado) "COMUNICACIÓN EN CURSO..." else "HABLAR HACIA ESCOMBROS"
+        }
+        btnParar?.visibility = if (ocupado) View.VISIBLE else View.GONE
+
+        // 3. Progreso en vivo
+        val salida = ServicioSos.interfonoSalida
+        if (salida.isNotEmpty() && salida != "—") {
+            txtProgreso?.text = salida
+        } else {
+            txtProgreso?.text = "Ciclo Simplex: 1. Graba 4 s → 2. Emite maximizado → 3. Escucha 4-15 s"
         }
 
         val lista = findViewById<LinearLayout>(R.id.lista_respuestas_interfono) ?: return
         val vacio = findViewById<TextView>(R.id.interfono_vacio)
-        /* De lo que ya hay registrado, solo lo que dijo el interfono. No se
-           inventa ninguna entrada: si no ha contestado nadie, la lista está
-           vacía y lo dice. */
         val oidas = lineas.filter { it.contains("Interfono", true) }.take(6)
         if (!cambio(R.id.lista_respuestas_interfono, oidas.joinToString("|"))) return
         vacio?.visibility = if (oidas.isEmpty()) View.VISIBLE else View.GONE
@@ -2328,9 +2494,6 @@ class MainActivity : AppCompatActivity() {
         for (l in oidas) {
             val hora = l.substringBefore("  ")
             val texto = l.substringAfter("  ", l).removePrefix("Interfono: ")
-            /* Ámbar cuando la propia frase dice que no está confirmado: es la
-               regla 01 aplicada al color. Un punto verde en «posible voz» sería
-               afirmar que hay alguien vivo debajo. */
             val dudoso = texto.contains("posible", true) || texto.contains("sin confirmar", true)
             lista.addView(filaRespuesta(hora, texto, dudoso))
         }
@@ -2784,6 +2947,7 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, R.string.acerca_enlace_copiado, Toast.LENGTH_LONG).show()
             }
         }
+        findViewById<View>(R.id.acerca_politicas)?.setOnClickListener { ir(R.id.v_politicas) }
     }
 
     private fun pintarEntorno() {
@@ -2967,6 +3131,7 @@ class MainActivity : AppCompatActivity() {
     private var ubicacion: Ubicacion? = null
 
     private fun pintarDiagnostico(forzar: Boolean = false) {
+        actualizarVistaPerfilEntorno()
         // Fuera del freno de dos segundos: un interruptor tiene que moverse al tocarlo.
         actualizarSwTactico(R.id.sw_envio, op.envio)
         val ahora = System.currentTimeMillis()
@@ -3046,12 +3211,18 @@ class MainActivity : AppCompatActivity() {
         if (teclasDisponibles()) {
             findViewById<View>(R.id.fila_atajo_volumen)?.visibility = View.VISIBLE
             val teclasOk = teclasActivas(this)
-            findViewById<View>(R.id.sw_atajo_volumen_dot)?.setBackgroundResource(if (teclasOk) R.drawable.punto_verde else R.drawable.punto_ambar)
+            findViewById<VistaInterruptor>(R.id.sw_atajo_volumen)?.let {
+                if (it.isChecked != teclasOk) it.setCheckedSilently(teclasOk)
+            }
         } else {
             findViewById<View>(R.id.fila_atajo_volumen)?.visibility = View.GONE
         }
-        findViewById<View>(R.id.sw_confirmar_sirena_dot)?.setBackgroundResource(if (op.confirmarAntesDeSirena) R.drawable.punto_verde else R.drawable.punto_ambar)
-        findViewById<View>(R.id.sw_servicio_arrancar_dot)?.setBackgroundResource(if (op.arrancarAlIniciar) R.drawable.punto_verde else R.drawable.punto_ambar)
+        findViewById<VistaInterruptor>(R.id.sw_confirmar_sirena)?.let {
+            if (it.isChecked != op.confirmarAntesDeSirena) it.setCheckedSilently(op.confirmarAntesDeSirena)
+        }
+        findViewById<VistaInterruptor>(R.id.sw_servicio_arrancar)?.let {
+            if (it.isChecked != op.arrancarAlIniciar) it.setCheckedSilently(op.arrancarAlIniciar)
+        }
     }
 
 
