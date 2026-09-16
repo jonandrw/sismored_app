@@ -608,8 +608,15 @@ class ServicioSos : Service() {
                 alertaExternaHasta = System.currentTimeMillis() + 180_000L
                 /* Marcado aparte de la alerta temprana: un catálogo publica lo
                    que YA pasó, así que aquí no hay nada que anticipar y sí algo
-                   que contar. Es lo que enciende el aviso discreto. */
-                alertaCatalogoHasta = System.currentTimeMillis() + 180_000L
+                   que contar. Es lo que enciende el aviso discreto.
+                   Diez minutos, y no los tres de la alerta temprana. El motivo
+                   es que son relojes distintos: la alerta temprana caduca sola
+                   porque la sacudida llega en segundos, mientras que un catálogo
+                   tarda minutos en publicar y el receptor solo anuncia cada
+                   evento UNA vez —deduplica por identificador—. Con tres
+                   minutos, un catálogo lento dejaba la prueba caducada antes de
+                   que nadie la usara. */
+                alertaCatalogoHasta = System.currentTimeMillis() + 600_000L
                 anotar("alerta externa (red sísmica abierta FDSN/EMSC): M$mag en $lugar (~" + dist.toInt() + " km)")
                 evaluar("alerta sísmica online EMSC M$mag")
             },
