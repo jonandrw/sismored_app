@@ -607,7 +607,10 @@ class ServicioSos : Service() {
             },
             onRegistro = { m -> anotar(m) }
         )
-        try { receptorOnline?.arrancar() } catch (_: Exception) {}
+        /* Solo si el usuario lo ha encendido. Llegaba arrancando siempre, y una
+           app que promete no salir a internet no puede salir a internet de
+           fabrica por muy publico que sea lo que va a leer. */
+        if (opciones.sismoOnline) try { receptorOnline?.arrancar() } catch (_: Exception) {}
         mallaNivelesVivos = { malla?.niveles ?: mallaNiveles }
         malla = MallaAcustica(mic!!,
             onConfirmada = { hop ->
@@ -2302,6 +2305,17 @@ class ServicioSos : Service() {
         umbralActivo = nuevo
         sismo.ajustarPerfil(opciones.perfilEntorno)
         anotar("perfil sísmico: ${opciones.perfilEntorno.name} · reposo ${opciones.umbralReposo} m/s²")
+        /* Encender y apagar en caliente, y decirlo: salir a internet es lo único
+           que hace esta app fuera del móvil, y tiene que verse en el registro. */
+        try {
+            if (opciones.sismoOnline) {
+                receptorOnline?.arrancar()
+                anotar("consulta de sismos por internet ENCENDIDA (catálogo público del EMSC)")
+            } else {
+                receptorOnline?.parar()
+                anotar("consulta de sismos por internet apagada")
+            }
+        } catch (_: Exception) {}
         sonda?.fDoppler = opciones.dopplerKhz * 1000
         if (enAlarma) {
             if (opciones.sirena) { if (!sirena.estaSonando()) try { sirena.start() } catch (_: Exception) {} }

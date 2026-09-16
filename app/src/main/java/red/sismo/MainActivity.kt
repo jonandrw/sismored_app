@@ -1812,6 +1812,11 @@ class MainActivity : AppCompatActivity() {
            ALERTA AHORA. Aquí sí se puede encontrar, y sigue pidiendo
            confirmación antes de encenderse. */
         findViewById<View>(R.id.sw_envio)?.setOnClickListener { conmutarEnvio() }
+        findViewById<View>(R.id.sw_sismo_online)?.setOnClickListener {
+            op.sismoOnline = !op.sismoOnline
+            arrancarServicio(ServicioSos.ACCION_OPCIONES)
+            pintar()
+        }
         /* Cada fila pide SU permiso. Cámara y ubicación llamaban las dos a
            `pedirPermisos`, que solo pide notificaciones y micrófono: pulsar
            «Ubicación» no hacía nada visible, y pulsar «Cámara / linterna»
@@ -3134,6 +3139,7 @@ class MainActivity : AppCompatActivity() {
         actualizarVistaPerfilEntorno()
         // Fuera del freno de dos segundos: un interruptor tiene que moverse al tocarlo.
         actualizarSwTactico(R.id.sw_envio, op.envio)
+        actualizarSwTactico(R.id.sw_sismo_online, op.sismoOnline)
         val ahora = System.currentTimeMillis()
         if (!forzar && ahora - diagUltimo < 2000) return
         diagUltimo = ahora

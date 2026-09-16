@@ -45,9 +45,17 @@ SismoRed es una herramienta comunitaria de código abierto orientada a la detecc
 
 ### A. Consulta Pasiva a Redes Sísmicas Abiertas Internacionales (EMSC / USGS / FDSN)
 - **Qué es:** Para evitar que un sismo real pase inadvertido cuando el usuario se encuentra solo o sin otros nodos de la malla cercanos, SismoRed puede consultar periódicamente los catálogos sismológicos públicos y abiertos internacionales (FDSN GeoJSON vía EMSC / USGS).
+- **Viene apagado.** Es la única función de la app que sale a internet, así que
+  no se enciende sola: hay un interruptor en *Ajustes → Si aparece internet*, y
+  mientras usted no lo active, SismoRed no hace ninguna petición de red.
 - **Privacidad y unidireccionalidad:**  
   - Esta comunicación es **estrictamente de solo lectura (recepción unidireccional)**.
-  - **SismoRed NUNCA envía su ubicación, ni su dirección IP con fines de identificación, ni identificadores de hardware (IMEI, Android ID), ni datos de la ficha médica a los servicios sísmicos.**
+  - **SismoRed NUNCA envía su ubicación, ni identificadores de hardware (IMEI, Android ID), ni datos de la ficha médica a los servicios sísmicos.**
+  - Lo que sí ocurre, y conviene decirlo sin adornos: como en cualquier visita a
+    una página web, el servidor consultado ve **la dirección IP desde la que se
+    pide** y la hora en que se pide. Eso no lo puede evitar ninguna aplicación
+    que consulte datos en internet, y es la razón por la que esta función es
+    opcional y está apagada de fábrica.
   - El filtrado de proximidad (distancia ortodrómica por fórmula de Haversine inferior a 450 km) y la verificación de magnitud se calculan **100% de manera local en el teléfono**.
   - Si el dispositivo se encuentra sin internet, la aplicación sigue funcionando plenamente con sus sensores locales y malla peer-to-peer.
 

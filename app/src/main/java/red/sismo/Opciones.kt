@@ -106,6 +106,24 @@ class Opciones(ctx: Context) {
     /** El sistema mató el servicio y el watchdog no pudo levantarlo por falta de
      *  la exención de batería. Se guarda para poder decírselo al usuario: creerse
      *  vigilado sin estarlo es peor que saber que no lo estás. */
+    /**
+     * Consultar el catálogo público de sismos del EMSC como segunda opinión.
+     *
+     * **Apagado de fábrica, y no por capricho.** La app promete en la bienvenida
+     * y en la política de privacidad que no hay telemetría y que nada sale del
+     * móvil sin que se vea. Esto no manda datos tuyos —la ubicación no viaja, la
+     * distancia se calcula aquí— pero sí hace peticiones a un tercero, y eso
+     * deja tu IP y tu horario de uso en un servidor ajeno. Encenderlo tiene que
+     * ser una decisión, igual que [envio].
+     *
+     * Para qué sirve: medido sobre once días de registros, un sismo real de M4.9
+     * es indistinguible en este acelerómetro de la vida cotidiana. La única
+     * salida es una segunda opinión, y si no hay otro móvil en la malla, esta es
+     * la que queda.
+     */
+    var sismoOnline: Boolean
+        get() = leer("op_sismo_online", false); set(v) = poner("op_sismo_online", v)
+
     var watchdogImpotente: Boolean
         get() = p.getBoolean("op_watchdog_impotente", false)
         set(v) = p.edit().putBoolean("op_watchdog_impotente", v).apply()

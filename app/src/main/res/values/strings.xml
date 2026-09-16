@@ -690,6 +690,9 @@ En Xiaomi y Redmi hacen falta &lt;b&gt;los dos&lt;/b&gt;: el de Android y el pro
     <string name="sonda_nota_respira">El umbral está calibrado contra señal sintética y <i>no</i> se ha contrastado con una persona bajo escombro. Trátalo como una pista, nunca como una confirmación.</string>
     <string name="sonda_nota_barrido">Enseña en qué frecuencias responde el hueco. Sirve para comparar dos sitios, no para medir uno.</string>
 
+    <string name="ajustes_sismo_online">Contrastar con el catálogo sísmico público</string>
+    <string name="ajustes_sismo_online_sub">Consulta los sismos publicados por el EMSC para corroborar lo que mide el móvil. No manda nada tuyo: tu ubicación no viaja y la distancia se calcula aquí. Aun así hace peticiones a un servidor ajeno. Apagado de fábrica.</string>
+
     <string name="ajustes_envio">Enviar partes cuando haya internet</string>
     <string name="ajustes_envio_sub">La hora, el motivo de la alarma y los saltos de la malla. Nunca tu ficha, ni tu ubicación, ni audio. Apagado de fábrica.</string>
 
