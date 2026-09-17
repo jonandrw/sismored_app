@@ -940,6 +940,9 @@ class MallaAcustica(
 
         emitiendo = true
         thread(name = "malla-tx", isDaemon = true) {
+            /* Con el volumen de alarma al maximo mientras dure la trama. Sin
+               esto la malla emitia a lo que tuviera puesto el usuario. */
+            val vol = try { Altavoz.aTope() } catch (_: Exception) { null }
             try {
                 val pcm = ShortArray(total)
                 /* Silencio y llamada se emiten en dos frecuencias: la robusta, que
@@ -992,6 +995,7 @@ class MallaAcustica(
             } catch (e: Exception) {
                 Log.e(TAG, "malla TX falló", e)
             } finally {
+                try { vol?.close() } catch (_: Exception) {}
                 // el flujo NO se suelta aquí: se reutiliza en la siguiente ráfaga
                 emitiendo = false
                 // se reabre con margen por si el altavoz aún resuena

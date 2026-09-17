@@ -38,6 +38,24 @@ object Altavoz {
     private var previo = -1
     private var dentro = 0
 
+    /**
+     * Sube el volumen de alarma al maximo mientras dure lo que se haga dentro,
+     * y lo deja como estaba al salir.
+     *
+     * Lo necesita la malla acustica. Ponia su propio `AudioTrack` al maximo
+     * pero no tocaba el volumen del SISTEMA, asi que con la alarma del movil a
+     * la mitad emitia a la mitad — y en un altavoz que ya va justo a 15 kHz eso
+     * es la diferencia entre que cruce la habitacion o no. La sirena llevaba
+     * haciendo esto desde siempre; la malla no se habia enterado.
+     *
+     * El contador de [subir] y [bajar] ya soporta que se anide, asi que varias
+     * emisiones solapadas no se pisan al restaurar.
+     */
+    fun aTope(): AutoCloseable {
+        subir()
+        return AutoCloseable { bajar() }
+    }
+
     private fun subir() = synchronized(this) {
         dentro++
         if (dentro > 1) return@synchronized
