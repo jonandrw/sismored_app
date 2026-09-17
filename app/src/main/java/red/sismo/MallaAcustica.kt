@@ -778,6 +778,25 @@ class MallaAcustica(
             reg("está temblando: me creo la alerta a la primera")
             return true
         }
+
+        /* Alerta máxima de madrugada.
+
+           Si aquí la vigilia está armada —es de noche, el móvil lleva su
+           reposo hecho y nadie lo toca— y lo que llega es una ALERTA
+           SÍSMICA, no se espera a los tres segundos entre ecos. Medido el
+           17 de septiembre: desde que un móvil detectó hasta que sonó el
+           otro pasaron doce segundos, y de madrugada esos segundos son los
+           que decide uno para levantarse de la cama.
+
+           Sigue exigiéndose la cadencia completa, que es la firma temporal
+           de la trama y lo único que un ruido no puede fingir. Lo que se
+           suelta es la espera, no la prueba. Y solo para el código de
+           alerta: una baliza de rescate no tiene esta prisa. */
+        val esAlerta = hop == CODIGO_ALERTA || hop == CODIGO_ALERTA_ROBUSTA
+        if (esAlerta && ServicioSos.vigiliaArmadaAqui && cadencia >= RAFAGAS_MIN) {
+            reg("vigilia armada y alerta sísmica: no espero más")
+            return true
+        }
         return corrob.size >= 2 && (now - corrob[0].first) >= CORROB_MIN && cadencia >= RAFAGAS_MIN
     }
 

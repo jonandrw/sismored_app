@@ -156,6 +156,19 @@ class ServicioSos : Service() {
         /** La última posición que el servicio llegó a conocer. Nunca sale
          *  del móvil: solo sirve para poner los kilómetros en la lista. */
         @Volatile var ultimaUbicacion: Pair<Double, Double>? = null
+
+        /**
+         * La vigilia nocturna está armada AQUÍ: es de madrugada, el móvil
+         * lleva su reposo hecho y nadie lo está tocando.
+         *
+         * Lo lee la malla para creerse una alerta sísmica a la primera. No
+         * es un atajo gratis: en ese estado el contexto ya corrobora —dos
+         * móviles quietos, de noche, y uno de ellos ha medido tres segundos
+         * de suelo moviéndose—, y lo que se suelta es la espera de tres
+         * segundos entre ecos, no la firma temporal de la trama, que es lo
+         * que de verdad distingue una baliza de un ruido.
+         */
+        @Volatile var vigiliaArmadaAqui = false
         /** Lo que este móvil mide de sacudida donde está, sin que nadie lo toque.
          *  Es lo que permite proponer un umbral en vez de pedirlo. */
         @Volatile var calmaMedida = 0.0
@@ -2780,6 +2793,8 @@ class ServicioSos : Service() {
                         umbralActivo = nuevo
                         enReposoAhora = enReposo
                         sismo.vigiliaArmada = enVigilia(opciones)
+                        vigiliaArmadaAqui = enVigilia(opciones) && enReposo &&
+                            sismo.quietoDesdeHace() >= Opciones.VIGILIA_REPOSO_MIN_MS
                         quietoParaVigilia = sismo.quietoDesdeHace()
                         /* El relevo caduca solo si no ha vuelto a pasar nada. */
                         if (repetidor && contestoBien > 0L &&
