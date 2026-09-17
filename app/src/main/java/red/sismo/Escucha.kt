@@ -52,6 +52,13 @@ class Escucha(
          *  es el mismo de la rejilla de la PWA y el de todo lo que se publica
          *  hacia la pantalla, así que se declara una sola vez y aquí. */
         val CLAVES = arrayOf("estruendo", "grito", "voz", "animal", "golpes")
+
+        /* Cortes de [motorCerca]. Sin medir todavía: un motor de camión
+           ronda los -50 dB a pocos metros, pone más de la mitad de su
+           energía por debajo de 400 Hz y tiene tono, o sea planitud baja. */
+        private const val MOTOR_DB = -55.0
+        private const val MOTOR_GRAVE = 0.55
+        private const val MOTOR_PLANITUD = 0.35
         val ROTULOS = arrayOf("DERRUMBE", "GRITOS", "VOZ", "ANIMALES", "GOLPES")
 
         /** Cuánto se queda «caliente» un detector después de disparar. */
@@ -101,6 +108,24 @@ class Escucha(
     @Volatile var nivelDb = -90.0; private set
     @Volatile var tonoHz = 0.0; private set
     @Volatile var impactos = 0; private set
+
+    /**
+     * Suena un motor cerca: grave y con el tono concentrado.
+     *
+     * Es lo que separa un camión de un terremoto cuando los dos hacen vibrar
+     * el edificio tres segundos. Un motor pone la energía abajo y en pocos
+     * bins —tiene tono—; un sismo haciendo crujir la casa la reparte por todo
+     * el espectro. La planitud ya distinguía eso para clasificar sonidos; aquí
+     * se usa para lo contrario, para dudar de lo que mide el acelerómetro.
+     *
+     * **Los tres cortes son una primera aproximación, no una medida.** Van al
+     * registro con sus números precisamente para poder calibrarlos el día que
+     * pase un camión de verdad.
+     */
+    @Volatile var motorCerca = false; private set
+    /** Los números de arriba, crudos, para poder ajustarlos con datos. */
+    @Volatile var graveFrac = 0.0; private set
+    @Volatile var planitudEsp = 1.0; private set
 
     /** Últimas detecciones con su hora, para pintarlas. Lo que la PWA muestra en
      *  la tarjeta de detección en tiempo real: sin esto los detectores corren a
@@ -361,6 +386,9 @@ class Escucha(
            los dos tienen tono. Lo que los separa es CÓMO evolucionan. */
         val plano = planitud()
         val centro = centroide()
+        graveFrac = rumble
+        planitudEsp = plano
+        motorCerca = db > MOTOR_DB && rumble > MOTOR_GRAVE && plano < MOTOR_PLANITUD
 
         /* Fondo adaptativo y NOVEDAD sobre él.
            Medido contra la biblioteca real: sin esto, la respiración de una

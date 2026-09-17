@@ -344,6 +344,22 @@ class Opciones(ctx: Context) {
          */
         const val VIGILIA_REPOSO_MIN_MS = 30 * 60_000L
 
+        /**
+         * Cuánto hay que aguantar si además se oye un motor.
+         *
+         * Un camión pesado hace vibrar un edificio los mismos tres segundos
+         * que un sismo, y el acelerómetro no los distingue. El micrófono sí:
+         * el camión suena, grave y con tono. Medidas diez noches en una casa
+         * real, los episodios nocturnos tienen mediana de 0,3 s y máximo de
+         * 6,6 s, así que ocho segundos los deja fuera a todos.
+         *
+         * No es un veto, es un peaje. Si el suelo sigue moviéndose ocho
+         * segundos, era un terremoto aunque pasara un camión a la vez —y
+         * vetarlo por oír ruido dejaría mudo el móvil justo en el sismo que
+         * hace crujir la casa entera.
+         */
+        const val VIGILIA_SOSTENIDO_MOTOR_MS = 8000L
+
         /** La franja, en hora local. De 01:00 a 06:59. */
         const val VIGILIA_DESDE_H = 1
         const val VIGILIA_HASTA_H = 7

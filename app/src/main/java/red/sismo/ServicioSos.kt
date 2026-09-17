@@ -149,6 +149,23 @@ class ServicioSos : Service() {
             val h = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
             return h >= Opciones.VIGILIA_DESDE_H && h < Opciones.VIGILIA_HASTA_H
         }
+        /**
+         * Cuánto suelo moviéndose hace falta esta noche: tres segundos, u
+         * ocho si ya sonaba un motor ANTES de que empezara.
+         *
+         * Lo de «antes» es la clave y no cuesta nada: un camión ya está
+         * rugiendo cuando el edificio empieza a vibrar —él lo hace vibrar—,
+         * mientras que el crujido de un terremoto nace con el temblor. Así
+         * el caso limpio no se retrasa ni un milisegundo, y el peaje solo
+         * lo paga lo que ya sonaba.
+         */
+        fun exigidoNocturno(sostenidoMs: Long): Long {
+            val racha = System.currentTimeMillis() - sostenidoMs
+            val motorYaEstaba = motorSonando && motorDesde in 1 until racha
+            return if (motorYaEstaba) Opciones.VIGILIA_SOSTENIDO_MOTOR_MS
+                   else Opciones.VIGILIA_SOSTENIDO_MS
+        }
+
         @Volatile var enReposoAhora = false
         /** Cuánto lleva el móvil sin que nada lo roce. Lo lee la pantalla
          *  para decir si la vigilia está armada o cuánto le falta. */
@@ -156,6 +173,10 @@ class ServicioSos : Service() {
         /** Cuánto hace que se encendió la pantalla. La vigilia no se arma
          *  con alguien delante, y eso hay que poder verlo. */
         @Volatile var pantallaHace = Long.MAX_VALUE
+        /** Suena un motor cerca. Le pone peaje a la vigilia nocturna. */
+        @Volatile var motorSonando = false
+        /** Desde cuándo suena sin parar. Es lo que decide si estaba ANTES. */
+        @Volatile var motorDesde = 0L
         /** La última posición que el servicio llegó a conocer. Nunca sale
          *  del móvil: solo sirve para poner los kilómetros en la lista. */
         @Volatile var ultimaUbicacion: Pair<Double, Double>? = null
@@ -1405,7 +1426,7 @@ class ServicioSos : Service() {
                pantalla. */
             vigiliaArmada = vigiliaArmadaAqui,
             sostenidaNocturna = enVigilia(opciones) && enReposoAhora &&
-                sismo.sostenidoMs >= Opciones.VIGILIA_SOSTENIDO_MS &&
+                sismo.sostenidoMs >= exigidoNocturno(sismo.sostenidoMs) &&
                 sismo.quietoAntesDeLaRacha >= Opciones.VIGILIA_REPOSO_MIN_MS &&
                 !sismo.hayMano &&
                 (p == null || p.interaccionHace() > 30_000L),
@@ -1482,6 +1503,8 @@ class ServicioSos : Service() {
             "ventana=${enVigilia(opciones)} reposo=$enReposoAhora " +
             "sost=${sismo.sostenidoMs}/${Opciones.VIGILIA_SOSTENIDO_MS} " +
             "calma=${sismo.quietoAntesDeLaRacha / 1000}s/${Opciones.VIGILIA_REPOSO_MIN_MS / 1000}s " +
+            "motor=${if (motorSonando) "sí" else "no"}(%.2f/%.2f) ".format(
+                escucha?.graveFrac ?: 0.0, escucha?.planitudEsp ?: 1.0) +
             "mano=${sismo.hayMano} pantalla=${postura?.interaccionHace() ?: -1}]")
         /* La decision iba SOLO a logcat, que se borra en minutos. O sea que el
            registro guardaba lo que la app vio y el motivo, pero no lo que
@@ -2808,6 +2831,10 @@ class ServicioSos : Service() {
                                 Opciones.VIGILIA_REPOSO_MIN_MS
                         quietoParaVigilia = sismo.quietoDesdeHace()
                         pantallaHace = postura?.interaccionHace() ?: Long.MAX_VALUE
+                        val m = escucha?.motorCerca == true
+                        if (m && !motorSonando) motorDesde = System.currentTimeMillis()
+                        if (!m) motorDesde = 0L
+                        motorSonando = m
                         /* El relevo caduca solo si no ha vuelto a pasar nada. */
                         if (repetidor && contestoBien > 0L &&
                             System.currentTimeMillis() - contestoBien > REPETIDOR_MS) {
