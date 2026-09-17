@@ -508,6 +508,13 @@ class MallaAcustica(
      */
     private val MARCOS_FIN = 3
     private var marcosBajos = 0
+
+    /** Marcos desde el ultimo COMIENZO de rafaga. El periodo sale de aqui. */
+    private var marcosDesdeOnset = 0
+
+    /** Marcos que llevaba al empezar la rafaga que se esta oyendo, a la espera
+     *  de saber si dura lo suficiente para contar como comienzo bueno. */
+    private var marcosPendiente = 0
     private var confirma = 0
     private var confirmaHop = 0
 
@@ -611,7 +618,7 @@ class MallaAcustica(
     @Volatile var olvidoOnFuera = 0; private set     // la rafaga no dura lo que debe
     @Volatile var onMasLargoMs = 0L; private set     // la racha de tono mas larga vista
 
-    private fun olvidarCadencia() { cadencia = 0; msPeriodoPrevio = 0L }
+    private fun olvidarCadencia() { cadencia = 0; msPeriodoPrevio = 0L; marcosDesdeOnset = 0; marcosPendiente = 0 }
 
     /** Hemos dejado de oír por nuestra propia culpa —emisión propia, interfono—,
      *  así que la racha en curso está partida y juzgarla sería inventar. Se
@@ -636,6 +643,7 @@ class MallaAcustica(
      * un tono: un tono no tiene ráfagas.
      */
     private fun verCadencia(hayTono: Boolean) {
+        marcosDesdeOnset++
         if (hayTono == habiaTono) {
             marcosRacha++
             /* Un tono que no se acaba nunca no es una baliza: es un generador, o
@@ -648,30 +656,43 @@ class MallaAcustica(
             }
             return
         }
-        /* El antirrebote alarga lo que mide como tono y acorta lo que mide como
-           silencio, exactamente en los mismos MARCOS_FIN marcos. Se compensa
-           aqui en vez de ensanchar las ventanas: asi los limites siguen
-           significando lo que dicen —250 ms de tono, 150 de silencio— y el
-           periodo, que es lo que de verdad sujeta la defensa, no se toca. */
-        val hold = msDe(MARCOS_FIN)
-        val ms = (if (habiaTono) msDe(marcosRacha) - hold else msDe(marcosRacha) + hold)
-            .coerceAtLeast(0L)
+        val ms = msDe(marcosRacha)
+        val eraTono = habiaTono
         habiaTono = hayTono
         marcosRacha = 1
+
         if (hayTono) {
-            // se cerró un silencio: se guarda para medir el periodo de la ráfaga que viene
-            msOffPrevio = ms
-            offPrevioOk = ms in RAF_OFF_MIN_MS..RAF_OFF_MAX_MS
+            /* Empieza algo. Todavia no se sabe si es una rafaga o un rebote, asi
+               que solo se anota cuanto llevabamos desde el ultimo comienzo BUENO
+               y se espera a ver cuanto dura. */
+            marcosPendiente = marcosDesdeOnset
             return
         }
-        // se cerró una ráfaga de tono: es aquí donde se juzga
-        if (ms !in RAF_ON_MIN_MS..RAF_ON_MAX_MS) { olvidoOnFuera++; olvidarCadencia(); return }
-        val periodo = msOffPrevio + ms
-        val sigueElTren = offPrevioOk &&
-            periodo in RAF_PER_MIN_MS..RAF_PER_MAX_MS &&
+        if (!eraTono) return
+
+        /* Se cerro el tono. Si fue demasiado corto NO era una rafaga: es un
+           rebote en el hueco entre dos, o un desvanecimiento. Antes eso llamaba
+           a `olvidarCadencia()` y tiraba el tren entero —medido: `onFuera` en
+           cuatro a seis de cada nueve—. Un destello tiene que IGNORARSE, no
+           destruir lo que ya se habia oido bien. */
+        if (ms < RAF_ON_MIN_MS) { olvidoOnFuera++; return }
+
+        /* Era una rafaga de verdad. El periodo va de comienzo a comienzo y no
+           de sumar el tono mas el silencio: es el mismo numero cuando todo va
+           bien, pero cuando el canal reparte mal ese numero entre las dos
+           mitades —que es lo que pasa siempre— el de comienzo a comienzo no se
+           entera. Cuatro comienzos seguidos cada 400 ms sin moverse no los da
+           una habitacion. */
+        val periodo = msDe(marcosPendiente)
+        marcosDesdeOnset -= marcosPendiente
+        val enRango = periodo in RAF_PER_MIN_MS..RAF_PER_MAX_MS
+        val sigueElTren = enRango &&
             (msPeriodoPrevio == 0L || abs(periodo - msPeriodoPrevio) <= RAF_PER_JITTER_MS)
-        if (sigueElTren) { cadencia++; msPeriodoPrevio = periodo }
-        else { cadencia = 1; msPeriodoPrevio = 0L }     // la primera ráfaga de un tren
+        when {
+            sigueElTren -> { cadencia++; msPeriodoPrevio = periodo }
+            enRango -> { cadencia = 1; msPeriodoPrevio = periodo }   // semilla de un tren nuevo
+            else -> { cadencia = 1; msPeriodoPrevio = 0L }           // primera rafaga suelta
+        }
     }
 
     /**
