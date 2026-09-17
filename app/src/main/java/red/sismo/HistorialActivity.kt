@@ -39,7 +39,19 @@ class HistorialActivity : AppCompatActivity() {
             RegexOption.IGNORE_CASE
         )
 
-        fun esSismico(e: EventoBD): Boolean = SISMICO.containsMatchIn(e.mensaje)
+        /**
+         * Las líneas de diagnóstico no son un sismo.
+         *
+         * Cada alerta de catálogo deja cuatro apuntes —el crudo, el traducido,
+         * la línea `pruebas ·` y la decisión— y en una lista de sismos eso es
+         * el mismo terremoto cuatro veces. `pruebas ·` además está escrita para
+         * depurar, con banderas y porcentajes que no significan nada para
+         * quien solo quiere saber si tembló. Se queda en la vista completa.
+         */
+        private val DIAGNOSTICO = Regex("^(pruebas ·|decision ·|cascada)", RegexOption.IGNORE_CASE)
+
+        fun esSismico(e: EventoBD): Boolean =
+            SISMICO.containsMatchIn(e.mensaje) && !DIAGNOSTICO.containsMatchIn(e.mensaje.trimStart())
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

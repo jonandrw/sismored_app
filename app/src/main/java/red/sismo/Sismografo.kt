@@ -330,12 +330,36 @@ class Sismografo(
      * hora sin que nada lo roce y de pronto se mueve tres segundos seguidos
      * no es alguien yendo al baño.
      *
-     * Se guarda el valor del marco anterior porque el propio suceso reinicia
-     * el reloj: preguntarlo después de empezar daría siempre cero, que es el
-     * mismo fallo que ya obligó a escribir `Postura.regimenRecordado`.
+     * Hay que mirar antes del DISTURBIO entero, no antes del marco anterior.
+     * Probado en campo el 17 de septiembre y fallaba: el zarandeo reinicia
+     * `ultimoMovimiento` en su primer marco, y el ciclo de trabajo no cruza
+     * el mínimo hasta unas décimas después — para cuando arranca la racha,
+     * un solo marco de memoria ya decía cero. Es el mismo error que obligó a
+     * escribir `Postura.regimenRecordado`, cometido otra vez con un reloj
+     * distinto: el propio suceso borra la prueba de que antes había calma.
      */
     @Volatile var quietoAntesDeLaRacha = 0L; private set
-    private var quietoEnElMarcoPrevio = 0L
+    /**
+     * La vigilia nocturna está en su ventana horaria y encendida.
+     *
+     * Lo pone el servicio, y aquí solo sirve para una cosa: dejar que la
+     * regla nocturna esquive la puerta de `sueloDeFiar`. Esa puerta mira un
+     * anillo de «cuán quieto estaba hace tres segundos», y a los tres
+     * segundos de sacudida continua ese anillo ya está a cero — o sea que
+     * cortaba la evaluación justo en el instante en que la regla nocturna,
+     * que pide exactamente tres segundos, iba a cumplirse. Medido en campo
+     * el 17 de septiembre: diez evaluaciones y luego silencio a los 2,8 s.
+     *
+     * Esquivarla no afloja nada: la regla nocturna exige media hora de calma
+     * previa, sin mano y sin pantalla encendida, que es más de lo que esta
+     * puerta comprueba.
+     */
+    @Volatile var vigiliaArmada = false
+    /** Lo que duró la calma anterior al disturbio que está pasando ahora. */
+    private var quietoAntesDelDisturbio = 0L
+    /** Un disturbio nuevo, y no el mismo de hace un momento, empieza tras
+     *  este hueco sin movimiento. */
+    private val HUECO_DISTURBIO_MS = 2000L
 
     /** La última sacudida fue lo bastante grande como para no confundirse con
      *  una mano. Ver [CICLO_FUERTE]. */
@@ -832,8 +856,15 @@ class Sismografo(
            contaría como movimiento y la postura seguiría diciendo EN_REPOSO con
            el teléfono en la mano. */
         val devTotal = hypot(hypot(ax - gx, ay - gy), az - gz)
-        quietoEnElMarcoPrevio = System.currentTimeMillis() - ultimoMovimiento
-        if (devTotal > 0.6) ultimoMovimiento = System.currentTimeMillis()
+        if (devTotal > 0.6) {
+            val ahoraMov = System.currentTimeMillis()
+            val hueco = ahoraMov - ultimoMovimiento
+            /* Solo al EMPEZAR un disturbio nuevo se apunta cuánta calma
+               había detrás. Mientras dura, el reloj se reinicia en cada
+               marco y este dato tiene que sobrevivir a eso. */
+            if (hueco > HUECO_DISTURBIO_MS) quietoAntesDelDisturbio = hueco
+            ultimoMovimiento = ahoraMov
+        }
 
         // 3) media rápida con recorte y bajada más rápida que la subida
         val u = umbralReal
@@ -970,8 +1001,13 @@ class Sismografo(
            terremoto dura, y ahí está toda la diferencia. */
         if (cicloTrabajo >= CICLO_MIN) {
             if (sostenidoDesde == 0L) {
+                /* La calma anterior al disturbio, o la de ahora mismo si el
+                   movimiento es tan flojo que ni ha tocado el reloj. */
+                quietoAntesDeLaRacha = maxOf(
+                    quietoAntesDelDisturbio,
+                    System.currentTimeMillis() - ultimoMovimiento
+                )
                 sostenidoDesde = ahoraMs
-                quietoAntesDeLaRacha = quietoEnElMarcoPrevio
             }
             sostenidoMs = ahoraMs - sostenidoDesde
         } else {
@@ -995,7 +1031,7 @@ class Sismografo(
                reloj de hace tres segundos porque la propia sacudida lo pone a
                cero. Con el umbral conservador no se aplica: ahí ya se asume que
                lo llevas encima. */
-            if (!sueloDeFiar && !hayMano) {
+            if (!sueloDeFiar && !hayMano && !vigiliaArmada) {
                 an = 0; ai = 0
                 Log.i("SismoRed", "sismografo: %.2f m/s2 pero no estaba quieto (%d s), no disparo"
                     .format(sta, quietoAntes / 1000))

@@ -1403,7 +1403,13 @@ class ServicioSos : Service() {
         val d = Cascada.decidir(pr)
         cascadaQuien = d.quien
         cascadaMotivo = d.motivo
-        Log.i("SismoRed", "cascada($motivo) -> $d")
+        /* Las cinco condiciones de la vigilia, una por una. Deducir cual
+           falta desde fuera ya ha costado tres pruebas de campo. */
+        Log.i("SismoRed", "cascada($motivo) -> $d · vigilia[" +
+            "ventana=${enVigilia(opciones)} reposo=$enReposoAhora " +
+            "sost=${sismo.sostenidoMs}/${Opciones.VIGILIA_SOSTENIDO_MS} " +
+            "calma=${sismo.quietoAntesDeLaRacha / 1000}s/${Opciones.VIGILIA_REPOSO_MIN_MS / 1000}s " +
+            "mano=${sismo.hayMano} pantalla=${postura?.interaccionHace() ?: -1}]")
         /* La decision iba SOLO a logcat, que se borra en minutos. O sea que el
            registro guardaba lo que la app vio y el motivo, pero no lo que
            decidio hacer ni sobre quien: justo la linea que hoy explico por que
@@ -1436,6 +1442,11 @@ class ServicioSos : Service() {
             /* Para poder ver la bandera sin tener que fingir un terremoto: es
                la que decide si la baliza de rescate se escala o se calla. */
             "mano=${pr.manoDespues} " +
+            /* Los dos relojes de la vigilia nocturna. Sin ellos, cuando no
+               dispara hay que deducir por que desde fuera, y eso ya costo una
+               prueba de campo entera. */
+            "vig=${sismo.sostenidoMs}/${Opciones.VIGILIA_SOSTENIDO_MS}ms " +
+            "calma=${sismo.quietoAntesDeLaRacha / 1000}/${Opciones.VIGILIA_REPOSO_MIN_MS / 1000}s " +
             "ciclo=${"%.0f".format(sismo.cicloTrabajo * 100)}%"
         )
         when (d.accion) {
@@ -2695,6 +2706,7 @@ class ServicioSos : Service() {
                         sismo.umbral = nuevo
                         umbralActivo = nuevo
                         enReposoAhora = enReposo
+                        sismo.vigiliaArmada = enVigilia(opciones)
                         anotar("Móvil %s: vigilo a %.2f m/s²".format(
                             if (enReposo) "en reposo" else "encima de ti", nuevo))
                     }
