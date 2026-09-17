@@ -196,7 +196,11 @@ object Cascada {
          * cerca— y por eso la app tiene que explicárselas al usuario antes de
          * dejarle encender esto.
          */
-        val sostenidaNocturna: Boolean = false
+        val sostenidaNocturna: Boolean = false,
+        /** Aquí es de madrugada, el móvil lleva su reposo hecho y nadie lo
+         *  toca. No es que haya detectado nada: es que está en condiciones
+         *  de creerse lo que le digan. */
+        val vigiliaArmada: Boolean = false,
     )
 
     class Decision(val accion: Accion, val quien: Quien, val motivo: String) {
@@ -332,6 +336,23 @@ object Cascada {
         if (p.sostenidaNocturna && !p.contestado) {
             return Decision(Accion.AUXILIO, Quien.PERSONA_PROBABLE,
                 "vigilia nocturna: el suelo lleva tres segundos moviéndose sin parar")
+        }
+        /* Un vecino ha confirmado un terremoto y aquí es de madrugada con
+           la vigilia armada: eso suena, no pregunta en silencio.
+
+           Medido el 17 de septiembre: la alerta llegó en 2,5 s y el móvil
+           decidió PREGUNTAR, que es lo correcto de día —te avisa sin
+           asustarte— y no sirve de nada a las tres de la mañana, porque
+           le pregunta a alguien que está dormido.
+
+           AVISAR y no AUXILIO a propósito: este móvil no ha detectado
+           nada, solo lo ha oído. Sonar para despertar está justificado;
+           encender la baliza de rescate por alguien que quizá está
+           perfectamente, no. Si no contesta, la escalera de abajo ya se
+           encarga. */
+        if (p.corroborada && p.vigiliaArmada && !p.contestado && !p.preguntado) {
+            return Decision(Accion.AVISAR, Quien.PERSONA_PROBABLE,
+                "otro móvil confirma un terremoto y aquí es de madrugada")
         }
         if (p.alertaCatalogo && !p.sacudidaFuerte && !p.preguntado && !p.contestado) {
             return Decision(Accion.PREGUNTAR_DISCRETA, Quien.NADIE,
@@ -512,6 +533,8 @@ object Cascada {
                en cambio, pasa varias veces al dia. */
             Triple("terremoto con el móvil encima: no se distingue de andar", Accion.NADA,
                 Pruebas(regimen = Regimen.ENCIMA, sacudida = true, estruendo = true)),
+            Triple("de madrugada, otro móvil confirma un terremoto", Accion.AVISAR,
+                Pruebas(regimen = Regimen.EN_REPOSO, corroborada = true, vigiliaArmada = true)),
             Triple("alerta de otro móvil de la malla", Accion.PREGUNTAR,
                 Pruebas(regimen = Regimen.ENCIMA, corroborada = true)),
             Triple("huye corriendo y no pulsa nada", Accion.NADA,

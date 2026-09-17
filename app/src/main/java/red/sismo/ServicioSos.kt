@@ -1400,6 +1400,7 @@ class ServicioSos : Service() {
                la hora produce exactamente la misma señal que un sismo. Lo
                que no produce un sismo es girar el teléfono ni encender la
                pantalla. */
+            vigiliaArmada = vigiliaArmadaAqui,
             sostenidaNocturna = enVigilia(opciones) && enReposoAhora &&
                 sismo.sostenidoMs >= Opciones.VIGILIA_SOSTENIDO_MS &&
                 sismo.quietoAntesDeLaRacha >= Opciones.VIGILIA_REPOSO_MIN_MS &&
