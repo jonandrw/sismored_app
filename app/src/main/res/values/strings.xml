@@ -767,6 +767,11 @@ Es la única forma de comprobar el tramo que no se puede ensayar de otra manera.
     <string name="lbl_grupo_sanguineo">Grupo sanguíneo</string>
     <string name="lbl_hablar_abajo">HABLAR ABAJO</string>
     <string name="lbl_hallazgos">HALLAZGOS</string>
+    <string name="campana_sismos">%d sismos</string>
+    <string name="campana_un_sismo">1 sismo</string>
+    <string name="vigilia_armada">VIGILIA ARMADA</string>
+    <string name="vigilia_esperando">VIGILIA · faltan %d min de reposo</string>
+    <string name="vigilia_fuera">VIGILIA · empieza a la 1</string>
     <string name="hist_solo_sismos">SOLO SISMOS</string>
     <string name="hist_todo">TODO</string>
     <string name="hist_sin_sismos">Todavía no se ha registrado ningún sismo.</string>

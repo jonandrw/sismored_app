@@ -126,6 +126,9 @@ class ServicioSos : Service() {
             return h >= Opciones.VIGILIA_DESDE_H && h < Opciones.VIGILIA_HASTA_H
         }
         @Volatile var enReposoAhora = false
+        /** Cuánto lleva el móvil sin que nada lo roce. Lo lee la pantalla
+         *  para decir si la vigilia está armada o cuánto le falta. */
+        @Volatile var quietoParaVigilia = 0L
         /** Lo que este móvil mide de sacudida donde está, sin que nadie lo toque.
          *  Es lo que permite proponer un umbral en vez de pedirlo. */
         @Volatile var calmaMedida = 0.0
@@ -2707,6 +2710,7 @@ class ServicioSos : Service() {
                         umbralActivo = nuevo
                         enReposoAhora = enReposo
                         sismo.vigiliaArmada = enVigilia(opciones)
+                        quietoParaVigilia = sismo.quietoDesdeHace()
                         anotar("Móvil %s: vigilo a %.2f m/s²".format(
                             if (enReposo) "en reposo" else "encima de ti", nuevo))
                     }

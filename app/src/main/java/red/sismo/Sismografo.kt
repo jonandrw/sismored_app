@@ -360,6 +360,18 @@ class Sismografo(
     /** Un disturbio nuevo, y no el mismo de hace un momento, empieza tras
      *  este hueco sin movimiento. */
     private val HUECO_DISTURBIO_MS = 2000L
+    /**
+     * Cuánto puede flojear el suelo sin dar la racha por rota.
+     *
+     * Sin esto la racha se reiniciaba a la primera muestra por debajo del
+     * ciclo mínimo, y un terremoto no es una vibración perfecta: en la prueba
+     * del 17 de septiembre hicieron falta seis segundos de sacudida para
+     * acumular tres, con cinco reinicios por el camino. Seis décimas es
+     * menos de lo que dura un semiciclo flojo y mucho menos que los tres
+     * segundos que hay que juntar.
+     */
+    private val GRACIA_RACHA_MS = 600L
+    private var flojoDesde = 0L
 
     /** La última sacudida fue lo bastante grande como para no confundirse con
      *  una mano. Ver [CICLO_FUERTE]. */
@@ -1009,10 +1021,16 @@ class Sismografo(
                 )
                 sostenidoDesde = ahoraMs
             }
+            flojoDesde = 0L
             sostenidoMs = ahoraMs - sostenidoDesde
-        } else {
-            sostenidoDesde = 0L
-            sostenidoMs = 0L
+        } else if (sostenidoDesde != 0L) {
+            /* Flojea, pero no se rompe hasta que el bajón dura. */
+            if (flojoDesde == 0L) flojoDesde = ahoraMs
+            if (ahoraMs - flojoDesde > GRACIA_RACHA_MS) {
+                sostenidoDesde = 0L; sostenidoMs = 0L; flojoDesde = 0L
+            } else {
+                sostenidoMs = ahoraMs - sostenidoDesde
+            }
         }
 
         /* Media ventana de muestras como mínimo: recién arrancado el anillo está

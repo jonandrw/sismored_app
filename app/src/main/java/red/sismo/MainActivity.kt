@@ -290,6 +290,7 @@ class MainActivity : AppCompatActivity() {
         )
         ServicioSos.mirando = miraLienzo(vista)
         pintarBienvenida()
+        refrescarBarraAvisos()
         /* El destello lo apaga `onPause` y nadie lo volvía a encender: si la
            alarma saltaba con la app en segundo plano —que es el caso normal—,
            al abrirla la pantalla se quedaba quieta. El servicio solo manda el
@@ -1307,6 +1308,56 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<View>(R.id.btn_historial)?.setOnClickListener {
             startActivity(Intent(this, HistorialActivity::class.java))
+        }
+        findViewById<View>(R.id.btn_campana)?.setOnClickListener {
+            startActivity(Intent(this, HistorialActivity::class.java))
+        }
+    }
+
+    /**
+     * La campana y el estado de la vigilia, los dos en la barra de arriba.
+     *
+     * La campana cuenta los sismos del día porque el registro los tenía
+     * enterrados: el 17 de septiembre un M4.6 quedó entre cuatrocientas
+     * líneas de «VOZ HUMANA CERCA». Y la vigilia dice si está armada de
+     * verdad, que no es lo mismo que estar encendida — con el móvil a mano
+     * y tocándolo cada rato puede no armarse en toda la noche.
+     */
+    private fun refrescarBarraAvisos() {
+        val campana = findViewById<android.widget.TextView>(R.id.btn_campana) ?: return
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val desde = System.currentTimeMillis() - 24 * 3600_000L
+            val n = try {
+                red.sismo.data.SismoDatabase.getDatabase(this@MainActivity)
+                    .eventoDao().obtenerRecientes()
+                    .count { it.fechaMs >= desde && HistorialActivity.esSismico(it) }
+            } catch (_: Exception) { 0 }
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                campana.text = if (n == 1) getString(R.string.campana_un_sismo)
+                               else getString(R.string.campana_sismos, n)
+                campana.visibility = if (n > 0) View.VISIBLE else View.GONE
+            }
+        }
+        val linea = findViewById<android.widget.TextView>(R.id.txt_vigilia) ?: return
+        if (!op.vigiliaNocturna) { linea.visibility = View.GONE; return }
+        linea.visibility = View.VISIBLE
+        val h = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+        val enVentana = h >= Opciones.VIGILIA_DESDE_H && h < Opciones.VIGILIA_HASTA_H
+        val quieto = ServicioSos.quietoParaVigilia
+        when {
+            !enVentana -> {
+                linea.text = getString(R.string.vigilia_fuera)
+                linea.setTextColor(getColor(R.color.dim))
+            }
+            quieto >= Opciones.VIGILIA_REPOSO_MIN_MS -> {
+                linea.text = getString(R.string.vigilia_armada)
+                linea.setTextColor(getColor(R.color.gr))
+            }
+            else -> {
+                val faltan = ((Opciones.VIGILIA_REPOSO_MIN_MS - quieto) / 60_000L + 1).toInt()
+                linea.text = getString(R.string.vigilia_esperando, faltan)
+                linea.setTextColor(getColor(R.color.dim))
+            }
         }
     }
 

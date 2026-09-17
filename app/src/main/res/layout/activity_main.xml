@@ -33,6 +33,23 @@
                 android:scaleType="fitStart"
                 android:src="@drawable/logotipo" />
 
+            <!-- Campana: cuántos sismos hay sin mirar. Abre el registro ya
+                 filtrado a sismos, que es lo que se viene buscando. -->
+            <TextView
+                android:id="@+id/btn_campana"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/chip"
+                android:fontFamily="@font/mono"
+                android:paddingStart="11dp"
+                android:paddingEnd="11dp"
+                android:paddingTop="7dp"
+                android:paddingBottom="7dp"
+                android:textColor="@color/tx"
+                android:textSize="12sp"
+                android:visibility="gone" />
+
             <!-- Píldora de estado (Maqueta 01) -->
             <LinearLayout
                 android:id="@+id/pildora_estado"
@@ -63,6 +80,21 @@
                     android:textSize="10sp" />
             </LinearLayout>
         </LinearLayout>
+
+        <!-- Estado de la vigilia nocturna. Solo se ve con el interruptor
+             encendido: dice si está armada de verdad o cuánto reposo le
+             falta, porque con ciertos hábitos puede no armarse nunca y
+             eso hay que poder verlo antes de confiar en ella. -->
+        <TextView
+            android:id="@+id/txt_vigilia"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/mono"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="8dp"
+            android:textSize="11sp"
+            android:visibility="gone" />
 
         <!-- ===== SUBBARRA (VISTAS DE SEGUNDO NIVEL) ===== -->
         <LinearLayout
