@@ -23,7 +23,9 @@ import kotlin.math.*
  */
 class ReceptorSismicoOnline(
     private val getUbicacion: () -> Pair<Double, Double>? = { null },
-    private val onAlertaSismica: (mag: Double, distKm: Double, lugar: String) -> Unit,
+    /** [fuente] es el catálogo que lo publicó: el registro no puede atribuirle
+     *  a la red europea un sismo que ha dado el servicio colombiano. */
+    private val onAlertaSismica: (mag: Double, distKm: Double, lugar: String, fuente: String) -> Unit,
     private val onRegistro: (String) -> Unit = {},
     /**
      * Cada cuánto preguntar, en milisegundos. Lo decide quien crea el receptor
@@ -135,7 +137,7 @@ class ReceptorSismicoOnline(
         if (corriendo) return
         corriendo = true
         hilo = thread(name = "ReceptorSismicoOnline", isDaemon = true) {
-            onRegistro("receptor sísmico online iniciado (red abierta EMSC)")
+            onRegistro("receptor sísmico online iniciado (catálogos abiertos EMSC y SGC)")
             while (corriendo) {
                 /* Las dos fuentes, y cada una por su lado: si una falla o
                    cambia de formato, la otra sigue avisando. */
@@ -238,7 +240,7 @@ class ReceptorSismicoOnline(
                         if (dist in 0.1..radio || (miLat == 0.0 && miLon == 0.0 && enColombia)) {
                             eventosVistos.add(id)
                             onRegistro("ALERTA SÍSMICA ONLINE RECIBIDA: M$mag en $place (~${dist.toInt()} km)")
-                            onAlertaSismica(mag, dist, place)
+                            onAlertaSismica(mag, dist, place, if (sgc) "SGC" else "EMSC")
                         }
                     }
                 }
@@ -268,7 +270,7 @@ class ReceptorSismicoOnline(
                     if (dist in 0.1..RADIO_MAX_KM || (miLat == 0.0 && miLon == 0.0 && enColombia)) {
                         eventosVistos.add(id)
                         onRegistro("ALERTA SÍSMICA ONLINE RECIBIDA: M$mag en $place (~${dist.toInt()} km)")
-                        onAlertaSismica(mag, dist, place)
+                        onAlertaSismica(mag, dist, place, if (sgc) "SGC" else "EMSC")
                     }
                 }
             }
@@ -328,7 +330,7 @@ class ReceptorSismicoOnline(
         var recibidaMag = 0.0
         val receptor = ReceptorSismicoOnline(
             getUbicacion = { Pair(4.81, -75.69) },
-            onAlertaSismica = { m, _, _ -> recibidaMag = m }
+            onAlertaSismica = { m, _, _, _ -> recibidaMag = m }
         )
         val ahoraIso = java.time.Instant.now().toString()
         val jsonMock = """{"features":[{"id":"test_choco_49","properties":{"mag":4.9,"flynn_region":"COLOMBIA","time":"$ahoraIso"},"geometry":{"coordinates":[-76.68,5.16,10.0]}}]}"""

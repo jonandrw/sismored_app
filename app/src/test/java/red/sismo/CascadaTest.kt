@@ -134,7 +134,7 @@ class CascadaTest {
 
     @Test
     fun testReceptorSismicoOnlineAutotest() {
-        val receptor = ReceptorSismicoOnline(onAlertaSismica = { _, _, _ -> })
+        val receptor = ReceptorSismicoOnline(onAlertaSismica = { _, _, _, _ -> })
         val (ok, log) = receptor.autotest()
         assertTrue("Autotest de ReceptorSismicoOnline debe ser 100% OK: $log", ok)
     }

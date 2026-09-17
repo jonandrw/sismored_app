@@ -438,6 +438,8 @@ class ServicioSos : Service() {
         const val ID_FICHA = 3
         const val ID_PREGUNTA_DISCRETA = 14
         const val CANAL_DISCRETO = "sismored_discreto"
+        const val ID_SISMO_CERCANO = 15
+        const val CANAL_SISMO_CERCANO = "sismored_sismo_cercano"
         const val ACCION_FALSA_ALARMA = "red.sismo.FALSA_ALARMA"
 
         /** Cuánto vale una caída libre como prueba: pasado esto ya no cuenta. */
@@ -611,7 +613,7 @@ class ServicioSos : Service() {
             getUbicacion = {
                 if (ubicacion?.hay() == true) Pair(ubicacion!!.lat(), ubicacion!!.lon()) else null
             },
-            onAlertaSismica = { mag, dist, lugar ->
+            onAlertaSismica = { mag, dist, lugar, fuente ->
                 alertaExternaHasta = System.currentTimeMillis() + 180_000L
                 /* Marcado aparte de la alerta temprana: un catálogo publica lo
                    que YA pasó, así que aquí no hay nada que anticipar y sí algo
@@ -624,8 +626,9 @@ class ServicioSos : Service() {
                    minutos, un catálogo lento dejaba la prueba caducada antes de
                    que nadie la usara. */
                 alertaCatalogoHasta = System.currentTimeMillis() + 600_000L
-                anotar("alerta externa (red sísmica abierta FDSN/EMSC): M$mag en $lugar (~" + dist.toInt() + " km)")
-                evaluar("alerta sísmica online EMSC M$mag")
+                anotar("alerta externa ($fuente): M$mag en $lugar (~" + dist.toInt() + " km)")
+                avisarSismoCercano(mag, dist, lugar, fuente)
+                evaluar("alerta sísmica online $fuente M$mag")
             },
             onRegistro = { m -> anotar(m) },
             intervaloMs = { intervaloCatalogo() }
@@ -1414,8 +1417,15 @@ class ServicioSos : Service() {
                en los ultimos 60 s. Van separados por lo mismo. */
             "pruebas · $motivo · ${pr.regimen} sac=${pr.sacudida} " +
             "fuerte=${pr.sacudidaFuerte}(suceso=$fuertePorSuceso reciente=$fuertePorReciente " +
-            "hace=${(System.currentTimeMillis() - sismo.ultimaFuerte) / 1000}s) " +
+            /* Sin sacudida fuerte previa el reloj vale 0, y restarlo daba
+               «hace=1789671390s» —cincuenta y seis años— en una línea cuyo
+               único trabajo es que los números se puedan creer. */
+            "hace=${if (sismo.ultimaFuerte == 0L) "nunca"
+                    else "${(System.currentTimeMillis() - sismo.ultimaFuerte) / 1000}s"}) " +
             "estruendo=${pr.estruendo} malla=${pr.corroborada} alerta=${pr.alertaExterna} " +
+            /* Para poder ver la bandera sin tener que fingir un terremoto: es
+               la que decide si la baliza de rescate se escala o se calla. */
+            "mano=${pr.manoDespues} " +
             "ciclo=${"%.0f".format(sismo.cicloTrabajo * 100)}%"
         )
         when (d.accion) {
@@ -1563,6 +1573,58 @@ class ServicioSos : Service() {
         reloj.postDelayed(t, PREGUNTA_MS)
     }
 
+    /**
+     * El aviso de que ha temblado cerca, y que **no se borra solo**.
+     *
+     * Va aparte de la pregunta discreta a propósito. La pregunta caduca al
+     * minuto porque la pregunta caduca: pasado ese rato, «¿estás bien?» ya no
+     * tiene sentido. Pero «ha habido un M3.6 a 72 km» sigue siendo verdad una
+     * hora después, y borrarlo dejaba al usuario sin enterarse de nada si no
+     * miraba el móvil en ese minuto exacto. Pasó dos veces el 17 de septiembre,
+     * con los sismos de Istmina de las 12:22 y las 13:52.
+     *
+     * Sin sonido y sin vibración: esto no despierta a nadie, solo está ahí
+     * cuando coges el móvil. Y se descarta como cualquier otra notificación.
+     */
+    private fun avisarSismoCercano(mag: Double, distKm: Double, lugar: String, fuente: String) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val nm = getSystemService(NotificationManager::class.java)
+                if (nm.getNotificationChannel(CANAL_SISMO_CERCANO) == null) {
+                    nm.createNotificationChannel(NotificationChannel(
+                        CANAL_SISMO_CERCANO, "Sismos cerca",
+                        NotificationManager.IMPORTANCE_DEFAULT
+                    ).apply {
+                        description = "Terremotos publicados por un catálogo público cerca de ti"
+                        setShowBadge(true)
+                        enableVibration(false)
+                        setSound(null, null)
+                    })
+                }
+            }
+            val abrir = PendingIntent.getActivity(
+                this, 15, Intent(this, MainActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            val hora = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+                .format(java.util.Date())
+            val n = Notification.Builder(this, CANAL_SISMO_CERCANO)
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentTitle("Temblor cerca · M%.1f".format(mag))
+                .setContentText("$lugar · ${distKm.toInt()} km · $hora · $fuente")
+                .setCategory(Notification.CATEGORY_EVENT)
+                .setAutoCancel(true)
+                .setOnlyAlertOnce(true)
+                .setContentIntent(abrir)
+                .build()
+            (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
+                .notify(ID_SISMO_CERCANO, n)
+        } catch (e: Exception) {
+            Log.e("SismoRed", "no se pudo avisar del sismo cercano", e)
+        }
+    }
+
     private fun sacarPreguntaDiscreta(motivo: String) {
         val abrir = PendingIntent.getActivity(
             this, 14, Intent(this, MainActivity::class.java)
@@ -1586,7 +1648,10 @@ class ServicioSos : Service() {
         val b = Notification.Builder(this, canalId)
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
             .setContentTitle("¿Sentiste un temblor?")
-            .setContentText("Detectamos movimiento en reposo. Pulsa si estás bien o si fue falsa alarma.")
+            /* Decía «detectamos movimiento en reposo» siempre, y eso es falso
+               cuando quien dispara es el catálogo: ahí no se ha movido nada.
+               El motivo real ya venía calculado y no se enseñaba. */
+            .setContentText(motivo)
             .setCategory(Notification.CATEGORY_STATUS)
             .setAutoCancel(true)
             .setContentIntent(abrir)
