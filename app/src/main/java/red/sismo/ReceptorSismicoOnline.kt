@@ -24,7 +24,14 @@ import kotlin.math.*
 class ReceptorSismicoOnline(
     private val getUbicacion: () -> Pair<Double, Double>? = { null },
     private val onAlertaSismica: (mag: Double, distKm: Double, lugar: String) -> Unit,
-    private val onRegistro: (String) -> Unit = {}
+    private val onRegistro: (String) -> Unit = {},
+    /**
+     * Cada cuánto preguntar, en milisegundos. Lo decide quien crea el receptor
+     * porque depende del estado del móvil —cargando, wifi— y aquí dentro no hay
+     * `Context` a propósito: esta clase no toca Android, y así se puede probar
+     * entera en la JVM.
+     */
+    private val intervaloMs: () -> Long = { 45_000L }
 ) {
     companion object {
         private const val TAG = "SismoRed"
@@ -138,8 +145,11 @@ class ReceptorSismicoOnline(
                 try { consultarSgc() } catch (e: Exception) {
                     Log.d(TAG, "SGC no contesta: ${e.message}")
                 }
-                // Consulta cada 45 segundos mientras haya conexión
-                try { Thread.sleep(45_000L) } catch (_: InterruptedException) { break }
+                /* La espera la decide el estado del movil: enchufado y en
+                   wifi no cuesta nada preguntar a menudo, y con datos y
+                   bateria si. */
+                val espera = intervaloMs().coerceIn(10_000L, 300_000L)
+                try { Thread.sleep(espera) } catch (_: InterruptedException) { break }
             }
         }
     }

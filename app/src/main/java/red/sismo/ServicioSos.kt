@@ -627,7 +627,8 @@ class ServicioSos : Service() {
                 anotar("alerta externa (red sísmica abierta FDSN/EMSC): M$mag en $lugar (~" + dist.toInt() + " km)")
                 evaluar("alerta sísmica online EMSC M$mag")
             },
-            onRegistro = { m -> anotar(m) }
+            onRegistro = { m -> anotar(m) },
+            intervaloMs = { intervaloCatalogo() }
         )
         /* Solo si el usuario lo ha encendido. Llegaba arrancando siempre, y una
            app que promete no salir a internet no puede salir a internet de
@@ -1110,6 +1111,35 @@ class ServicioSos : Service() {
      * es la baliza de radio: no hace ruido, no interfiere con nadie y es lo único
      * que atraviesa el escombro.
      */
+    /**
+     * Cada cuánto preguntar al catálogo, según lo que cueste preguntar.
+     *
+     * Enchufado y en wifi no cuesta nada: cada quince segundos. Con datos o con
+     * la batería tirando, preguntar a menudo se nota y lo que se gana es poco —
+     * el catálogo tarda MINUTOS en publicar, así que afinar el sondeo a
+     * segundos no adelanta el aviso, solo evita perderlo.
+     *
+     * Y por debajo del 15 % sin cargador se espacia a tres minutos: una app de
+     * emergencia que agota la batería deja de ser una ayuda, y lo que de verdad
+     * tiene que durar es la sirena y la baliza, no esto.
+     */
+    private fun intervaloCatalogo(): Long {
+        return try {
+            val cn = getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
+            val cap = cn?.activeNetwork?.let { cn.getNetworkCapabilities(it) }
+            val wifi = cap?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) == true
+            val bm = getSystemService(Context.BATTERY_SERVICE) as? android.os.BatteryManager
+            val cargando = bm?.isCharging == true
+            val pct = bm?.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
+            when {
+                pct in 0..15 && !cargando -> 180_000L
+                cargando && wifi -> 15_000L
+                wifi -> 45_000L
+                else -> 90_000L
+            }
+        } catch (_: Exception) { 45_000L }
+    }
+
     /** El botón EMITIR ALERTA AHORA de la pantalla de malla. */
     private fun emitirAlertaMalla() {
         val m = malla
