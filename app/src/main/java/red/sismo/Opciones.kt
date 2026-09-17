@@ -121,6 +121,21 @@ class Opciones(ctx: Context) {
      * salida es una segunda opinión, y si no hay otro móvil en la malla, esta es
      * la que queda.
      */
+    /**
+     * Vigilia nocturna: de 01:00 a 07:00, el móvil quieto y el oído fino.
+     *
+     * De noche, sobre una superficie plana y sin nadie tocándolo, es el único
+     * momento en que el acelerómetro de un teléfono es de fiar: el piso de ruido
+     * baja a 0,004 m/s² frente a los 0,25 del umbral de reposo diurno. Por eso
+     * aquí se puede bajar el listón a [UMBRAL_VIGILIA] sin llenar la noche de
+     * falsas alarmas — y por eso hay que decirle al usuario dónde dejar el móvil,
+     * porque si duerme con él en la cama esto no vale nada.
+     *
+     * Lo que protege no es el umbral sino la DURACIÓN. Ver `Sismografo.sostenidoMs`.
+     */
+    var vigiliaNocturna: Boolean
+        get() = leer("op_vigilia_nocturna", false); set(v) = poner("op_vigilia_nocturna", v)
+
     var sismoOnline: Boolean
         get() = leer("op_sismo_online", false); set(v) = poner("op_sismo_online", v)
 
@@ -267,5 +282,37 @@ class Opciones(ctx: Context) {
         const val VOL_MIN = 1.0
         const val VOL_MAX = 10.0
         const val VOL_PASO = 1.0
+
+        /* ---------- vigilia nocturna ---------- */
+
+        /**
+         * El umbral con la vigilia puesta: 0,14 m/s².
+         *
+         * Es el suelo del MMI IV de la tabla del USGS —«se nota dentro de
+         * casa»—, y casi la mitad del umbral de reposo normal. Se puede bajar
+         * tanto porque de madrugada, con el móvil quieto sobre una superficie y
+         * sin nadie tocándolo, la calma medida ronda 0,004: el margen sobra.
+         *
+         * No es este número el que evita las falsas alarmas, sino [VIGILIA_SOSTENIDO_MS].
+         */
+        const val UMBRAL_VIGILIA = 0.14
+
+        /**
+         * Cuánto tiene que durar la sacudida para levantar la alarma de noche.
+         *
+         * **Tres segundos, y este es el número que de verdad decide.** Medido
+         * sobre 503 episodios sísmicos de once días del Redmi: solo doce
+         * llegaron a tres segundos, y **ninguno de los doce cayó entre la 1 y
+         * las 7 de la mañana**. Cero falsas alarmas en once noches.
+         *
+         * Un golpe en la mesa, un portazo o un camión son picos y se apagan en
+         * décimas. Un terremoto dura. Esa es la diferencia que la amplitud no
+         * supo dar en tres semanas de intentos.
+         */
+        const val VIGILIA_SOSTENIDO_MS = 3000L
+
+        /** La franja, en hora local. De 01:00 a 06:59. */
+        const val VIGILIA_DESDE_H = 1
+        const val VIGILIA_HASTA_H = 7
     }
 }

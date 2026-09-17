@@ -690,6 +690,14 @@ En Xiaomi y Redmi hacen falta &lt;b&gt;los dos&lt;/b&gt;: el de Android y el pro
     <string name="sonda_nota_respira">El umbral está calibrado contra señal sintética y <i>no</i> se ha contrastado con una persona bajo escombro. Trátalo como una pista, nunca como una confirmación.</string>
     <string name="sonda_nota_barrido">Enseña en qué frecuencias responde el hueco. Sirve para comparar dos sitios, no para medir uno.</string>
 
+    <string name="rot_vigilia">VIGILIA NOCTURNA</string>
+    <string name="ajustes_vigilia">Oído fino de 1:00 a 7:00</string>
+    <string name="ajustes_vigilia_sub">De madrugada el móvil baja el listón a menos de la mitad y, si el suelo se mueve <b>tres segundos seguidos</b>, suena la sirena sin preguntar. Apagado de fábrica.</string>
+
+    <string name="vigilia_como_tit">Para que esto sirva, el móvil tiene que dormir solo</string>
+    <string name="vigilia_como_txt">La vigilia funciona porque de madrugada, quieto, el móvil mide vibraciones diez veces más pequeñas que de día. Eso se pierde entero si lo tocas.\n\n<b>Déjalo sobre una superficie dura y plana</b> — una mesa, una repisa, el suelo. No sobre la cama, ni un cojín, ni un mueble que se mueva.\n\n<b>Lejos de donde duermes</b>, y sin cargador enchufado si el cable puede tirar de él. Darte la vuelta en la cama, un roce o el vibrador de otra notificación bastan para despertarlo.\n\n<b>Y no va a distinguir</b>: a esta sensibilidad, alguien levantándose al baño y apoyándose en la mesa puede dar tres segundos de movimiento. Si el móvil no puede dormir solo, deja esto apagado — una sirena falsa a las tres de la mañana hace más daño que una alarma que no suena.</string>
+    <string name="vigilia_medido">Medido en once días de registro: de 503 sacudidas detectadas, solo doce duraron tres segundos o más, y ninguna de esas doce ocurrió entre la 1 y las 7. Lo que separa un terremoto de un golpe en la mesa no es la fuerza, es que dura.</string>
+
     <string name="ajustes_sismo_online">Contrastar con el catálogo sísmico público</string>
     <string name="ajustes_sismo_online_sub">Consulta los sismos publicados por el EMSC para corroborar lo que mide el móvil. No manda nada tuyo: tu ubicación no viaja y la distancia se calcula aquí. Aun así hace peticiones a un servidor ajeno. Apagado de fábrica.</string>
 

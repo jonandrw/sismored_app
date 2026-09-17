@@ -309,6 +309,17 @@ class Sismografo(
      *  Es lo que se compara con [CICLO_MIN], y se enseña en Diagnóstico. */
     @Volatile var cicloTrabajo = 0.0; private set
 
+    /**
+     * Cuánto lleva el suelo moviéndose de forma sostenida, en milisegundos.
+     *
+     * Es el dato en el que se apoya la vigilia nocturna, y sale de una medida:
+     * sobre 503 episodios de once días de registro, solo doce duraron tres
+     * segundos o más, y **ninguno de esos doce ocurrió entre la 1 y las 7 de la
+     * mañana**. La duración separa lo que la amplitud no pudo separar nunca.
+     */
+    @Volatile var sostenidoMs = 0L; private set
+    private var sostenidoDesde = 0L
+
     /** La última sacudida fue lo bastante grande como para no confundirse con
      *  una mano. Ver [CICLO_FUERTE]. */
     @Volatile var ultimaFuerte = 0L; private set
@@ -615,6 +626,7 @@ class Sismografo(
     fun reiniciar() {
         lta = 9.81; sta = 0.0; caidaLibre = 0
         ai = 0; an = 0; cicloTrabajo = 0.0
+        sostenidoDesde = 0L; sostenidoMs = 0L
         ondaP = false; tUltimaOndaP = 0L; kurtosisP = 3.0
         pRi = 0; pRn = 0; pRing.fill(0.0)
         paLx.reiniciar(); paLy.reiniciar(); paLz.reiniciar()
@@ -922,6 +934,20 @@ class Sismografo(
             if (anilloSta[j] > u) altos++
         }
         cicloTrabajo = if (total > 0) altos.toDouble() / total else 0.0
+
+        /* Cuánto lleva el suelo moviéndose SIN PARAR.
+           Se mide sobre el ciclo de trabajo y no sobre muestras seguidas por lo
+           mismo que está escrito arriba: un terremoto oscila y baja del umbral
+           en cada semiciclo, así que contar muestras consecutivas mide mal.
+           Un golpe en la mesa es un pico y esto se le queda en cero; un
+           terremoto dura, y ahí está toda la diferencia. */
+        if (cicloTrabajo >= CICLO_MIN) {
+            if (sostenidoDesde == 0L) sostenidoDesde = ahoraMs
+            sostenidoMs = ahoraMs - sostenidoDesde
+        } else {
+            sostenidoDesde = 0L
+            sostenidoMs = 0L
+        }
 
         /* Media ventana de muestras como mínimo: recién arrancado el anillo está
            casi vacío y tres muestras altas de tres darían un ciclo de 1,00.

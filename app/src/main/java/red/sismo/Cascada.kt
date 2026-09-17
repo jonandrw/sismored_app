@@ -181,7 +181,20 @@ object Cascada {
          * el acelerómetro de un teléfono no llega: el M5.0 del 16 de septiembre
          * de 2026, a 59 km de profundidad, no dejó ni una lectura en el registro.
          */
-        val alertaCatalogo: Boolean = false
+        val alertaCatalogo: Boolean = false,
+        /**
+         * Vigilia nocturna: el suelo lleva moviéndose sin parar el tiempo que
+         * pide `Opciones.VIGILIA_SOSTENIDO_MS`, dentro de la franja de
+         * madrugada y con el modo encendido.
+         *
+         * Es la única prueba de este teléfono que basta ella sola, y se lo ha
+         * ganado midiendo: en once días de registro, doce episodios llegaron a
+         * tres segundos y **ninguno de madrugada**. Lo que la hace fiable no es
+         * el sensor sino las condiciones — móvil quieto, superficie plana, nadie
+         * cerca— y por eso la app tiene que explicárselas al usuario antes de
+         * dejarle encender esto.
+         */
+        val sostenidaNocturna: Boolean = false
     )
 
     class Decision(val accion: Accion, val quien: Quien, val motivo: String) {
@@ -300,6 +313,18 @@ object Cascada {
            lectura en el registro. Catorce avisos, cero aciertos y un terremoto
            perdido: la relación señal/ruido de este sensor no da para más.
            Si además aquí sacudió fuerte, manda la escalera de abajo. */
+        /* La vigilia nocturna va delante de todo lo demás y no pide segunda
+           opinión. Es la excepción a la regla de que nada dispara con un solo
+           sensor, y se sostiene porque lo que corrobora aquí no es otro aparato
+           sino la DURACIÓN: tres segundos seguidos de suelo moviéndose, de
+           madrugada, con el móvil quieto sobre una superficie. Eso no lo hace
+           una mesa ni un camión, y está medido.
+           Suena directamente porque el objetivo es despertar a alguien, y
+           preguntarle primero a quien duerme gasta los segundos que importan. */
+        if (p.sostenidaNocturna && !p.contestado) {
+            return Decision(Accion.AVISAR, Quien.PERSONA_PROBABLE,
+                "vigilia nocturna: el suelo lleva tres segundos moviéndose sin parar")
+        }
         if (p.alertaCatalogo && !p.sacudidaFuerte && !p.preguntado && !p.contestado) {
             return Decision(Accion.PREGUNTAR_DISCRETA, Quien.NADIE,
                 "un catálogo sísmico confirma un terremoto cerca: aviso discreto")
@@ -530,6 +555,12 @@ object Cascada {
             /* La voz la oye el micro de este mismo movil: es pista, no testigo. */
             Triple("frase de pánico por voz, sin nadie mas que lo confirme", Accion.NADA,
                 Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, vozPanico = true, msDesdeInteraccion = 6 * 3600_000L)),
+            /* Vigilia nocturna: la duración es la que corrobora. */
+            Triple("de madrugada, tres segundos seguidos de suelo moviéndose", Accion.AVISAR,
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sostenidaNocturna = true)),
+            Triple("lo mismo, pero ya ha contestado que está bien", Accion.NADA,
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sostenidaNocturna = true,
+                    contestado = true)),
             /* Lo que sí distingue un terremoto de un camión. */
             Triple("un catálogo oficial confirma un sismo cerca y aquí apenas se notó", Accion.PREGUNTAR_DISCRETA,
                 Pruebas(regimen = Regimen.EN_REPOSO, alertaExterna = true, alertaCatalogo = true)),

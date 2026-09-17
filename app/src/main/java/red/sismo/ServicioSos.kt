@@ -118,6 +118,13 @@ class ServicioSos : Service() {
         /** El umbral que se está aplicando ahora mismo, y en qué régimen. Se
          *  pinta: un detector que cambia de sensibilidad solo tiene que decirlo. */
         @Volatile var umbralActivo = 0.0
+
+        /** ¿Estamos dentro de la franja de vigilia y con la vigilia puesta? */
+        fun enVigilia(op: Opciones): Boolean {
+            if (!op.vigiliaNocturna) return false
+            val h = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+            return h >= Opciones.VIGILIA_DESDE_H && h < Opciones.VIGILIA_HASTA_H
+        }
         @Volatile var enReposoAhora = false
         /** Lo que este móvil mide de sacudida donde está, sin que nadie lo toque.
          *  Es lo que permite proponer un umbral en vez de pedirlo. */
@@ -1291,6 +1298,8 @@ class ServicioSos : Service() {
                sacudida ya no necesita que además se oiga el derrumbe. */
             alertaExterna = alertaExterna,
             alertaCatalogo = System.currentTimeMillis() < alertaCatalogoHasta,
+            sostenidaNocturna = enVigilia(opciones) && enReposoAhora &&
+                sismo.sostenidoMs >= Opciones.VIGILIA_SOSTENIDO_MS,
             caidaImpacto = huboCaida,
             preguntado = preguntaVencida,
             contestado = haContestado,
@@ -2558,7 +2567,15 @@ class ServicioSos : Service() {
                     val quieto = sismo.quietoDesdeHace()
                     val enReposo = postura?.regimenRecordado(quieto, sismo.giroGrados) ==
                         Postura.Regimen.EN_REPOSO
-                    val nuevo = if (enReposo) opciones.umbralReposo else opciones.umbral
+                    /* De madrugada, quieto y con la vigilia puesta, el listón
+                       baja al MMI IV. Solo en reposo: si lo lleva encima, la
+                       vigilia no aplica porque lo que la hace fiable es que el
+                       movil no se esté moviendo por su cuenta. */
+                    val nuevo = when {
+                        enReposo && enVigilia(opciones) -> Opciones.UMBRAL_VIGILIA
+                        enReposo -> opciones.umbralReposo
+                        else -> opciones.umbral
+                    }
                     if (abs(sismo.umbral - nuevo) > 0.01) {
                         sismo.umbral = nuevo
                         umbralActivo = nuevo
