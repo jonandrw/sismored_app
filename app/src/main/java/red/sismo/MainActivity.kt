@@ -1361,9 +1361,18 @@ class MainActivity : AppCompatActivity() {
         val h = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
         val enVentana = h >= Opciones.VIGILIA_DESDE_H && h < Opciones.VIGILIA_HASTA_H
         val quieto = ServicioSos.quietoParaVigilia
+        /* Abrir la app enciende la pantalla, y eso descalifica la vigilia
+           treinta segundos. Sin decirlo, el usuario ve «faltan N s de
+           reposo» sin entender por qué el contador no baja. */
+        val pantallaHace = ServicioSos.pantallaHace
         when {
             !enVentana -> {
                 linea.text = getString(R.string.vigilia_fuera)
+                linea.setTextColor(getColor(R.color.dim))
+            }
+            pantallaHace < 30_000L -> {
+                linea.text = getString(R.string.vigilia_pantalla,
+                    ((30_000L - pantallaHace) / 1000L + 1).toInt())
                 linea.setTextColor(getColor(R.color.dim))
             }
             quieto >= Opciones.VIGILIA_REPOSO_MIN_MS -> {

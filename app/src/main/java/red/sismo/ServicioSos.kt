@@ -153,6 +153,9 @@ class ServicioSos : Service() {
         /** Cuánto lleva el móvil sin que nada lo roce. Lo lee la pantalla
          *  para decir si la vigilia está armada o cuánto le falta. */
         @Volatile var quietoParaVigilia = 0L
+        /** Cuánto hace que se encendió la pantalla. La vigilia no se arma
+         *  con alguien delante, y eso hay que poder verlo. */
+        @Volatile var pantallaHace = Long.MAX_VALUE
         /** La última posición que el servicio llegó a conocer. Nunca sale
          *  del móvil: solo sirve para poner los kilómetros en la lista. */
         @Volatile var ultimaUbicacion: Pair<Double, Double>? = null
@@ -2804,6 +2807,7 @@ class ServicioSos : Service() {
                             maxOf(sismo.quietoDesdeHace(), sismo.quietoAntesDeLaRacha) >=
                                 Opciones.VIGILIA_REPOSO_MIN_MS
                         quietoParaVigilia = sismo.quietoDesdeHace()
+                        pantallaHace = postura?.interaccionHace() ?: Long.MAX_VALUE
                         /* El relevo caduca solo si no ha vuelto a pasar nada. */
                         if (repetidor && contestoBien > 0L &&
                             System.currentTimeMillis() - contestoBien > REPETIDOR_MS) {
