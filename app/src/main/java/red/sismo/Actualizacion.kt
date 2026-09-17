@@ -34,10 +34,11 @@ import kotlin.concurrent.thread
 object Actualizacion {
 
     /**
-     * El servidor propio. **Vacío mientras no haya dominio**, y entonces se
-     * pregunta solo a GitHub. El día que lo haya, se rellena aquí y ya está.
+     * El servidor propio. Es un fichero estático servido por Cloudflare
+     * Pages, no un proceso: no hay nada que se pueda caer. Si aun así no
+     * contesta, se pregunta a GitHub.
      */
-    private const val SITIO = ""
+    private const val SITIO = "https://sismored.app"
 
     private const val GITHUB =
         "https://api.github.com/repos/jonandrw/sismored_app/releases/latest"
