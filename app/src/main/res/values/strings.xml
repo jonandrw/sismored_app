@@ -270,7 +270,7 @@
     <string name="ac_sub_faq">Lo que suele preguntarse antes de fiarse de esto.</string>
     <string name="ac_sub_contacto">El código está publicado y se puede revisar entero.</string>
     <string name="ac_rot_que">QUÉ ES Y QUÉ NO ES</string>
-    <string name="ac_que">SismoRed convierte tu móvil en una <b>baliza de emergencia que funciona sin internet</b>. Hace sonar una sirena aunque la pantalla esté bloqueada, avisa por sonido a los móviles que tengas cerca, emite una señal de radio para que te encuentren bajo los escombros y guarda una ficha médica que quien te atienda pueda leer sin desbloquear el teléfono.</string>
+    <string name="ac_que">SismoRed convierte tu móvil en <b>algo útil ante un terremoto</b>: vigila mientras duermes, avisa cuando ya no hay cobertura y ayuda a que te encuentren.</string>
     <string name="ac_rot_no">LO QUE NO PUEDE HACER</string>
     <string name="ac_no"><b>No sustituye a los servicios de emergencia.</b> Llama siempre que puedas.
 
