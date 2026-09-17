@@ -33,22 +33,26 @@
                 android:scaleType="fitStart"
                 android:src="@drawable/logotipo" />
 
-            <!-- Campana: cuántos sismos hay sin mirar. Abre el registro ya
-                 filtrado a sismos, que es lo que se viene buscando. -->
+            <!-- Campana: siempre visible, porque un botón que se esconde
+                 cuando no hay nada tampoco se puede pulsar para mirar.
+                 El número solo aparece si hay algo que contar. -->
             <TextView
                 android:id="@+id/btn_campana"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="8dp"
                 android:background="@drawable/chip"
+                android:contentDescription="Sismos"
+                android:drawableStart="@drawable/ic_campana"
+                android:drawablePadding="7dp"
                 android:fontFamily="@font/mono"
+                android:gravity="center_vertical"
                 android:paddingStart="11dp"
                 android:paddingEnd="11dp"
                 android:paddingTop="7dp"
                 android:paddingBottom="7dp"
-                android:textColor="@color/tx"
-                android:textSize="12sp"
-                android:visibility="gone" />
+                android:textColor="@color/rd"
+                android:textSize="12sp" />
 
             <!-- Píldora de estado (Maqueta 01) -->
             <LinearLayout

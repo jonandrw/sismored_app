@@ -1342,9 +1342,10 @@ class MainActivity : AppCompatActivity() {
                 ).size
             } catch (_: Exception) { 0 }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                campana.text = if (n == 1) getString(R.string.campana_un_sismo)
-                               else getString(R.string.campana_sismos, n)
-                campana.visibility = if (n > 0) View.VISIBLE else View.GONE
+                /* Solo el número: la palabra «sismos» al lado de una
+                   campana no añade nada. Y sin número, la campana sola,
+                   que sigue abriendo la lista. */
+                campana.text = if (n > 0) n.toString() else ""
             }
         }
         pintarVigilia()

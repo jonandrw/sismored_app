@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Campana. De trazo y con la misma anchura que el resto de los iconos de la
+     barra: rellena se veía como un borrón a 24dp. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="1.7"
+        android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M6 10a6 6 0 0 1 12 0v4l1.5 3H4.5L6 14zM9.5 19.5a2.5 2.5 0 0 0 5 0" />
+</vector>
