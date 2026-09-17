@@ -339,6 +339,20 @@ class MallaAcustica(
         private const val RAFAGAS_MIN = 4
 
         private const val AMP = 0.45            // dos tonos sumados = 0,9; por encima recorta
+
+        /**
+         * Amplitud de una rafaga con UN solo tono.
+         *
+         * Cuando la portadora y el tono van a la vez tienen que repartirse la
+         * escala —0,45 cada uno— porque sumados llegan a 0,9 y por encima
+         * recorta. Yendo por separado, cada uno se lleva la escala entera: son
+         * **+6 dB**, mas que todo lo demas que se ha hecho hoy junto.
+         */
+        private const val AMP_SOLO = 0.95
+
+        /** Cuanto vale una portadora oida. Las rafagas van cada 400 ms y la
+         *  portadora alterna con el tono, asi que 1,5 s cubre de sobra. */
+        private const val MARK_VALE_MS = 1500L
         private const val TAG = "SismoRed"
     }
 
@@ -509,6 +523,9 @@ class MallaAcustica(
     private var tonoVivo = false
     private var nivelAhora = -999.0
 
+    /** Cuando se oyo la portadora por ultima vez. Ver [MARK_VALE_MS]. */
+    private var ultimoMark = 0L
+
     /**
      * Marcos seguidos por debajo del pico antes de dar la rafaga por acabada.
      *
@@ -542,10 +559,6 @@ class MallaAcustica(
            «aquí no hay nada» también es una lectura y es la que más se ve. */
         niveles[0] = vMark
         sueloDb = umbral
-        if (vMark < umbral) {
-            for (i in TONOS.indices) niveles[i + 1] = dB(pico(x, TONOS[i]))
-            tonoCrudo = false; picoRacha = -999.0; marcosBajos = MARCOS_FIN; tonoVivo = false; confirma = 0; return 0
-        }
         var mejor = 0; var mejorV = -999.0; var segundoV = -999.0
         for (hop in 1..TONOS.size) {
             val v = dB(pico(x, TONOS[hop - 1]))
@@ -553,7 +566,25 @@ class MallaAcustica(
             if (v > mejorV) { segundoV = mejorV; mejorV = v; mejor = hop }
             else if (v > segundoV) { segundoV = v }
         }
-        if (mejorV <= umbral) { tonoCrudo = false; picoRacha = -999.0; marcosBajos = MARCOS_FIN; tonoVivo = false; confirma = 0; return 0 }
+
+        /* La portadora y el tono ya NO vienen a la vez: alternan rafaga a
+           rafaga para que cada uno se lleve la escala entera. Asi que en cada
+           marco manda el que suena mas fuerte, y eso mismo dice de que rafaga
+           se trata sin necesidad de contar nada.
+           Ojo con por que hace falta la comparacion y no basta el umbral: la
+           portadora esta a 400 Hz de la alerta, y una portadora fuerte se
+           derrama un poco en ese bin. Pidiendo que el tono GANE a la portadora,
+           ese derrame no puede hacerse pasar por una alerta. */
+        val hayMark = vMark > umbral && vMark >= mejorV
+        val hayTono = mejorV > umbral && mejorV > vMark
+        if (hayMark) ultimoMark = System.currentTimeMillis()
+
+        /* Para la cadencia da igual cual de los dos sea: lo que se mide es el
+           tren de rafagas, y siguen saliendo una cada 400 ms. */
+        val nivelRafaga = maxOf(vMark, mejorV)
+        if (!hayMark && !hayTono) {
+            tonoCrudo = false; picoRacha = -999.0; marcosBajos = MARCOS_FIN; tonoVivo = false; confirma = 0; return 0
+        }
         /* Hay tono: la cadencia lo cuenta igual. Lo que no hay es un salto
            legible, así que este marco no dice nada. */
         tonoCrudo = true
@@ -569,15 +600,21 @@ class MallaAcustica(
 
            Comparar contra el pico de la propia rafaga y no contra el ruido de
            fondo: da igual lo fuerte que llegue, lo que importa es que baje. */
-        nivelAhora = mejorV
-        if (mejorV > picoRacha) picoRacha = mejorV
+        nivelAhora = nivelRafaga
+        if (nivelRafaga > picoRacha) picoRacha = nivelRafaga
         /* Viva mientras no lleve MARCOS_FIN seguidos caida por debajo de su
            propio pico. Comparar contra el pico de la rafaga y no contra el
            ruido de fondo: da igual lo fuerte que llegue, importa que baje. */
-        if (picoRacha > -900.0 && mejorV > picoRacha - HIST_DB) marcosBajos = 0 else marcosBajos++
+        if (picoRacha > -900.0 && nivelRafaga > picoRacha - HIST_DB) marcosBajos = 0 else marcosBajos++
         tonoVivo = marcosBajos < MARCOS_FIN
         if (!tonoVivo) picoRacha = -999.0
+        /* Una rafaga de portadora no identifica ningun salto: solo sostiene el
+           tren y avala las rafagas de tono que vengan al lado. */
+        if (!hayTono) { confirma = 0; return 0 }
         if (mejorV - segundoV < SEPARACION_DB) { confirma = 0; return 0 }
+        /* Y un tono sin portadora reciente no es de la malla: es un pitido
+           cualquiera que ha caido en esa frecuencia. */
+        if (System.currentTimeMillis() - ultimoMark > MARK_VALE_MS) { confirma = 0; return 0 }
         confirma = if (mejor == confirmaHop) confirma + 1 else 1
         confirmaHop = mejor
         /* DOS marcos, no tres. Se probó con tres y el autotest lo cazó: el
@@ -974,8 +1011,14 @@ class MallaAcustica(
                 val fLegado = TONOS[h0 - 1]
                 val rampa = (0.008 * sr).toInt()          // 8 ms; un corte seco se
                                                           // derrama por toda la banda
+                /* Las rafagas alternan PORTADORA y TONO en vez de llevar los dos
+                   a la vez. Cada uno se lleva entonces la escala entera en vez
+                   de la mitad: +6 dB. El receptor lo reconstruye porque sabe
+                   que van alternas y porque en cada rafaga manda el que suena
+                   mas fuerte. */
                 for (b in 0 until BURST_N) {
-                    val fHop = if (b % 2 == 0) fRobusto else fLegado
+                    val esMark = b % 2 == 0
+                    val fHop = if ((b / 2) % 2 == 0) fRobusto else fLegado
                     val base = b * (nOn + nOff)
                     for (i in 0 until nOn) {
                         val t = i.toDouble() / sr
@@ -984,7 +1027,7 @@ class MallaAcustica(
                             i > nOn - rampa -> (nOn - i).toDouble() / rampa
                             else -> 1.0
                         }
-                        val s = (sin(2.0 * PI * MARK * t) + sin(2.0 * PI * fHop * t)) * AMP * env
+                        val s = (if (esMark) sin(2.0 * PI * MARK * t) else sin(2.0 * PI * fHop * t)) * AMP_SOLO * env
                         pcm[base + i] = (s * Short.MAX_VALUE).toInt().toShort()
                     }
                     // el silencio ya viene a cero
@@ -1033,16 +1076,25 @@ class MallaAcustica(
            18,8 kHz, las más difíciles de reproducir y de oír— no se probaban
            nunca. */
         val h0 = hop.coerceIn(1, TONOS.size)
-        val x = ShortArray(N)
         val fHop = TONOS[h0 - 1]
-        for (i in 0 until N) {
-            val t = i.toDouble() / srRx
-            val s = (sin(2.0 * PI * MARK * t) + sin(2.0 * PI * fHop * t)) * AMP
-            x[i] = (s * Short.MAX_VALUE).toInt().toShort()
+        /* Desde que la portadora y el tono alternan, el autotest tiene que
+           inyectar las dos clases de rafaga: primero una de portadora —que es
+           la que avala— y luego las de tono. Sintetizarlos juntos, como se
+           hacia antes, ya no representa lo que sale por el altavoz. */
+        fun marco(f: Double): ShortArray {
+            val x = ShortArray(N)
+            for (i in 0 until N) {
+                val t = i.toDouble() / srRx
+                x[i] = (sin(2.0 * PI * f * t) * AMP_SOLO * Short.MAX_VALUE).toInt().toShort()
+            }
+            return x
         }
-        confirma = 0; confirmaHop = 0
-        decodificar(x)                 // el decodificador exige dos marcos
-        val got = decodificar(x)
+        val xMark = marco(MARK)
+        val xTono = marco(fHop)
+        confirma = 0; confirmaHop = 0; ultimoMark = 0L
+        decodificar(xMark)             // la portadora avala lo que venga detras
+        decodificar(xTono)             // el decodificador exige dos marcos de tono
+        val got = decodificar(xTono)
         confirma = 0; confirmaHop = 0   // que la escucha real empiece limpia
         val expected = when (h0) {
             CODIGO_SILENCIO_ROBUSTO -> CODIGO_SILENCIO
