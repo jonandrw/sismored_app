@@ -1812,6 +1812,11 @@ class MainActivity : AppCompatActivity() {
            ALERTA AHORA. Aquí sí se puede encontrar, y sigue pidiendo
            confirmación antes de encenderse. */
         findViewById<View>(R.id.sw_envio)?.setOnClickListener { conmutarEnvio() }
+        findViewById<View>(R.id.sw_vigilia)?.setOnClickListener {
+            op.vigiliaNocturna = !op.vigiliaNocturna
+            arrancarServicio(ServicioSos.ACCION_OPCIONES)
+            pintar()
+        }
         findViewById<View>(R.id.sw_sismo_online)?.setOnClickListener {
             op.sismoOnline = !op.sismoOnline
             arrancarServicio(ServicioSos.ACCION_OPCIONES)
@@ -1878,7 +1883,12 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<View>(R.id.fila_atajo_volumen)?.setOnClickListener { abrirAjustesAccesibilidad() }
         findViewById<VistaInterruptor>(R.id.sw_atajo_volumen)?.let { sw ->
-            sw.colorActivo = getColor(R.color.rd)
+            /* Verde como los demás de Ajustes. Estaba en rojo y era el único:
+               en esta app el rojo significa alarma —la sirena, el pánico, la
+               emisión propia—, no «ajuste encendido». Un interruptor rojo en
+               una lista de interruptores verdes se lee como una advertencia
+               que no es. */
+            sw.colorActivo = getColor(R.color.gr)
             sw.setOnCheckedChangeListener { _ -> abrirAjustesAccesibilidad() }
         }
 
@@ -3140,6 +3150,7 @@ class MainActivity : AppCompatActivity() {
         // Fuera del freno de dos segundos: un interruptor tiene que moverse al tocarlo.
         actualizarSwTactico(R.id.sw_envio, op.envio)
         actualizarSwTactico(R.id.sw_sismo_online, op.sismoOnline)
+        actualizarSwTactico(R.id.sw_vigilia, op.vigiliaNocturna)
         val ahora = System.currentTimeMillis()
         if (!forzar && ahora - diagUltimo < 2000) return
         diagUltimo = ahora

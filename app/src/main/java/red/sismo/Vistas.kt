@@ -382,7 +382,12 @@ class VistaInterruptor @JvmOverloads constructor(
         c.drawRoundRect(rectTrack, radius, radius, pTrack)
 
         // Thumb blend
-        val cThumbOn = android.graphics.Color.parseColor("#0A0F06")
+        /* Blanco encendido, gris apagado: exactamente los mismos dos colores que
+           usa `sw_tactico` en sus drawables. Estaba en #0A0F06, casi negro, y en
+           Ajustes se veia un circulo negro sobre verde justo al lado de otros
+           interruptores blancos sobre verde. Dos mecanismos distintos pintando
+           el mismo control tienen que dar el mismo control. */
+        val cThumbOn = android.graphics.Color.parseColor("#FFFFFF")
         val cThumbOff = android.graphics.Color.parseColor("#7C858D")
         val thumbColor = androidx.core.graphics.ColorUtils.blendARGB(cThumbOff, cThumbOn, progress)
         pThumb.color = thumbColor
