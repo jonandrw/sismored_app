@@ -699,6 +699,15 @@ class Sismografo(
                 if (ultimoTemblor > 0L && ultimaMano - ultimoTemblor < RETRO_MANO_MS) {
                     ultimoTemblor = 0L
                 }
+                /* Y la racha sostenida se cae ENTERA, sin ventana que valga.
+                   Es lo que separa un terremoto de madrugada de su dueño
+                   cogiendo el móvil a las tres: las dos cosas empiezan igual
+                   —treinta minutos de quietud y de pronto movimiento— y solo
+                   una de las dos gira el teléfono. Si aparece una mano en
+                   cualquier momento de los tres segundos, esos tres segundos
+                   no cuentan. */
+                sostenidoDesde = 0L
+                sostenidoMs = 0L
             }
         }
         if (gn > 1e-3) {

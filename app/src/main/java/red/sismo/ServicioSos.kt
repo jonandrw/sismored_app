@@ -1331,9 +1331,18 @@ class ServicioSos : Service() {
                sacudida ya no necesita que además se oiga el derrumbe. */
             alertaExterna = alertaExterna,
             alertaCatalogo = System.currentTimeMillis() < alertaCatalogoHasta,
+            /* La vigilia nocturna dispara lo más caro que tiene la app sin
+               preguntar a nadie, así que se le exigen cuatro cosas a la vez.
+               Las dos últimas son por el mismo caso: a las tres de la
+               mañana, después de media hora quieto, coger el móvil para ver
+               la hora produce exactamente la misma señal que un sismo. Lo
+               que no produce un sismo es girar el teléfono ni encender la
+               pantalla. */
             sostenidaNocturna = enVigilia(opciones) && enReposoAhora &&
                 sismo.sostenidoMs >= Opciones.VIGILIA_SOSTENIDO_MS &&
-                sismo.quietoAntesDeLaRacha >= Opciones.VIGILIA_REPOSO_MIN_MS,
+                sismo.quietoAntesDeLaRacha >= Opciones.VIGILIA_REPOSO_MIN_MS &&
+                !sismo.hayMano &&
+                (p == null || p.interaccionHace() > 30_000L),
             caidaImpacto = huboCaida,
             preguntado = preguntaVencida,
             contestado = haContestado,
