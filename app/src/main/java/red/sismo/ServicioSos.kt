@@ -1792,6 +1792,23 @@ class ServicioSos : Service() {
         try { vibrador?.cancel() } catch (_: Exception) {}
         try { radio?.parar(); radioEmitiendo = false; radioMotivo = "estoy bien" } catch (_: Exception) {}
         try { fichaLan?.emitir(false) } catch (_: Exception) {}
+        /* Y CALLAR LA MALLA, que se quedaba fuera de esta lista.
+
+           Medido entre dos móviles el 17 de septiembre: uno dice «estoy bien»,
+           se apaga todo lo demás y el pulso de rescate sigue saliendo cada
+           12 s para siempre. El otro lo oye y lo reemite, este oye el reenvío,
+           y a los noventa segundos uno de los dos vuelve a entrar en pánico él
+           solo. Dos móviles bastan para realimentarse; en un edificio con
+           veinte esto no se para nunca.
+
+           Se corta la EMISIÓN, no la escucha: el relevo sigue en pie y por eso
+           justo debajo se enciende la malla si estaba apagada. Quien está bien
+           deja de pedir ayuda y pasa a pasarla. */
+        try { malla?.pararEmision() } catch (_: Exception) {}
+        if (enRescate) {
+            enRescate = false
+            anotar("modo rescate apagado: has dicho que estás bien")
+        }
         /* Y desde este momento el móvil trabaja para los demás. Encender la
            malla aquí es la única vez que se enciende sin que la pida el usuario,
            y se dice en el registro en vez de hacerlo por la espalda: quien acaba
