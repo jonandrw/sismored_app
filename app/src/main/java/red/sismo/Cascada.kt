@@ -322,9 +322,15 @@ object Cascada {
            madrugada, con el móvil quieto sobre una superficie. Eso no lo hace
            una mesa ni un camión, y está medido.
            Suena directamente porque el objetivo es despertar a alguien, y
-           preguntarle primero a quien duerme gasta los segundos que importan. */
+           preguntarle primero a quien duerme gasta los segundos que importan.
+
+           Y va a AUXILIO, no a AVISAR: de madrugada no hay nadie mirando la
+           pantalla para escalar la alarma si la cosa empeora, así que o se
+           hace todo en el primer segundo o no se hace. Quien esté bien lo
+           apaga en cinco segundos; quien no lo esté ya tiene la baliza y el
+           aviso a los vecinos en marcha sin haber tocado nada. */
         if (p.sostenidaNocturna && !p.contestado) {
-            return Decision(Accion.AVISAR, Quien.PERSONA_PROBABLE,
+            return Decision(Accion.AUXILIO, Quien.PERSONA_PROBABLE,
                 "vigilia nocturna: el suelo lleva tres segundos moviéndose sin parar")
         }
         if (p.alertaCatalogo && !p.sacudidaFuerte && !p.preguntado && !p.contestado) {
@@ -576,7 +582,7 @@ object Cascada {
             Triple("frase de pánico por voz, sin nadie mas que lo confirme", Accion.NADA,
                 Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, vozPanico = true, msDesdeInteraccion = 6 * 3600_000L)),
             /* Vigilia nocturna: la duración es la que corrobora. */
-            Triple("de madrugada, tres segundos seguidos de suelo moviéndose", Accion.AVISAR,
+            Triple("de madrugada, tres segundos seguidos de suelo moviéndose", Accion.AUXILIO,
                 Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sostenidaNocturna = true)),
             Triple("lo mismo, pero ya ha contestado que está bien", Accion.NADA,
                 Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sostenidaNocturna = true,

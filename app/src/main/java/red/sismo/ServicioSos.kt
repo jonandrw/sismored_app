@@ -1144,13 +1144,13 @@ class ServicioSos : Service() {
     }
 
     /** El botón EMITIR ALERTA AHORA de la pantalla de malla. */
-    private fun emitirAlertaMalla() {
+    private fun emitirAlertaMalla(motivo: String = "a mano") {
         val m = malla
         if (m == null) {
             anotar("no se puede avisar: la malla no está encendida")
             return
         }
-        anotar("alerta emitida a la malla a mano")
+        anotar("alerta emitida a la malla · $motivo")
         try { m.emitirUna(MallaAcustica.CODIGO_ALERTA) } catch (_: Exception) {}
     }
 
@@ -1465,6 +1465,13 @@ class ServicioSos : Service() {
                 cancelarWatchdogSuceso()
                 anotar("${Cascada.rotulo(d.quien)} · ${d.motivo}")
                 panico(d.motivo)
+                /* De madrugada el aviso no puede quedarse en este móvil. Quien
+                   duerme en el piso de al lado tiene los mismos segundos que
+                   tú, y es el único momento en que este teléfono sabe algo
+                   antes que su dueño. Va aquí y no dentro de `panico` porque
+                   un pánico por voz no es un terremoto: esto solo sale cuando
+                   lo ha dicho el sismógrafo. */
+                if (pr.sostenidaNocturna) emitirAlertaMalla("vigilia nocturna")
             }
         }
     }

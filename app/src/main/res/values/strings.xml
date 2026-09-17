@@ -735,7 +735,7 @@ Es la única forma de comprobar el tramo que no se puede ensayar de otra manera.
     <string name="lbl_camara_linterna">Cámara / linterna</string>
     <string name="lbl_cerrar_canal">CERRAR CANAL</string>
     <string name="lbl_chiton">CHITÓN</string>
-    <string name="lbl_codigo_abierto">CÓDIGO ABIERTO</string>
+    <string name="lbl_codigo_abierto">GPL-3.0</string>
     <string name="lbl_confirmar_antes_de_la_sirena">Confirmar antes de la sirena</string>
     <string name="lbl_consola_de_registros">Consola de registros</string>
     <string name="lbl_contribuir">Contribuir</string>
@@ -767,6 +767,9 @@ Es la única forma de comprobar el tramo que no se puede ensayar de otra manera.
     <string name="lbl_grupo_sanguineo">Grupo sanguíneo</string>
     <string name="lbl_hablar_abajo">HABLAR ABAJO</string>
     <string name="lbl_hallazgos">HALLAZGOS</string>
+    <string name="hist_solo_sismos">SOLO SISMOS</string>
+    <string name="hist_todo">TODO</string>
+    <string name="hist_sin_sismos">Todavía no se ha registrado ningún sismo.</string>
     <string name="lbl_historial_persistente">HISTORIAL PERSISTENTE</string>
     <string name="lbl_interfono">INTERFONO</string>
     <string name="lbl_las_dos_reglas_del_proyecto">LAS DOS REGLAS DEL PROYECTO</string>

@@ -80,3 +80,20 @@ Preferimos «no lo sé» a un número bonito.
 telemetría. Lo único que se emite es la baliza de radio y la ficha, y solo con la alarma
 o el modo rescate activos: está escrito con esas palabras en la pantalla de la ficha. Si
 una propuesta cambia eso, tiene que cambiar también lo que el usuario lee.
+
+---
+
+## Licencia y autoría
+
+Copyright (C) 2026 Juan Torres
+
+SismoRed es software libre: puedes redistribuirlo y modificarlo bajo los términos
+de la Licencia Pública General de GNU, versión 3, tal como la publica la Free
+Software Foundation. El texto completo está en [LICENSE](LICENSE).
+
+Se distribuye con la esperanza de que sea útil, pero **SIN NINGUNA GARANTÍA**, ni
+siquiera la garantía implícita de comerciabilidad o idoneidad para un fin concreto.
+
+La licencia es copyleft a propósito. En una app donde un fallo puede costar una
+vida, quien la modifique y la reparta tiene que publicar sus cambios: nadie debería
+poder cerrar esto y venderlo sin que se pueda auditar qué le hizo.
