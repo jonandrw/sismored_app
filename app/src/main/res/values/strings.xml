@@ -782,6 +782,7 @@ Es la única forma de comprobar el tramo que no se puede ensayar de otra manera.
     <string name="hist_sin_semana">No ha temblado cerca en los últimos siete días.</string>
     <string name="hist_todos_dias">Todos</string>
     <string name="hist_sub_vacio">sin sismos</string>
+    <string name="hist_consultando">consultando los catálogos…</string>
     <string name="hist_sub_con_nuevos">%1$d sin ver · %2$d en siete días</string>
     <string name="dia_hoy">Hoy</string>
     <string name="dia_ayer">Ayer</string>

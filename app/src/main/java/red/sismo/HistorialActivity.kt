@@ -23,6 +23,8 @@ class HistorialActivity : AppCompatActivity() {
     private var delCatalogo: List<EventoBD> = emptyList()
     /** El día elegido en la fila de chips, o null para todos. */
     private var diaElegido: String? = null
+    /** Mientras la consulta al catálogo está en vuelo. */
+    private var consultando = true
 
     companion object {
         /**
@@ -152,8 +154,10 @@ class HistorialActivity : AppCompatActivity() {
                     )
                 }
             } catch (_: Exception) { emptyList() }
+            withContext(Dispatchers.Main) { consultando = false }
             if (oficiales.isNotEmpty()) withContext(Dispatchers.Main) {
                 delCatalogo = oficiales
+                consultando = false
                 pintar()
             }
         }
@@ -253,7 +257,10 @@ class HistorialActivity : AppCompatActivity() {
         adapter.submitList(conDias(lista), limpiadoHasta)
 
         val nuevos = lista.count { it.fechaMs > limpiadoHasta }
+        /* Que se sepa que aún falta por llegar: la lista crece unos
+           milisegundos después y sin avisar parece un salto raro. */
         findViewById<TextView>(R.id.tv_sub)?.text = when {
+            consultando -> getString(R.string.hist_consultando)
             lista.isEmpty() -> getString(R.string.hist_sub_vacio)
             nuevos > 0 -> getString(R.string.hist_sub_con_nuevos, nuevos, lista.size)
             else -> resources.getQuantityString(R.plurals.hist_sub_semana, lista.size, lista.size)

@@ -130,6 +130,15 @@ class ServicioSos : Service() {
          */
         const val REPETIDOR_MS = 30 * 60_000L
 
+        /**
+         * Cuanto vale un «estoy bien» antes de volver a preguntar.
+         *
+         * Cinco minutos: cubre de sobra lo que dura una sacudida y sus
+         * replicas inmediatas, y no tanto como para dejar el movil mudo si
+         * media hora despues llega un segundo terremoto de verdad.
+         */
+        const val CONTESTADO_VALE_MS = 5 * 60_000L
+
         /** El umbral que se está aplicando ahora mismo, y en qué régimen. Se
          *  pinta: un detector que cambia de sensibilidad solo tiene que decirlo. */
         @Volatile var umbralActivo = 0.0
@@ -1385,7 +1394,14 @@ class ServicioSos : Service() {
                 (p == null || p.interaccionHace() > 30_000L),
             caidaImpacto = huboCaida,
             preguntado = preguntaVencida,
-            contestado = haContestado,
+            /* Y que la respuesta DURE. `estoyBien()` marca la bandera y
+               acto seguido llama a `cerrarSuceso()`, que la borra: medido
+               el 17 de septiembre, 180 ms despues de pulsar ESTOY BIEN el
+               movil volvia a entrar en panico porque el suelo seguia
+               moviendose. Contestar no puede depender de que el temblor
+               haya parado; si ha dicho que esta bien, lo esta. */
+            contestado = haContestado ||
+                (contestoBien > 0L && System.currentTimeMillis() - contestoBien < CONTESTADO_VALE_MS),
             pasosDespues = pasosDespues,
             /* Solo cuenta si desbloqueó DESPUÉS del suceso: que hubiera mirado el
                móvil hace una hora no dice nada de ahora. */
