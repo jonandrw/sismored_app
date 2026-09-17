@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- El fondo no es plano: un rojo muy velado arriba que se apaga hacia abajo.
+     Da profundidad sin competir con las tarjetas, y ata la pantalla al rojo de
+     la app sin teñirla. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient
+        android:angle="270"
+        android:startColor="#140E0F"
+        android:centerColor="#090A0B"
+        android:endColor="@color/bg"
+        android:type="linear" />
+</shape>

@@ -1326,12 +1326,11 @@ class MainActivity : AppCompatActivity() {
     private fun refrescarBarraAvisos() {
         val campana = findViewById<android.widget.TextView>(R.id.btn_campana) ?: return
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            /* Las últimas 24 h, y nada de lo que ya se dio por visto al
-               limpiar la lista: una campana que vuelve a encenderse sola
-               deja de significar nada. */
-            val limpiado = getSharedPreferences("sismored", MODE_PRIVATE)
+            /* Solo lo que no se ha visto. Nada de ventanas de 24 h: una
+               campana que vuelve a encenderse sola deja de significar
+               nada, y si ya se miró el panel el contador va a cero. */
+            val desde = getSharedPreferences("sismored", MODE_PRIVATE)
                 .getLong("sismos_vistos_hasta", 0L)
-            val desde = maxOf(System.currentTimeMillis() - 24 * 3600_000L, limpiado)
             /* Agrupado con el mismo criterio que el panel: si la campana
                dice siete y dentro hay cuatro, la campana miente. */
             val n = try {

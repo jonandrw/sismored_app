@@ -104,6 +104,25 @@ class ReceptorSismicoOnline(
         /** Tope duro, por si una magnitud absurda dispara la fórmula. */
         private const val RADIO_MAX_KM = 900.0
 
+        /**
+         * El recuadro del país, para la lista de reportes.
+         *
+         * Es un rectángulo, no una frontera: sobra mar y falta un trozo de
+         * la Guajira. Da igual, porque no se está decidiendo nada legal —se
+         * está decidiendo qué enseñar en una lista— y un rectángulo no
+         * necesita un mapa de polígonos de varios megas dentro del APK.
+         *
+         * Los mismos números que ya usaba el receptor para decidir si un
+         * sismo sin posición propia merecía aviso.
+         */
+        private val PAIS_LAT = -4.5..13.5
+        private val PAIS_LON = -79.5..-66.5
+
+        /** Y lo que cae justo al otro lado de la frontera cuenta igual: un
+         *  sismo en Ecuador a 80 km se nota más que uno en la Guajira a
+         *  900. El país filtra, la cercanía rescata. */
+        private const val CERCA_KM = 200.0
+
         /** Por debajo de esto no se mira nada, venga de donde venga. */
         private const val MAG_MIN = 3.0
         /**
@@ -177,6 +196,99 @@ class ReceptorSismicoOnline(
         SGC_URL, sgc = true,
         ua = "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36"
     )
+
+    /** Un sismo tal como lo publica el catálogo, sin filtrar por cercanía. */
+    data class Reporte(
+        val magnitud: Double,
+        val lugar: String,
+        val distanciaKm: Double,
+        val fechaMs: Long,
+        val fuente: String
+    )
+
+    /**
+     * Todos los reportes oficiales del día, no solo los que dispararon aviso.
+     *
+     * El receptor solo anuncia lo que está cerca y pasa del umbral, que es lo
+     * correcto para despertar a alguien pero deja fuera casi todo lo que
+     * publica el catálogo. Quien abre la lista después de notar algo quiere
+     * ver **lo que ha pasado hoy**, incluido el M2.8 a 200 km que no merecía
+     * una notificación.
+     *
+     * Va en el hilo que lo llame: dos peticiones de red y a callar.
+     */
+    fun reportesRecientes(dias: Int = 7): List<Reporte> {
+        val out = ArrayList<Reporte>()
+        val ubi = getUbicacion()
+        val miLat = ubi?.first ?: 0.0
+        val miLon = ubi?.second ?: 0.0
+        val desde = java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.HOUR_OF_DAY, 0); set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0); set(java.util.Calendar.MILLISECOND, 0)
+        }.timeInMillis - (dias - 1) * 86_400_000L
+
+        for ((url, sgc, ua) in listOf(
+            Triple(SGC_URL, true, "Mozilla/5.0 (Linux; Android) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36"),
+            Triple(EMSC_URL, false, "SismoRed-Android/OpenEmergency")
+        )) {
+            try {
+                val conn = (URL(url).openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 8000; readTimeout = 12000; requestMethod = "GET"
+                    setRequestProperty("User-Agent", ua)
+                    if (sgc) setRequestProperty("Referer", "https://www.sgc.gov.co/")
+                }
+                if (conn.responseCode != 200) { conn.disconnect(); continue }
+                val txt = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
+                conn.disconnect()
+                val fs = JSONObject(txt).optJSONArray("features") ?: continue
+                for (i in 0 until fs.length()) {
+                    val f = fs.getJSONObject(i)
+                    val props = f.optJSONObject("properties") ?: continue
+                    val coords = f.optJSONObject("geometry")?.optJSONArray("coordinates") ?: continue
+                    if (coords.length() < 2) continue
+                    val lat = if (sgc) coords.getDouble(0) else coords.getDouble(1)
+                    val lon = if (sgc) coords.getDouble(1) else coords.getDouble(0)
+                    val t = if (sgc) parseSgc(props.optString("utcTime", ""))
+                            else parseIso(props.optString("time", ""))
+                    if (t < desde) continue
+                    val d = if (miLat != 0.0 || miLon != 0.0)
+                        distanciaKm(miLat, miLon, lat, lon) else -1.0
+                    /* Lo que pasa al otro lado del mundo no es un reporte
+                       que a nadie le sirva aquí: con el catálogo global
+                       entero la lista traía Sumatra a 19.568 km entre los
+                       sismos del Chocó. Sin posición no se descarta nada,
+                       que es mejor enseñar de más que dejar a ciegas. */
+                    val mag = props.optDouble("mag", 0.0)
+                    val enPais = lat in PAIS_LAT && lon in PAIS_LON
+                    val muyCerca = d >= 0 && d <= CERCA_KM
+                    if (!enPais && !muyCerca) continue
+                    /* Y que se hubiera podido notar: un M1.6 a 433 km está
+                       en el país y no lo sintió nadie. Se usa el mismo
+                       radio con el que la app decide si avisar, que ya está
+                       calibrado contra el catálogo. Sin posición no se
+                       descarta: mejor de más que dejar la lista vacía. */
+                    if (d >= 0 && d > radioAviso(mag)) continue
+                    out.add(Reporte(
+                        mag,
+                        props.optString("flynn_region", props.optString("place", "Región desconocida")),
+                        d,
+                        t,
+                        if (sgc) "SGC" else "EMSC"
+                    ))
+                }
+            } catch (e: Exception) {
+                Log.d(TAG, "reportes del día, ${if (sgc) "SGC" else "EMSC"}: ${e.message}")
+            }
+        }
+        /* Mismo sismo publicado por los dos catálogos: se queda el del
+           SGC. No se puede deduplicar por magnitud porque cada red publica
+           la suya —el de las 16:10 salía como M4.9 en EMSC y M4.6 en el
+           SGC— así que se agrupa por instante, en cubos de cinco minutos,
+           y manda la red nacional, que es la que tiene estaciones cerca. */
+        return out.sortedWith(compareByDescending<Reporte> { it.fechaMs }
+                .thenBy { if (it.fuente == "SGC") 0 else 1 })
+            .distinctBy { it.fechaMs / 300_000L }
+    }
 
     private fun consultar(urlStr: String, sgc: Boolean, ua: String) {
         val conn = (URL(urlStr).openConnection() as HttpURLConnection).apply {

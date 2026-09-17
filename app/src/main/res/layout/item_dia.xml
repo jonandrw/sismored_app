@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Separador de día. Sin él, siete días de sismos son una lista de fechas
+     que hay que leer una por una para saber cuál es de hoy. -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/tv_dia"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:fontFamily="@font/mono"
+    android:letterSpacing="0.14"
+    android:paddingStart="18dp"
+    android:paddingEnd="18dp"
+    android:paddingTop="14dp"
+    android:paddingBottom="7dp"
+    android:textAllCaps="true"
+    android:textColor="@color/dim"
+    android:textSize="10sp" />

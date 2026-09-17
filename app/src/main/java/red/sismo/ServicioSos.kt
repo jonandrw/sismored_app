@@ -144,6 +144,9 @@ class ServicioSos : Service() {
         /** Cuánto lleva el móvil sin que nada lo roce. Lo lee la pantalla
          *  para decir si la vigilia está armada o cuánto le falta. */
         @Volatile var quietoParaVigilia = 0L
+        /** La última posición que el servicio llegó a conocer. Nunca sale
+         *  del móvil: solo sirve para poner los kilómetros en la lista. */
+        @Volatile var ultimaUbicacion: Pair<Double, Double>? = null
         /** Lo que este móvil mide de sacudida donde está, sin que nadie lo toque.
          *  Es lo que permite proponer un umbral en vez de pedirlo. */
         @Volatile var calmaMedida = 0.0
@@ -629,7 +632,11 @@ class ServicioSos : Service() {
         }
         receptorOnline = ReceptorSismicoOnline(
             getUbicacion = {
-                if (ubicacion?.hay() == true) Pair(ubicacion!!.lat(), ubicacion!!.lon()) else null
+                val u = if (ubicacion?.hay() == true) Pair(ubicacion!!.lat(), ubicacion!!.lon()) else null
+                /* Cacheada para que la pantalla de sismos pueda calcular
+                   distancias sin volver a pedirle la posición al sistema. */
+                if (u != null) ultimaUbicacion = u
+                u
             },
             onAlertaSismica = { mag, dist, lugar, fuente ->
                 /* El receptor olvida lo que ya vio cuando el proceso muere,

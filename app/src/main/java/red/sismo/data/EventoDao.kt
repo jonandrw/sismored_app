@@ -12,6 +12,17 @@ interface EventoDao {
     @Query("SELECT * FROM eventos ORDER BY fechaMs DESC LIMIT 500")
     suspend fun obtenerRecientes(): List<EventoBD>
 
+    /**
+     * Los sismos confirmados, filtrados en la consulta y no despues.
+     *
+     * `obtenerRecientes` corta a 500 apuntes, y un dia normal guarda miles
+     * de lineas de voz y de postura: filtrar en memoria dejaba fuera los
+     * terremotos de la manana porque ni siquiera llegaban a leerse. El
+     * panel enseñaba uno cuando habia siete.
+     */
+    @Query("SELECT * FROM eventos WHERE mensaje LIKE 'alerta externa (%' ORDER BY fechaMs DESC LIMIT 200")
+    suspend fun obtenerSismos(): List<EventoBD>
+
     @Query("SELECT COUNT(*) FROM eventos")
     suspend fun cuantos(): Int
 

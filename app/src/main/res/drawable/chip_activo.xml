@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- El chip del día elegido: relleno, para que se vea cuál manda. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/gr" />
+    <corners android:radius="999dp" />
+</shape>

@@ -771,12 +771,22 @@ Es la única forma de comprobar el tramo que no se puede ensayar de otra manera.
     <string name="vigilia_esperando_seg">VIGILIA · faltan %d s de reposo</string>
     <string name="vigilia_esperando">VIGILIA · faltan %d min de reposo</string>
     <string name="vigilia_fuera">VIGILIA · empieza a la 1</string>
-    <string name="hist_solo_sismos">SOLO SISMOS</string>
-    <string name="hist_todo">TODO</string>
     <string name="hist_titulo">Sismos</string>
+    <string name="hist_nuevos">NUEVOS</string>
+    <string name="hist_semana">7 DÍAS</string>
+    <string name="hist_todo">TODO</string>
+    <string name="hist_magnitud">MAG</string>
+    <string name="hist_sub_todo">%d apuntes · registro completo</string>
+    <string name="hist_sin_sismos">Aquí aparecen los terremotos que confirme un servicio sismológico.</string>
+    <string name="hist_limpio">Nada nuevo. Los anteriores están en HOY y en TODO.</string>
+    <string name="hist_sin_semana">No ha temblado cerca en los últimos siete días.</string>
+    <string name="hist_todos_dias">Todos</string>
+    <string name="hist_sub_vacio">sin sismos</string>
+    <string name="hist_sub_con_nuevos">%1$d sin ver · %2$d en siete días</string>
+    <string name="dia_hoy">Hoy</string>
+    <string name="dia_ayer">Ayer</string>
+    <string name="dia_hace">Hace %d días</string>
     <string name="hist_limpiar">LIMPIAR</string>
-    <string name="hist_limpio">Lista vacía. Los sismos anteriores siguen en TODO.</string>
-    <string name="hist_sin_sismos">Aquí van los terremotos que confirme un servicio sismológico. Todavía no hay ninguno.</string>
     <string name="lbl_historial_persistente">HISTORIAL PERSISTENTE</string>
     <string name="lbl_interfono">INTERFONO</string>
     <string name="lbl_las_dos_reglas_del_proyecto">LAS DOS REGLAS DEL PROYECTO</string>
@@ -858,4 +868,12 @@ Avenidas principales, obras o tráfico pesado. Requiere mayor confirmación STA/
     <string name="lbl_politicas_titulo">Políticas y Privacidad</string>
     <string name="lbl_politicas_titulo_corto">Privacidad y términos</string>
     <string name="lbl_politicas_sub">Tratamiento de datos, micrófono y permisos</string>
+    <plurals name="hist_sub_nuevos">
+        <item quantity="one">%d sismo sin ver</item>
+        <item quantity="other">%d sismos sin ver</item>
+    </plurals>
+    <plurals name="hist_sub_semana">
+        <item quantity="one">%d sismo en siete días</item>
+        <item quantity="other">%d sismos en siete días</item>
+    </plurals>
 </resources>

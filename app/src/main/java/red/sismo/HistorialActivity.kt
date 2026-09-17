@@ -18,7 +18,11 @@ class HistorialActivity : AppCompatActivity() {
     private lateinit var adapter: HistorialAdapter
     private lateinit var db: SismoDatabase
     private var todos: List<EventoBD> = emptyList()
-    private var soloSismos = true
+    private var sismos: List<EventoBD> = emptyList()
+    /** Los del catálogo, que no están guardados: solo se enseñan. */
+    private var delCatalogo: List<EventoBD> = emptyList()
+    /** El día elegido en la fila de chips, o null para todos. */
+    private var diaElegido: String? = null
 
     companion object {
         /**
@@ -87,6 +91,18 @@ class HistorialActivity : AppCompatActivity() {
            encima de una lista de eventos con hora. */
         setContentView(R.layout.activity_historial)
 
+        /* Con targetSdk 35 la ventana se dibuja de borde a borde, asi que
+           el hueco de la barra de estado hay que pedirlo. Sin esto el
+           titulo se solapaba con el reloj en el Redmi. */
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(
+            findViewById(R.id.raiz_sismos)
+        ) { v, insets ->
+            val b = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            v.setPadding(0, b.top, 0, b.bottom)
+            insets
+        }
+
         findViewById<ImageButton>(R.id.btn_volver).setOnClickListener { finish() }
 
         val rvHistorial = findViewById<RecyclerView>(R.id.rv_historial)
@@ -103,8 +119,6 @@ class HistorialActivity : AppCompatActivity() {
                 .putLong("sismos_vistos_hasta", System.currentTimeMillis()).apply()
             pintar()
         }
-        val btnFiltro = findViewById<TextView>(R.id.btn_filtro)
-        btnFiltro.setOnClickListener { soloSismos = !soloSismos; pintar() }
 
         db = SismoDatabase.getDatabase(this)
         cargarHistorial()
@@ -112,29 +126,145 @@ class HistorialActivity : AppCompatActivity() {
 
     private fun cargarHistorial() {
         lifecycleScope.launch(Dispatchers.IO) {
-            val eventos = db.eventoDao().obtenerRecientes()
-            withContext(Dispatchers.Main) { todos = eventos; pintar() }
+            /* Dos consultas: los sismos salen de la suya para que el corte
+               de 500 apuntes del registro no se los coma. */
+            val s = db.eventoDao().obtenerSismos()
+            val t = db.eventoDao().obtenerRecientes()
+            withContext(Dispatchers.Main) { sismos = s; todos = t; pintar() }
+
+            /* Y el catálogo oficial, que es otra cosa: la app solo guarda los
+               sismos por los que avisó —cerca y por encima del umbral—, y aquí
+               se quiere ver TODO lo que han publicado hoy los servicios que
+               consulta, incluido lo que no merecía una notificación. No se
+               guarda en la base de datos: se enseña y ya. */
+            val oficiales = try {
+                ReceptorSismicoOnline(
+                    getUbicacion = { ServicioSos.ultimaUbicacion },
+                    onAlertaSismica = { _, _, _, _ -> }
+                ).reportesRecientes(7).map {
+                    EventoBD(
+                        tipo = 1, fechaMs = it.fechaMs,
+                        /* Locale.US para el punto decimal: los guardados
+                           salen con punto y mezclarlos con comas se lee mal. */
+                        mensaje = "alerta externa (%s): M%.1f en %s (~%d km)".format(
+                            java.util.Locale.US,
+                            it.fuente, it.magnitud, it.lugar, it.distanciaKm.toInt())
+                    )
+                }
+            } catch (_: Exception) { emptyList() }
+            if (oficiales.isNotEmpty()) withContext(Dispatchers.Main) {
+                delCatalogo = oficiales
+                pintar()
+            }
         }
     }
 
-    /** Se abre filtrado: quien entra al registro viene buscando el sismo. */
+    /** Medianoche de hoy. */
+    private fun hoy0(): Long = java.util.Calendar.getInstance().apply {
+        set(java.util.Calendar.HOUR_OF_DAY, 0); set(java.util.Calendar.MINUTE, 0)
+        set(java.util.Calendar.SECOND, 0); set(java.util.Calendar.MILLISECOND, 0)
+    }.timeInMillis
+
+    /** «HOY», «AYER», «HACE 3 DÍAS». Un número de días no se lee igual. */
+    private fun nombreDelDia(ms: Long): String {
+        val d = ((hoy0() - ms) / 86_400_000L).toInt() + 1
+        return when {
+            ms >= hoy0() -> getString(R.string.dia_hoy)
+            d <= 1 -> getString(R.string.dia_ayer)
+            else -> getString(R.string.dia_hace, d)
+        }
+    }
+
+    /** Mete una cabecera cada vez que cambia el día. */
+    private fun conDias(lista: List<EventoBD>): List<HistorialAdapter.Fila> {
+        val out = ArrayList<HistorialAdapter.Fila>()
+        var ultimo = ""
+        for (e in lista) {
+            val n = nombreDelDia(e.fechaMs)
+            if (n != ultimo) { out.add(HistorialAdapter.Fila.Dia(n)); ultimo = n }
+            out.add(HistorialAdapter.Fila.Suceso(e))
+        }
+        return out
+    }
+
+    /**
+     * Una sola lista.
+     *
+     * Antes esto tenía tres vistas que se turnaban —nuevos, siete días,
+     * todo— y era un error: lo nuevo no es otra pantalla, es una marca. Y el
+     * registro completo ya existe en su propia pestaña, así que aquí sobra.
+     * Siete días, agrupados por día, y un punto rojo en lo que no se ha visto.
+     */
+    /** Los chips de día, construidos con los días que hay de verdad. */
+    private fun pintarDias(lista: List<EventoBD>) {
+        val fila = findViewById<android.widget.LinearLayout>(R.id.fila_dias) ?: return
+        fila.removeAllViews()
+        val dias = lista.map { nombreDelDia(it.fechaMs) }.distinct()
+        if (dias.size < 2) return   // con un solo día, filtrar no filtra nada
+        for (d in listOf<String?>(null) + dias) {
+            val t = TextView(this)
+            t.text = d ?: getString(R.string.hist_todos_dias)
+            t.setTextColor(getColor(if (d == diaElegido) R.color.bg else R.color.lectura))
+            t.setBackgroundResource(if (d == diaElegido) R.drawable.chip_activo else R.drawable.chip)
+            t.textSize = 10f
+            t.isAllCaps = true
+            t.letterSpacing = 0.08f
+            t.typeface = androidx.core.content.res.ResourcesCompat.getFont(this, R.font.mono)
+            t.setPadding(dp(12), dp(6), dp(12), dp(6))
+            val lp = android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT)
+            lp.marginEnd = dp(7)
+            t.layoutParams = lp
+            t.setOnClickListener { diaElegido = d; pintar() }
+            fila.addView(t)
+        }
+    }
+
+    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
+
+    /**
+     * Salir del panel es haberlos visto.
+     *
+     * Se marca al salir y no al entrar para que los puntos rojos sigan
+     * ahí mientras se mira: marcarlos al abrir los borraría delante de los
+     * ojos y el usuario no sabría cuáles eran los nuevos.
+     */
+    override fun onPause() {
+        super.onPause()
+        getSharedPreferences("sismored", MODE_PRIVATE).edit()
+            .putLong("sismos_vistos_hasta", System.currentTimeMillis()).apply()
+    }
+
     private fun pintar() {
-        val desde = getSharedPreferences("sismored", MODE_PRIVATE)
+        val limpiadoHasta = getSharedPreferences("sismored", MODE_PRIVATE)
             .getLong("sismos_vistos_hasta", 0L)
-        val lista = if (soloSismos)
-            agrupar(todos.filter { esSismico(it) && it.fechaMs > desde })
-        else todos
-        adapter.submitList(lista)
-        findViewById<TextView>(R.id.tv_vacio)?.setText(
-            if (desde > 0L) R.string.hist_limpio else R.string.hist_sin_sismos)
-        findViewById<TextView>(R.id.tv_vacio)?.visibility =
-            if (lista.isEmpty()) android.view.View.VISIBLE else android.view.View.GONE
+        val semana = hoy0() - 6 * 86_400_000L
+
+        val semanaEntera = agrupar(
+            (sismos + delCatalogo).filter { it.fechaMs >= semana }
+                .sortedByDescending { it.fechaMs })
+        pintarDias(semanaEntera)
+        /* El día elegido puede haber desaparecido al recargar. */
+        if (diaElegido != null && semanaEntera.none { nombreDelDia(it.fechaMs) == diaElegido })
+            diaElegido = null
+        val lista = if (diaElegido == null) semanaEntera
+                    else semanaEntera.filter { nombreDelDia(it.fechaMs) == diaElegido }
+        adapter.submitList(conDias(lista), limpiadoHasta)
+
+        val nuevos = lista.count { it.fechaMs > limpiadoHasta }
+        findViewById<TextView>(R.id.tv_sub)?.text = when {
+            lista.isEmpty() -> getString(R.string.hist_sub_vacio)
+            nuevos > 0 -> getString(R.string.hist_sub_con_nuevos, nuevos, lista.size)
+            else -> resources.getQuantityString(R.plurals.hist_sub_semana, lista.size, lista.size)
+        }
+        /* Limpiar solo tiene sentido si hay algo que marcar como visto. */
         findViewById<TextView>(R.id.btn_limpiar)?.visibility =
-            if (soloSismos) android.view.View.VISIBLE else android.view.View.GONE
-        val chip = findViewById<TextView>(R.id.btn_filtro)
-        chip.text = getString(if (soloSismos) R.string.hist_todo else R.string.hist_solo_sismos)
-        /* Verde mientras el filtro esté puesto: que se vea que lo que hay
-           delante no es todo lo que hay. */
-        chip.setTextColor(getColor(if (soloSismos) R.color.gr else R.color.lectura))
+            if (nuevos > 0) android.view.View.VISIBLE else android.view.View.GONE
+
+        findViewById<android.view.View>(R.id.caja_vacio)?.visibility =
+            if (lista.isEmpty()) android.view.View.VISIBLE else android.view.View.GONE
+        findViewById<RecyclerView>(R.id.rv_historial)?.visibility =
+            if (lista.isEmpty()) android.view.View.GONE else android.view.View.VISIBLE
     }
 }

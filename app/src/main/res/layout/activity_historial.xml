@@ -1,96 +1,144 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/raiz_sismos"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg"
+    android:background="@drawable/fondo_sismos"
     android:orientation="vertical">
 
+    <!-- Cabecera. El título cede espacio a los botones en vez de empujarlos
+         fuera: en el Redmi la fila se salía por la derecha porque el título
+         era wrap_content y no soltaba nada. -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingStart="8dp"
-        android:paddingEnd="16dp"
-        android:paddingTop="10dp"
-        android:paddingBottom="10dp"
-        android:gravity="center_vertical">
+        android:paddingStart="4dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="6dp">
 
         <ImageButton
             android:id="@+id/btn_volver"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_volver"
-            android:contentDescription="Volver" />
+            android:contentDescription="Volver"
+            android:src="@drawable/ic_volver" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:fontFamily="@font/saira"
-            android:text="@string/hist_titulo"
-            android:textAllCaps="true"
-            android:textColor="@color/tx"
-            android:textSize="24sp"
-            android:textStyle="bold|italic" />
-
-        <View
+        <LinearLayout
             android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1" />
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tv_titulo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:fontFamily="@font/saira"
+                android:maxLines="1"
+                android:text="@string/hist_titulo"
+                android:textAllCaps="true"
+                android:textColor="@color/tx"
+                android:textSize="22sp"
+                android:textStyle="bold|italic" />
+
+            <TextView
+                android:id="@+id/tv_sub"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:fontFamily="@font/mono"
+                android:letterSpacing="0.06"
+                android:maxLines="1"
+                android:textColor="@color/dim"
+                android:textSize="10sp" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/btn_limpiar"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
+            android:layout_marginStart="6dp"
             android:background="@drawable/chip"
             android:fontFamily="@font/mono"
-            android:letterSpacing="0.08"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            android:paddingTop="7dp"
-            android:paddingBottom="7dp"
+            android:letterSpacing="0.06"
+            android:maxLines="1"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
             android:text="@string/hist_limpiar"
             android:textColor="@color/dim"
-            android:textSize="11sp" />
+            android:textSize="10sp" />
 
-        <TextView
-            android:id="@+id/btn_filtro"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@drawable/chip"
-            android:fontFamily="@font/mono"
-            android:letterSpacing="0.08"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            android:paddingTop="7dp"
-            android:paddingBottom="7dp"
-            android:textColor="@color/lectura"
-            android:textSize="11sp" />
     </LinearLayout>
 
     <View
         android:layout_width="match_parent"
         android:layout_height="2dp"
+        android:layout_marginTop="8dp"
         android:background="@color/rd" />
 
-    <TextView
-        android:id="@+id/tv_vacio"
+    <!-- Filtrar por día sin salir de la pantalla. Se construye con los días
+         que hay de verdad: un chip para un día sin sismos no sirve. -->
+    <HorizontalScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:fontFamily="@font/barlow"
-        android:padding="28dp"
-        android:text="@string/hist_sin_sismos"
-        android:textColor="@color/dim"
-        android:textSize="15sp"
-        android:visibility="gone" />
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:paddingTop="12dp"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:id="@+id/fila_dias"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal" />
+    </HorizontalScrollView>
+
+    <!-- Vacío: centrado y con la campana apagada, para que se lea como un
+         estado y no como un fallo de carga. -->
+    <LinearLayout
+        android:id="@+id/caja_vacio"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:paddingStart="40dp"
+        android:paddingEnd="40dp"
+        android:visibility="gone">
+
+        <ImageView
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:alpha="0.22"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_campana" />
+
+        <TextView
+            android:id="@+id/tv_vacio"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:fontFamily="@font/barlow"
+            android:gravity="center"
+            android:lineSpacingExtra="3dp"
+            android:text="@string/hist_sin_sismos"
+            android:textColor="@color/dim"
+            android:textSize="14sp" />
+    </LinearLayout>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_historial"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:clipToPadding="false"
-        android:paddingTop="14dp"
-        android:paddingBottom="14dp" />
+        android:paddingTop="12dp"
+        android:paddingBottom="16dp"
+        android:scrollbars="none" />
 </LinearLayout>
