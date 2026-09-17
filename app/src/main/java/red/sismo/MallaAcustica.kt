@@ -120,8 +120,25 @@ class MallaAcustica(
         const val LLAMADA_ROBUSTA = 15200.0
         const val CODIGO_LLAMADA_ROBUSTA = 9
 
+        /**
+         * La alerta, en la banda que sí sale por un altavoz barato.
+         *
+         * El silencio y la llamada tuvieron su version robusta y la alerta se
+         * quedo sola arriba, en 16,4 kHz — justo el mensaje que mas lejos tiene
+         * que llegar. Medido tres veces entre el Redmi y un Huawei STK-LX3 con
+         * los dos juntos en la mesa: del Redmi al Huawei llegan 47 ecos, del
+         * Huawei al Redmi uno o ninguno. El usuario OYE el pitido del Huawei,
+         * asi que el altavoz emite algo; lo que no emite es la banda alta, y lo
+         * que se oye es distorsion mas grave.
+         *
+         * 14,8 kHz: el siguiente hueco libre por debajo de [LLAMADA_ROBUSTA],
+         * con la misma separacion de 400 Hz que el resto del plan.
+         */
+        const val ALERTA_ROBUSTA = 14800.0
+        const val CODIGO_ALERTA_ROBUSTA = 10
+
         val TONOS = HOP_TONE + doubleArrayOf(
-            LLAMADA, SILENCIO, ALERTA, SILENCIO_ROBUSTO, LLAMADA_ROBUSTA
+            LLAMADA, SILENCIO, ALERTA, SILENCIO_ROBUSTO, LLAMADA_ROBUSTA, ALERTA_ROBUSTA
         )
 
         /**
@@ -252,7 +269,12 @@ class MallaAcustica(
            El PERIODO es el que no se mueve: la reverberación cambia el reparto
            entre tono y silencio, pero no cuándo empieza la ráfaga siguiente. Por
            eso el corte fino va ahí y no en el ciclo de trabajo. */
-        private const val RAF_ON_MIN_MS = 200L
+        /* 180 y no 200: la rafaga dura 250 ms pero la histeresis la da por
+           acabada en cuanto empieza a caer, asi que se mide algo corta aunque
+           el antirrebote ya este compensado. Lo que sujeta la defensa no es
+           este margen sino el PERIODO —340 a 460 ms— y que no se mueva de una
+           rafaga a la siguiente. */
+        private const val RAF_ON_MIN_MS = 180L
         private const val RAF_ON_MAX_MS = 400L
         private const val RAF_OFF_MIN_MS = 40L
         private const val RAF_OFF_MAX_MS = 220L
@@ -449,6 +471,43 @@ class MallaAcustica(
        salida parpadea aunque el tono sea continuo. La cadencia se mide en el
        aire, no en la salida del decodificador. */
     private var tonoCrudo = false
+
+    /** El pico de la rafaga que se esta oyendo ahora, para medir la caida. */
+    private var picoRacha = -999.0
+
+    /**
+     * Cuanto tiene que caer el tono desde su propio pico para darlo por
+     * acabado.
+     *
+     * Con ocho decibelios las rafagas se cortaban antes de tiempo —medido:
+     * `onFuera` subia a 7 u 8 porque salian por debajo de los 200 ms— asi que
+     * se espera un poco mas. Doce es todavia mucho menos de lo que cae una
+     * rafaga al apagarse y mucho mas de lo que sube el ruido de fondo de golpe.
+     */
+    private val HIST_DB = 12.0
+
+    /**
+     * Si la rafaga sigue viva, para la cadencia. No es lo mismo que [tonoCrudo]:
+     * aquel dice «hay tono por encima del ruido» y este dice «el tono todavia
+     * no ha empezado a apagarse». La diferencia es el silencio de 150 ms entre
+     * rafagas, que en una mesa dura no llega a bajar del ruido de fondo.
+     */
+    private var tonoVivo = false
+    private var nivelAhora = -999.0
+
+    /**
+     * Marcos seguidos por debajo del pico antes de dar la rafaga por acabada.
+     *
+     * Sin esto la histeresis troceaba: un solo marco flojo —un desvanecimiento,
+     * una reflexion que se cancela— cerraba la rafaga, reiniciaba el pico y
+     * volvia a abrirla al marco siguiente. Medido: `onFuera` en 7 u 8 de cada
+     * nueve rafagas, todas demasiado cortas.
+     *
+     * Tres marcos son 64 ms a 48 kHz. El silencio de verdad entre rafagas dura
+     * 150, o sea siete marcos: sobrevive de sobra y los bajones sueltos no.
+     */
+    private val MARCOS_FIN = 3
+    private var marcosBajos = 0
     private var confirma = 0
     private var confirmaHop = 0
 
@@ -464,7 +523,7 @@ class MallaAcustica(
         sueloDb = umbral
         if (vMark < umbral) {
             for (i in TONOS.indices) niveles[i + 1] = dB(pico(x, TONOS[i]))
-            tonoCrudo = false; confirma = 0; return 0
+            tonoCrudo = false; picoRacha = -999.0; marcosBajos = MARCOS_FIN; tonoVivo = false; confirma = 0; return 0
         }
         var mejor = 0; var mejorV = -999.0; var segundoV = -999.0
         for (hop in 1..TONOS.size) {
@@ -473,10 +532,30 @@ class MallaAcustica(
             if (v > mejorV) { segundoV = mejorV; mejorV = v; mejor = hop }
             else if (v > segundoV) { segundoV = v }
         }
-        if (mejorV <= umbral) { tonoCrudo = false; confirma = 0; return 0 }
+        if (mejorV <= umbral) { tonoCrudo = false; picoRacha = -999.0; marcosBajos = MARCOS_FIN; tonoVivo = false; confirma = 0; return 0 }
         /* Hay tono: la cadencia lo cuenta igual. Lo que no hay es un salto
            legible, así que este marco no dice nada. */
         tonoCrudo = true
+        /* Y aparte, si el tono esta SUBIENDO o ya viene cayendo. La cadencia se
+           mide con esto y no con `tonoCrudo`.
+
+           Medido el 17 de septiembre de 2026 entre el Huawei y el Redmi juntos
+           en la mesa: 49 ecos, 21 «tono largo» y una racha de 789 ms cuando una
+           rafaga dura 250. El silencio de 150 ms entre rafagas no llegaba a
+           bajar del umbral —la cola del tono reverbera en una mesa dura— asi
+           que el decodificador veia un tono continuo, decidia «esto no es una
+           baliza» y tiraba la cadencia en cada marco.
+
+           Comparar contra el pico de la propia rafaga y no contra el ruido de
+           fondo: da igual lo fuerte que llegue, lo que importa es que baje. */
+        nivelAhora = mejorV
+        if (mejorV > picoRacha) picoRacha = mejorV
+        /* Viva mientras no lleve MARCOS_FIN seguidos caida por debajo de su
+           propio pico. Comparar contra el pico de la rafaga y no contra el
+           ruido de fondo: da igual lo fuerte que llegue, importa que baje. */
+        if (picoRacha > -900.0 && mejorV > picoRacha - HIST_DB) marcosBajos = 0 else marcosBajos++
+        tonoVivo = marcosBajos < MARCOS_FIN
+        if (!tonoVivo) picoRacha = -999.0
         if (mejorV - segundoV < SEPARACION_DB) { confirma = 0; return 0 }
         confirma = if (mejor == confirmaHop) confirma + 1 else 1
         confirmaHop = mejor
@@ -490,6 +569,7 @@ class MallaAcustica(
             return when (mejor) {
                 CODIGO_SILENCIO_ROBUSTO -> CODIGO_SILENCIO
                 CODIGO_LLAMADA_ROBUSTA -> CODIGO_LLAMADA
+                CODIGO_ALERTA_ROBUSTA -> CODIGO_ALERTA
                 else -> mejor
             }
         }
@@ -568,7 +648,14 @@ class MallaAcustica(
             }
             return
         }
-        val ms = msDe(marcosRacha)
+        /* El antirrebote alarga lo que mide como tono y acorta lo que mide como
+           silencio, exactamente en los mismos MARCOS_FIN marcos. Se compensa
+           aqui en vez de ensanchar las ventanas: asi los limites siguen
+           significando lo que dicen —250 ms de tono, 150 de silencio— y el
+           periodo, que es lo que de verdad sujeta la defensa, no se toca. */
+        val hold = msDe(MARCOS_FIN)
+        val ms = (if (habiaTono) msDe(marcosRacha) - hold else msDe(marcosRacha) + hold)
+            .coerceAtLeast(0L)
         habiaTono = hayTono
         marcosRacha = 1
         if (hayTono) {
@@ -641,7 +728,7 @@ class MallaAcustica(
         // no oírse a sí mismo. La racha en curso queda partida: no se juzga.
         if (System.currentTimeMillis() < puertaHasta) { olvidoPuerta++; perderSincronismo(); return }
         val hop = decodificar(marco)
-        verCadencia(tonoCrudo)
+        verCadencia(tonoVivo)
         if (hop == 0) return
         rx++
         if (!corroborada(hop)) {
@@ -843,6 +930,7 @@ class MallaAcustica(
                 val fRobusto = when (h0) {
                     CODIGO_SILENCIO -> SILENCIO_ROBUSTO
                     CODIGO_LLAMADA -> LLAMADA_ROBUSTA
+                    CODIGO_ALERTA -> ALERTA_ROBUSTA
                     else -> TONOS[h0 - 1]
                 }
                 val fLegado = TONOS[h0 - 1]
@@ -920,6 +1008,7 @@ class MallaAcustica(
         val expected = when (h0) {
             CODIGO_SILENCIO_ROBUSTO -> CODIGO_SILENCIO
             CODIGO_LLAMADA_ROBUSTA -> CODIGO_LLAMADA
+            CODIGO_ALERTA_ROBUSTA -> CODIGO_ALERTA
             else -> h0
         }
         val ok = got == expected
@@ -1000,7 +1089,7 @@ class MallaAcustica(
         while (k + N <= pcm.size) {
             System.arraycopy(pcm, k, x, 0, N)
             val hop = decodificar(x)
-            verCadencia(tonoCrudo)
+            verCadencia(tonoVivo)
             if (hop != 0) hopVisto = hop
             if (cadencia > maxCad) maxCad = cadencia
             k += Microfono.SALTO

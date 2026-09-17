@@ -19,9 +19,16 @@ class MallaAcusticaTest {
     fun testConstantesFrecuenciasRobustas() {
         assertEquals("SILENCIO_ROBUSTO debe ser 15600.0 Hz", 15600.0, MallaAcustica.SILENCIO_ROBUSTO, 0.001)
         assertEquals("LLAMADA_ROBUSTA debe ser 15200.0 Hz", 15200.0, MallaAcustica.LLAMADA_ROBUSTA, 0.001)
-        assertEquals("TONOS debe tener 9 tonos", 9, MallaAcustica.TONOS.size)
+        assertEquals("ALERTA_ROBUSTA debe ser 14800.0 Hz", 14800.0, MallaAcustica.ALERTA_ROBUSTA, 0.001)
+        assertEquals("TONOS debe tener 10 tonos", 10, MallaAcustica.TONOS.size)
         assertEquals("Índice 8 en TONOS debe ser SILENCIO_ROBUSTO", 15600.0, MallaAcustica.TONOS[7], 0.001)
         assertEquals("Índice 9 en TONOS debe ser LLAMADA_ROBUSTA", 15200.0, MallaAcustica.TONOS[8], 0.001)
+        assertEquals("Índice 10 en TONOS debe ser ALERTA_ROBUSTA", 14800.0, MallaAcustica.TONOS[9], 0.001)
+        /* Ninguno a menos de 400 Hz de otro: por debajo de eso el Goertzel de
+           uno se cuela en el bin del vecino. */
+        val orden = MallaAcustica.TONOS.sorted() + MallaAcustica.MARK
+        for (a in orden) for (b in orden) if (a != b)
+            assertTrue("$a y $b estan a menos de 400 Hz", Math.abs(a - b) >= 399.0)
     }
 
     @Test
@@ -29,7 +36,7 @@ class MallaAcusticaTest {
         val mic = crearMicStub(48000)
         val malla = MallaAcustica(mic, onConfirmada = {})
 
-        // Probar los 9 códigos (1..4 saltos, 5 llamada legacy, 6 silencio legacy, 7 alerta, 8 silencio robusto, 9 llamada robusta)
+        // Probar los 10 códigos (1..4 saltos, 5 llamada legacy, 6 silencio legacy, 7 alerta, 8 silencio robusto, 9 llamada robusta)
         for (hop in 1..MallaAcustica.TONOS.size) {
             val ok = malla.autotest(hop)
             assertTrue("autotest para código $hop (${MallaAcustica.TONOS[hop - 1]} Hz) debe ser true", ok)
