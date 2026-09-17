@@ -2793,8 +2793,15 @@ class ServicioSos : Service() {
                         umbralActivo = nuevo
                         enReposoAhora = enReposo
                         sismo.vigiliaArmada = enVigilia(opciones)
+                        /* El reloj que sobrevive al disturbio, no el
+                           instantáneo: cuando llega la alerta del vecino
+                           este móvil está encima de la misma mesa que se
+                           mueve, así que `quietoDesdeHace` vale cero y la
+                           vía rápida no se activaba nunca. Medido el 17 de
+                           septiembre: el segundo móvil tardó 11,7 s. */
                         vigiliaArmadaAqui = enVigilia(opciones) && enReposo &&
-                            sismo.quietoDesdeHace() >= Opciones.VIGILIA_REPOSO_MIN_MS
+                            maxOf(sismo.quietoDesdeHace(), sismo.quietoAntesDeLaRacha) >=
+                                Opciones.VIGILIA_REPOSO_MIN_MS
                         quietoParaVigilia = sismo.quietoDesdeHace()
                         /* El relevo caduca solo si no ha vuelto a pasar nada. */
                         if (repetidor && contestoBien > 0L &&

@@ -115,6 +115,8 @@ class MainActivity : AppCompatActivity() {
 
     /** Si ya se saltó a la pantalla de pánico en esta alarma. Ver [pintar]. */
     private var saltoAPanicoHecho = false
+    /** La app te trajo a la pantalla de pánico; no viniste tú. */
+    private var vinePorAlarma = false
 
     /** Refresco de lo que cambia solo. */
     private val reloj = Handler(Looper.getMainLooper())
@@ -2217,9 +2219,20 @@ class MainActivity : AppCompatActivity() {
            quieres irte. */
         if (alarma && !saltoAPanicoHecho) {
             saltoAPanicoHecho = true
-            if (vista != R.id.v_panico_activo) ir(R.id.v_panico_activo)
+            if (vista != R.id.v_panico_activo) { vinePorAlarma = true; ir(R.id.v_panico_activo) }
         }
-        if (!alarma) saltoAPanicoHecho = false
+        /* Y el salto de vuelta, que faltaba: si la app te trajo aquí sola
+           al saltar la alarma, al decir «estoy bien» tiene que devolverte
+           sola. Sin esto te quedabas mirando la pantalla de pánico con la
+           alarma ya apagada, y cualquier disparo posterior te traía otra
+           vez. Si viniste tú por tu pie, no se te mueve nada. */
+        if (!alarma) {
+            saltoAPanicoHecho = false
+            if (vinePorAlarma && !rescate) {
+                vinePorAlarma = false
+                if (vista == R.id.v_panico_activo) ir(R.id.v_inicio)
+            }
+        }
 
         when (vista) {
             R.id.v_inicio -> pintarInicio(alarma, rescate)
