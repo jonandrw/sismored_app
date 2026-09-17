@@ -33,25 +33,50 @@ class HistorialActivity : AppCompatActivity() {
          * eventos ya guardados en los móviles seguirían sin tipo, y son once
          * días de campo que no se pueden reetiquetar hacia atrás.
          */
-        private val SISMICO = Regex(
-            "alerta externa|ALERTA SÍSMICA|sismógrafo .*m/s²|TERREMOTO|" +
-            "vigilia nocturna|SISMO EN REPOSO|MÓVIL DE ALGUIEN",
-            RegexOption.IGNORE_CASE
-        )
+        /**
+         * Solo lo que ha confirmado un servicio sismológico.
+         *
+         * Esto es un historial de terremotos, no un registro de sensores. Lo
+         * que mide el acelerómetro de un móvil no es un sismo hasta que
+         * alguien con sismómetros de verdad lo dice, y mezclarlo aquí daría a
+         * entender lo contrario. El registro completo sigue estando detrás del
+         * botón de al lado.
+         *
+         * Se filtra por el texto y no por un tipo nuevo porque los eventos ya
+         * guardados no se pueden reetiquetar hacia atrás, y son once días de
+         * campo.
+         */
+        private val SISMICO = Regex("""alerta externa \(""")
+
+        fun esSismico(e: EventoBD): Boolean = SISMICO.containsMatchIn(e.mensaje)
+
+        /** Lo que identifica al sismo, sin la hora: misma magnitud y mismo sitio. */
+        private val HUELLA = Regex("""M[\d.,]+ en .+?\(~\d+ km\)""")
 
         /**
-         * Las líneas de diagnóstico no son un sismo.
+         * El mismo terremoto una sola vez.
          *
-         * Cada alerta de catálogo deja cuatro apuntes —el crudo, el traducido,
-         * la línea `pruebas ·` y la decisión— y en una lista de sismos eso es
-         * el mismo terremoto cuatro veces. `pruebas ·` además está escrita para
-         * depurar, con banderas y porcentajes que no significan nada para
-         * quien solo quiere saber si tembló. Se queda en la vista completa.
+         * Un catálogo revisa y republica, y la app vuelve a avisar cuando
+         * reinicia mientras el suceso sigue en su ventana. Eso deja el mismo
+         * sismo tres veces en la lista, y en un historial eso no es un
+         * detalle: parece que ha temblado tres veces.
+         *
+         * Se agrupa al pintar y no solo al guardar porque lo ya guardado no
+         * se puede arreglar hacia atrás, y son los únicos sismos que hay.
          */
-        private val DIAGNOSTICO = Regex("^(pruebas ·|decision ·|cascada)", RegexOption.IGNORE_CASE)
-
-        fun esSismico(e: EventoBD): Boolean =
-            SISMICO.containsMatchIn(e.mensaje) && !DIAGNOSTICO.containsMatchIn(e.mensaje.trimStart())
+        fun agrupar(lista: List<EventoBD>): List<EventoBD> {
+            val vistos = HashMap<String, Long>()
+            val out = ArrayList<EventoBD>()
+            for (e in lista) {
+                val h = HUELLA.find(e.mensaje)?.value
+                if (h == null) { out.add(e); continue }
+                val antes = vistos[h]
+                if (antes != null && Math.abs(antes - e.fechaMs) < 30 * 60_000L) continue
+                vistos[h] = e.fechaMs
+                out.add(e)
+            }
+            return out
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -69,6 +94,15 @@ class HistorialActivity : AppCompatActivity() {
         rvHistorial.layoutManager = LinearLayoutManager(this)
         rvHistorial.adapter = adapter
 
+        findViewById<TextView>(R.id.btn_limpiar)?.setOnClickListener {
+            /* No borra nada: marca hasta dónde se ha mirado. La base de
+               datos es el único registro de campo que hay y llevamos once
+               días midiendo con ella; vaciarla por limpiar una lista sería
+               perder eso. Los sismos siguen estando bajo TODO. */
+            getSharedPreferences("sismored", MODE_PRIVATE).edit()
+                .putLong("sismos_vistos_hasta", System.currentTimeMillis()).apply()
+            pintar()
+        }
         val btnFiltro = findViewById<TextView>(R.id.btn_filtro)
         btnFiltro.setOnClickListener { soloSismos = !soloSismos; pintar() }
 
@@ -85,9 +119,22 @@ class HistorialActivity : AppCompatActivity() {
 
     /** Se abre filtrado: quien entra al registro viene buscando el sismo. */
     private fun pintar() {
-        val lista = if (soloSismos) todos.filter { esSismico(it) } else todos
+        val desde = getSharedPreferences("sismored", MODE_PRIVATE)
+            .getLong("sismos_vistos_hasta", 0L)
+        val lista = if (soloSismos)
+            agrupar(todos.filter { esSismico(it) && it.fechaMs > desde })
+        else todos
         adapter.submitList(lista)
-        findViewById<TextView>(R.id.btn_filtro).text =
-            getString(if (soloSismos) R.string.hist_todo else R.string.hist_solo_sismos)
+        findViewById<TextView>(R.id.tv_vacio)?.setText(
+            if (desde > 0L) R.string.hist_limpio else R.string.hist_sin_sismos)
+        findViewById<TextView>(R.id.tv_vacio)?.visibility =
+            if (lista.isEmpty()) android.view.View.VISIBLE else android.view.View.GONE
+        findViewById<TextView>(R.id.btn_limpiar)?.visibility =
+            if (soloSismos) android.view.View.VISIBLE else android.view.View.GONE
+        val chip = findViewById<TextView>(R.id.btn_filtro)
+        chip.text = getString(if (soloSismos) R.string.hist_todo else R.string.hist_solo_sismos)
+        /* Verde mientras el filtro esté puesto: que se vea que lo que hay
+           delante no es todo lo que hay. */
+        chip.setTextColor(getColor(if (soloSismos) R.color.gr else R.color.lectura))
     }
 }

@@ -1,36 +1,66 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Una tarjeta de vidrio rojo por sismo. La magnitud manda porque es lo único
+     que se lee de un vistazo cuando acabas de notar algo. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="12dp">
-
-    <TextView
-        android:id="@+id/tv_fecha"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:fontFamily="@font/mono"
-        android:text=""
-        tools:text="21/10/2026 15:32:00"
-        android:textColor="#7C858D"
-        android:textSize="12sp"
-        android:letterSpacing="0.05" />
-
-    <TextView
-        android:id="@+id/tv_mensaje"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:fontFamily="@font/barlow"
-        android:text=""
-        tools:text="El sistema detectó un nodo cercano."
-        android:textColor="#0B0D0F"
-        android:textSize="16sp" />
+    android:background="@drawable/vidrio_rojo"
+    android:gravity="center_vertical"
+    android:layout_marginStart="16dp"
+    android:layout_marginEnd="16dp"
+    android:layout_marginBottom="10dp"
+    android:orientation="horizontal"
+    android:paddingStart="14dp"
+    android:paddingEnd="16dp"
+    android:paddingTop="14dp"
+    android:paddingBottom="14dp">
 
     <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginTop="12dp"
-        android:background="#E5E7EB" />
+        android:layout_width="3dp"
+        android:layout_height="38dp"
+        android:layout_marginEnd="14dp"
+        android:background="@color/rd" />
+
+    <TextView
+        android:id="@+id/tv_mag"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="14dp"
+        android:fontFamily="@font/mono"
+        android:minWidth="58dp"
+        android:text=""
+        tools:text="M4.6"
+        android:textColor="@color/rd"
+        android:textSize="22sp"
+        android:textStyle="bold" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tv_mensaje"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/barlow"
+            android:text=""
+            tools:text="Sipí - Chocó, Colombia"
+            android:textColor="@color/tx"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/tv_fecha"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:fontFamily="@font/mono"
+            android:letterSpacing="0.04"
+            android:text=""
+            tools:text="74 km · 17/09 16:14 · SGC"
+            android:textColor="@color/dim"
+            android:textSize="12sp" />
+    </LinearLayout>
 </LinearLayout>

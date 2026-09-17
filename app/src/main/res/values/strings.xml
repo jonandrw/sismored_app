@@ -770,11 +770,15 @@ Es la única forma de comprobar el tramo que no se puede ensayar de otra manera.
     <string name="campana_sismos">%d sismos</string>
     <string name="campana_un_sismo">1 sismo</string>
     <string name="vigilia_armada">VIGILIA ARMADA</string>
+    <string name="vigilia_esperando_seg">VIGILIA · faltan %d s de reposo</string>
     <string name="vigilia_esperando">VIGILIA · faltan %d min de reposo</string>
     <string name="vigilia_fuera">VIGILIA · empieza a la 1</string>
     <string name="hist_solo_sismos">SOLO SISMOS</string>
     <string name="hist_todo">TODO</string>
-    <string name="hist_sin_sismos">Todavía no se ha registrado ningún sismo.</string>
+    <string name="hist_titulo">Sismos</string>
+    <string name="hist_limpiar">LIMPIAR</string>
+    <string name="hist_limpio">Lista vacía. Los sismos anteriores siguen en TODO.</string>
+    <string name="hist_sin_sismos">Aquí van los terremotos que confirme un servicio sismológico. Todavía no hay ninguno.</string>
     <string name="lbl_historial_persistente">HISTORIAL PERSISTENTE</string>
     <string name="lbl_interfono">INTERFONO</string>
     <string name="lbl_las_dos_reglas_del_proyecto">LAS DOS REGLAS DEL PROYECTO</string>

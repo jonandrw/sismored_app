@@ -119,7 +119,7 @@ class MainActivity : AppCompatActivity() {
     /** Refresco de lo que cambia solo. */
     private val reloj = Handler(Looper.getMainLooper())
     private val tic = object : Runnable {
-        override fun run() { pintar(); reloj.postDelayed(this, 500) }
+        override fun run() { pintar(); pintarVigilia(); reloj.postDelayed(this, 500) }
     }
 
     /** Últimas líneas de la malla. Es lo único que hace visible la prueba entre
@@ -1326,11 +1326,20 @@ class MainActivity : AppCompatActivity() {
     private fun refrescarBarraAvisos() {
         val campana = findViewById<android.widget.TextView>(R.id.btn_campana) ?: return
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            val desde = System.currentTimeMillis() - 24 * 3600_000L
+            /* Las últimas 24 h, y nada de lo que ya se dio por visto al
+               limpiar la lista: una campana que vuelve a encenderse sola
+               deja de significar nada. */
+            val limpiado = getSharedPreferences("sismored", MODE_PRIVATE)
+                .getLong("sismos_vistos_hasta", 0L)
+            val desde = maxOf(System.currentTimeMillis() - 24 * 3600_000L, limpiado)
+            /* Agrupado con el mismo criterio que el panel: si la campana
+               dice siete y dentro hay cuatro, la campana miente. */
             val n = try {
-                red.sismo.data.SismoDatabase.getDatabase(this@MainActivity)
-                    .eventoDao().obtenerRecientes()
-                    .count { it.fechaMs >= desde && HistorialActivity.esSismico(it) }
+                HistorialActivity.agrupar(
+                    red.sismo.data.SismoDatabase.getDatabase(this@MainActivity)
+                        .eventoDao().obtenerRecientes()
+                        .filter { it.fechaMs >= desde && HistorialActivity.esSismico(it) }
+                ).size
             } catch (_: Exception) { 0 }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 campana.text = if (n == 1) getString(R.string.campana_un_sismo)
@@ -1338,6 +1347,12 @@ class MainActivity : AppCompatActivity() {
                 campana.visibility = if (n > 0) View.VISIBLE else View.GONE
             }
         }
+        pintarVigilia()
+    }
+
+    /** Se repinta con el tic de medio segundo: un contador que no baja
+     *  no es un contador, y este dice cuánto falta para estar armada. */
+    private fun pintarVigilia() {
         val linea = findViewById<android.widget.TextView>(R.id.txt_vigilia) ?: return
         if (!op.vigiliaNocturna) { linea.visibility = View.GONE; return }
         linea.visibility = View.VISIBLE
@@ -1354,8 +1369,10 @@ class MainActivity : AppCompatActivity() {
                 linea.setTextColor(getColor(R.color.gr))
             }
             else -> {
-                val faltan = ((Opciones.VIGILIA_REPOSO_MIN_MS - quieto) / 60_000L + 1).toInt()
-                linea.text = getString(R.string.vigilia_esperando, faltan)
+                val restan = Opciones.VIGILIA_REPOSO_MIN_MS - quieto
+                linea.text = if (restan < 60_000L)
+                    getString(R.string.vigilia_esperando_seg, (restan / 1000L).toInt())
+                else getString(R.string.vigilia_esperando, (restan / 60_000L + 1).toInt())
                 linea.setTextColor(getColor(R.color.dim))
             }
         }

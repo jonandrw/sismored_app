@@ -2,16 +2,18 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FFFFFF"
+    android:background="@color/bg"
     android:orientation="vertical">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="16dp"
-        android:gravity="center_vertical"
-        android:background="#F3F4F6">
+        android:paddingStart="8dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp"
+        android:gravity="center_vertical">
 
         <ImageButton
             android:id="@+id/btn_volver"
@@ -24,10 +26,11 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
+            android:layout_marginStart="8dp"
             android:fontFamily="@font/saira"
-            android:text="@string/lbl_historial_persistente"
-            android:textColor="#0B0D0F"
+            android:text="@string/hist_titulo"
+            android:textAllCaps="true"
+            android:textColor="@color/tx"
             android:textSize="24sp"
             android:textStyle="bold|italic" />
 
@@ -37,21 +40,57 @@
             android:layout_weight="1" />
 
         <TextView
+            android:id="@+id/btn_limpiar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/chip"
+            android:fontFamily="@font/mono"
+            android:letterSpacing="0.08"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="7dp"
+            android:paddingBottom="7dp"
+            android:text="@string/hist_limpiar"
+            android:textColor="@color/dim"
+            android:textSize="11sp" />
+
+        <TextView
             android:id="@+id/btn_filtro"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="?attr/selectableItemBackground"
+            android:background="@drawable/chip"
             android:fontFamily="@font/mono"
-            android:paddingHorizontal="12dp"
-            android:paddingVertical="8dp"
-            android:textColor="#0B0D0F"
-            android:textSize="13sp" />
+            android:letterSpacing="0.08"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="7dp"
+            android:paddingBottom="7dp"
+            android:textColor="@color/lectura"
+            android:textSize="11sp" />
     </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="2dp"
+        android:background="@color/rd" />
+
+    <TextView
+        android:id="@+id/tv_vacio"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/barlow"
+        android:padding="28dp"
+        android:text="@string/hist_sin_sismos"
+        android:textColor="@color/dim"
+        android:textSize="15sp"
+        android:visibility="gone" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_historial"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipToPadding="false"
-        android:padding="8dp" />
+        android:paddingTop="14dp"
+        android:paddingBottom="14dp" />
 </LinearLayout>

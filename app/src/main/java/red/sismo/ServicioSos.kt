@@ -114,6 +114,21 @@ class ServicioSos : Service() {
          * y no reenvía es un agujero en la malla.
          */
         @Volatile var repetidor = false; private set
+        /**
+         * Cuánto dura el relevo antes de volver a vigilar para uno mismo.
+         *
+         * Decir «estoy bien» convierte el móvil en repetidor, y eso estaba
+         * bien pensado —quien está de pie en un terremoto es justo el nodo
+         * que la red necesita— pero no caducaba. Un falso positivo a las dos
+         * de la madrugada dejaba el teléfono en relevo el resto de la noche:
+         * a las cuatro la alerta de un vecino llegaba por la malla y este
+         * móvil no sonaba, porque hacía dos horas su dueño había dicho que
+         * estaba bien de otra cosa.
+         *
+         * Media hora. Sigue cubriendo la réplica de un sismo de verdad, y
+         * devuelve la vigilancia cuando no pasa nada más.
+         */
+        const val REPETIDOR_MS = 30 * 60_000L
 
         /** El umbral que se está aplicando ahora mismo, y en qué régimen. Se
          *  pinta: un detector que cambia de sensibilidad solo tiene que decirlo. */
@@ -617,6 +632,21 @@ class ServicioSos : Service() {
                 if (ubicacion?.hay() == true) Pair(ubicacion!!.lat(), ubicacion!!.lon()) else null
             },
             onAlertaSismica = { mag, dist, lugar, fuente ->
+                /* El receptor olvida lo que ya vio cuando el proceso muere,
+                   asi que al arrancar vuelve a avisar de todo lo que siga
+                   dentro de su ventana de veinte minutos. Con un reinicio
+                   eso es una notificacion repetida; con varios, el mismo
+                   sismo tres veces en el historial. La memoria tiene que
+                   sobrevivir al proceso. */
+                val huella = "$fuente|$mag|$lugar"
+                val prefs = getSharedPreferences("sismored", MODE_PRIVATE)
+                val visto = prefs.getLong("visto_" + huella.hashCode(), 0L)
+                if (System.currentTimeMillis() - visto < 30 * 60_000L) {
+                    Log.i("SismoRed", "alerta repetida, ya avisada: $huella")
+                    return@ReceptorSismicoOnline
+                }
+                prefs.edit().putLong("visto_" + huella.hashCode(),
+                    System.currentTimeMillis()).apply()
                 alertaExternaHasta = System.currentTimeMillis() + 180_000L
                 /* Marcado aparte de la alerta temprana: un catálogo publica lo
                    que YA pasó, así que aquí no hay nada que anticipar y sí algo
@@ -2711,6 +2741,12 @@ class ServicioSos : Service() {
                         enReposoAhora = enReposo
                         sismo.vigiliaArmada = enVigilia(opciones)
                         quietoParaVigilia = sismo.quietoDesdeHace()
+                        /* El relevo caduca solo si no ha vuelto a pasar nada. */
+                        if (repetidor && contestoBien > 0L &&
+                            System.currentTimeMillis() - contestoBien > REPETIDOR_MS) {
+                            repetidor = false
+                            anotar("media hora sin novedad: dejo de ser solo repetidor y vuelvo a vigilar")
+                        }
                         anotar("Móvil %s: vigilo a %.2f m/s²".format(
                             if (enReposo) "en reposo" else "encima de ti", nuevo))
                     }
