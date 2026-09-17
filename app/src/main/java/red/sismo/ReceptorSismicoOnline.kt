@@ -28,7 +28,31 @@ class ReceptorSismicoOnline(
 ) {
     companion object {
         private const val TAG = "SismoRed"
-        private const val EMSC_URL = "https://www.seismicportal.eu/fdsnws/event/1/query?format=json&limit=10"
+        /**
+         * La consulta al catálogo. **`limit=10` sin filtro dejaba esto ciego.**
+         *
+         * Diez huecos sin filtrar se los come la sismicidad mundial: medido el
+         * 17 de septiembre de 2026, los diez eventos más recientes cubrían
+         * ochenta y seis minutos y eran de Guatemala, Chile, Turquía, Indonesia,
+         * Costa Rica, Sudáfrica y Tonga — con la mitad por debajo de M3. Un
+         * sismo colombiano caía de la lista en minutos, y con el receptor
+         * preguntando cada 45 segundos era cuestión de suerte pillarlo. El M4.4
+         * de esa madrugada no se pilló.
+         *
+         * Con `minmag` y cien huecos, la misma consulta cubre treinta y tres
+         * horas y salen los cinco sismos colombianos de los últimos dos días.
+         *
+         * El filtro de magnitud va en el servidor y el de DISTANCIA no, a
+         * propósito: mandar un recuadro geográfico —o peor, la posición— sería
+         * decirle al servidor dónde está quien pregunta, y la política de
+         * privacidad promete que eso no viaja. Se piden los sismos grandes del
+         * mundo entero y se descartan aquí los que quedan lejos.
+         *
+         * `minmag` 3,5 y no [MAG_MIN] 3,8: un poco de margen para que un evento
+         * no se pierda si luego le revisan la magnitud a la baja.
+         */
+        private const val EMSC_URL =
+            "https://www.seismicportal.eu/fdsnws/event/1/query?format=json&limit=100&minmag=3.5"
         private const val RADIO_MAX_KM = 450.0
         private const val MAG_MIN = 3.8
         /**
