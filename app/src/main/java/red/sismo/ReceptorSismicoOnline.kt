@@ -53,8 +53,50 @@ class ReceptorSismicoOnline(
          */
         private const val EMSC_URL =
             "https://www.seismicportal.eu/fdsnws/event/1/query?format=json&limit=100&minmag=3.5"
-        private const val RADIO_MAX_KM = 450.0
-        private const val MAG_MIN = 3.8
+        /**
+         * El catálogo del Servicio Geológico Colombiano.
+         *
+         * Hace falta porque EMSC y USGS son catálogos globales y en Colombia no
+         * bajan de M4 aproximadamente: el M3.5 de Istmina del 17 de septiembre
+         * de 2026 a las 04:46, que se sintió, no está en ninguno de los dos y
+         * sí está aquí. Los sismos que de verdad asustan a alguien son locales
+         * y pequeños, y esos solo los publica la red nacional.
+         *
+         * Cinco días de eventos, unos 620, en GeoJSON. Dos trampas medidas:
+         * las coordenadas van `[lat, lon, prof]` —al revés del GeoJSON
+         * estándar, que es `[lon, lat]`— y el servidor devuelve 403 si la
+         * petición no parece la de un navegador.
+         */
+        private const val SGC_URL =
+            "https://archive.sgc.gov.co/feed/v1.0.1/summary/five_days_all.json"
+
+        /**
+         * Hasta dónde se avisa de un sismo, según su magnitud.
+         *
+         * Un radio fijo no sirve: un M3.5 a 300 km no lo nota nadie y a 40 km
+         * despierta a la casa entera. El radio crece con la magnitud, que es
+         * como se comporta de verdad la intensidad.
+         *
+         *     M3.0 -> 73 km    M4.0 -> 230 km    M5.0 -> 727 km
+         *     M3.5 -> 129 km   M4.5 -> 409 km
+         *
+         * La constante sale de calibrar contra los cinco días del catálogo del
+         * SGC: con ella entran los nueve sismos del enjambre del Chocó que se
+         * sintieron —M4.3 a M4.9 a unos 120 km— y también el M3.5 de Istmina.
+         *
+         * **Dos avisos: son 4 al día, y eso es mucho.** Pero esos cinco días
+         * son un enjambre activo, no una semana normal; en un mes tranquilo
+         * esto da casi cero. Y el cálculo se hizo con una posición supuesta,
+         * porque la de verdad no sale del móvil: la distancia real la calcula
+         * la app con su GPS, así que el número que veas puede variar.
+         */
+        fun radioAviso(mag: Double): Double = 23.0 * Math.pow(10.0, 0.5 * (mag - 2.0))
+
+        /** Tope duro, por si una magnitud absurda dispara la fórmula. */
+        private const val RADIO_MAX_KM = 900.0
+
+        /** Por debajo de esto no se mira nada, venga de donde venga. */
+        private const val MAG_MIN = 3.0
         /**
          * Qué antigüedad se le admite a un sismo del catálogo.
          *
@@ -88,10 +130,13 @@ class ReceptorSismicoOnline(
         hilo = thread(name = "ReceptorSismicoOnline", isDaemon = true) {
             onRegistro("receptor sísmico online iniciado (red abierta EMSC)")
             while (corriendo) {
-                try {
-                    consultarEmsc()
-                } catch (e: Exception) {
-                    Log.d(TAG, "ReceptorSismicoOnline error temporal: ${e.message}")
+                /* Las dos fuentes, y cada una por su lado: si una falla o
+                   cambia de formato, la otra sigue avisando. */
+                try { consultarEmsc() } catch (e: Exception) {
+                    Log.d(TAG, "EMSC no contesta: ${e.message}")
+                }
+                try { consultarSgc() } catch (e: Exception) {
+                    Log.d(TAG, "SGC no contesta: ${e.message}")
                 }
                 // Consulta cada 45 segundos mientras haya conexión
                 try { Thread.sleep(45_000L) } catch (_: InterruptedException) { break }
@@ -106,26 +151,40 @@ class ReceptorSismicoOnline(
     }
 
     /** Consulta el endpoint público y abierto de EMSC (FDSN GeoJSON). */
-    fun consultarEmsc() {
-        val url = URL(EMSC_URL)
-        val conn = (url.openConnection() as HttpURLConnection).apply {
-            connectTimeout = 8000
-            readTimeout = 8000
-            requestMethod = "GET"
-            setRequestProperty("User-Agent", "SismoRed-Android/OpenEmergency")
-        }
+    fun consultarEmsc() = consultar(EMSC_URL, sgc = false, ua = "SismoRed-Android/OpenEmergency")
 
+    /**
+     * Consulta el feed del Servicio Geológico Colombiano.
+     *
+     * Va con `User-Agent` de navegador porque el cortafuegos del servidor
+     * responde 403 a cualquier otra cosa —comprobado—. No es una gracia: es un
+     * feed público que su propia web consume, y sin esa cabecera no se puede
+     * leer.
+     */
+    fun consultarSgc() = consultar(
+        SGC_URL, sgc = true,
+        ua = "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36"
+    )
+
+    private fun consultar(urlStr: String, sgc: Boolean, ua: String) {
+        val conn = (URL(urlStr).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 8000
+            readTimeout = 12000
+            requestMethod = "GET"
+            setRequestProperty("User-Agent", ua)
+            if (sgc) setRequestProperty("Referer", "https://www.sgc.gov.co/")
+        }
         if (conn.responseCode == 200) {
-            val reader = BufferedReader(InputStreamReader(conn.inputStream))
-            val jsonStr = reader.readText()
-            reader.close()
-            procesarGeoJson(jsonStr)
+            val jsonStr = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
+            procesarGeoJson(jsonStr, sgc)
+        } else {
+            Log.d(TAG, "catálogo ${if (sgc) "SGC" else "EMSC"} contestó ${conn.responseCode}")
         }
         conn.disconnect()
     }
 
     /** Procesa la respuesta GeoJSON estándar del FDSN. */
-    fun procesarGeoJson(jsonStr: String) {
+    fun procesarGeoJson(jsonStr: String, sgc: Boolean = false) {
         val ubi = getUbicacion()
         val miLat = ubi?.first ?: 0.0
         val miLon = ubi?.second ?: 0.0
@@ -146,18 +205,27 @@ class ReceptorSismicoOnline(
                     val coords = geom.optJSONArray("coordinates") ?: continue
                     if (coords.length() < 2) continue
 
-                    val lon = coords.getDouble(0)
-                    val lat = coords.getDouble(1)
+                    /* El SGC pone la latitud PRIMERO, al reves del GeoJSON
+                       estandar que usa EMSC. Comprobado contra Sipi, Choco:
+                       [4.61, -76.68] es lat,lon — al derecho seria un punto en
+                       mitad del Atlantico. */
+                    val lat = if (sgc) coords.getDouble(0) else coords.getDouble(1)
+                    val lon = if (sgc) coords.getDouble(1) else coords.getDouble(0)
                     val mag = props.optDouble("mag", 0.0)
                     val place = props.optString("flynn_region", props.optString("place", "Región desconocida"))
 
-                    val timeStr = props.optString("time", "")
-                    val timeMs = parseIso(timeStr)
+                    /* EMSC da ISO-8601 con zona; el SGC da «2026-09-17 11:33»
+                       en UTC y sin marca de zona, con resolucion de minuto. */
+                    val timeMs = if (sgc) parseSgc(props.optString("utcTime", ""))
+                                 else parseIso(props.optString("time", ""))
 
+                    /* El radio crece con la magnitud: un M3.5 lejos no lo nota
+                       nadie y cerca despierta a la casa. Ver [radioAviso]. */
+                    val radio = minOf(radioAviso(mag), RADIO_MAX_KM)
                     if (ahora - timeMs in -30_000L..VENTANA_TIEMPO_MS && mag >= MAG_MIN) {
                         val dist = if (miLat != 0.0 || miLon != 0.0) distanciaKm(miLat, miLon, lat, lon) else 0.0
                         val enColombia = lat in -4.5..13.5 && lon in -79.5..-66.5
-                        if (dist in 0.1..RADIO_MAX_KM || (miLat == 0.0 && miLon == 0.0 && enColombia)) {
+                        if (dist in 0.1..radio || (miLat == 0.0 && miLon == 0.0 && enColombia)) {
                             eventosVistos.add(id)
                             onRegistro("ALERTA SÍSMICA ONLINE RECIBIDA: M$mag en $place (~${dist.toInt()} km)")
                             onAlertaSismica(mag, dist, place)
@@ -195,6 +263,19 @@ class ReceptorSismicoOnline(
                 }
             }
         } catch (_: Exception) {}
+    }
+
+    /**
+     * «2026-09-17 11:33» en UTC, sin marca de zona y con resolucion de minuto.
+     * Es el formato del SGC y no lo entiende ningun parser de ISO.
+     */
+    fun parseSgc(t: String): Long {
+        if (t.isBlank()) return 0L
+        return try {
+            val f = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.US)
+            f.timeZone = java.util.TimeZone.getTimeZone("UTC")
+            f.parse(t)?.time ?: 0L
+        } catch (_: Exception) { 0L }
     }
 
     private fun parseIso(iso: String): Long {
