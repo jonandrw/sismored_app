@@ -319,6 +319,23 @@ class Sismografo(
      */
     @Volatile var sostenidoMs = 0L; private set
     private var sostenidoDesde = 0L
+    /**
+     * Cuánto llevaba el móvil sin moverse justo ANTES de empezar la racha.
+     *
+     * Medido en diez noches del Redmi: de madrugada el móvil registra unos
+     * veinte movimientos por noche que pasan los filtros de mano y quietud.
+     * No es ruido del suelo, es su dueño levantándose. Y eso no se distingue
+     * por amplitud —bajar el umbral de 0,14 a 0,05 solo añade 25 eventos en
+     * diez noches— sino por lo que había ANTES: un teléfono que lleva media
+     * hora sin que nada lo roce y de pronto se mueve tres segundos seguidos
+     * no es alguien yendo al baño.
+     *
+     * Se guarda el valor del marco anterior porque el propio suceso reinicia
+     * el reloj: preguntarlo después de empezar daría siempre cero, que es el
+     * mismo fallo que ya obligó a escribir `Postura.regimenRecordado`.
+     */
+    @Volatile var quietoAntesDeLaRacha = 0L; private set
+    private var quietoEnElMarcoPrevio = 0L
 
     /** La última sacudida fue lo bastante grande como para no confundirse con
      *  una mano. Ver [CICLO_FUERTE]. */
@@ -806,6 +823,7 @@ class Sismografo(
            contaría como movimiento y la postura seguiría diciendo EN_REPOSO con
            el teléfono en la mano. */
         val devTotal = hypot(hypot(ax - gx, ay - gy), az - gz)
+        quietoEnElMarcoPrevio = System.currentTimeMillis() - ultimoMovimiento
         if (devTotal > 0.6) ultimoMovimiento = System.currentTimeMillis()
 
         // 3) media rápida con recorte y bajada más rápida que la subida
@@ -942,7 +960,10 @@ class Sismografo(
            Un golpe en la mesa es un pico y esto se le queda en cero; un
            terremoto dura, y ahí está toda la diferencia. */
         if (cicloTrabajo >= CICLO_MIN) {
-            if (sostenidoDesde == 0L) sostenidoDesde = ahoraMs
+            if (sostenidoDesde == 0L) {
+                sostenidoDesde = ahoraMs
+                quietoAntesDeLaRacha = quietoEnElMarcoPrevio
+            }
             sostenidoMs = ahoraMs - sostenidoDesde
         } else {
             sostenidoDesde = 0L

@@ -85,7 +85,7 @@ una propuesta cambia eso, tiene que cambiar también lo que el usuario lee.
 
 ## Licencia y autoría
 
-Copyright (C) 2026 Juan Torres
+Copyright (C) 2026 Juan Andrés Torres Orozco
 
 SismoRed es software libre: puedes redistribuirlo y modificarlo bajo los términos
 de la Licencia Pública General de GNU, versión 3, tal como la publica la Free

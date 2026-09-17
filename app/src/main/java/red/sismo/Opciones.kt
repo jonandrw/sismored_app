@@ -328,6 +328,22 @@ class Opciones(ctx: Context) {
          */
         const val VIGILIA_SOSTENIDO_MS = 3000L
 
+        /**
+         * Cuánto tiene que llevar el móvil sin que nada lo roce para que la
+         * vigilia se arme.
+         *
+         * Es la condición que de verdad separa un terremoto de su dueño. En
+         * diez noches medidas, el móvil registró unos veinte movimientos por
+         * noche que pasaban los filtros de mano y quietud: levantarse al baño,
+         * mirar la hora, dar la vuelta en la cama. Ninguno viene después de
+         * media hora de quietud absoluta; un sismo sí.
+         *
+         * Y hay que decírselo al usuario, porque le obliga a algo: si duerme
+         * con el móvil a mano y lo toca cada rato, esto no se va a armar nunca
+         * y es mejor que lo sepa antes que después.
+         */
+        const val VIGILIA_REPOSO_MIN_MS = 30 * 60_000L
+
         /** La franja, en hora local. De 01:00 a 06:59. */
         const val VIGILIA_DESDE_H = 1
         const val VIGILIA_HASTA_H = 7

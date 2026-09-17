@@ -1332,7 +1332,8 @@ class ServicioSos : Service() {
             alertaExterna = alertaExterna,
             alertaCatalogo = System.currentTimeMillis() < alertaCatalogoHasta,
             sostenidaNocturna = enVigilia(opciones) && enReposoAhora &&
-                sismo.sostenidoMs >= Opciones.VIGILIA_SOSTENIDO_MS,
+                sismo.sostenidoMs >= Opciones.VIGILIA_SOSTENIDO_MS &&
+                sismo.quietoAntesDeLaRacha >= Opciones.VIGILIA_REPOSO_MIN_MS,
             caidaImpacto = huboCaida,
             preguntado = preguntaVencida,
             contestado = haContestado,
