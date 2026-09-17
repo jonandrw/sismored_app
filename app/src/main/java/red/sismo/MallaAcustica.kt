@@ -173,7 +173,21 @@ class MallaAcustica(
 
         private const val BURST_ON = 0.25       // s de tono
         private const val BURST_OFF = 0.15      // s de silencio
-        private const val BURST_N = 6           // trama de ~2,4 s
+        /**
+         * Rafagas por trama.
+         *
+         * **Seis no dejaban margen.** Confirmar exige cuatro comienzos
+         * seguidos a periodo estable, asi que con seis bastaba que dos
+         * salieran mal para no llegar. Medido el 17 de septiembre de 2026 a
+         * mas de veinte metros: el receptor oia 29 ecos, de sobra, y se
+         * quedaba clavado en `cadencia=3/4`.
+         *
+         * Con diez, la trama dura 4 s y hay que acertar cuatro de diez en vez
+         * de cuatro de seis. No mejora el alcance —el tono llega igual de
+         * lejos— sino la probabilidad de enganchar en un enlace justo, que es
+         * justo el caso del altavoz debil.
+         */
+        private const val BURST_N = 10          // trama de ~4 s
         /**
          * Cada cuánto se repite la trama mientras dura la alarma.
          *
@@ -193,7 +207,7 @@ class MallaAcustica(
          * Con 6,0 s quedan 3,0 s de escucha, casi el doble de lo que hace falta.
          * Un relevo más lento que funciona vale más que uno rápido y sordo.
          */
-        const val RELAY_MS = 6000L
+        const val RELAY_MS = 8000L
 
         /* ---------- análisis ----------
            Ventana de 2048 muestras (42 ms a 48 kHz), que es la que sirve
