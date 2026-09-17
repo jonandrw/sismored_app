@@ -1648,10 +1648,9 @@ class ServicioSos : Service() {
         val b = Notification.Builder(this, canalId)
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
             .setContentTitle("¿Sentiste un temblor?")
-            /* Decía «detectamos movimiento en reposo» siempre, y eso es falso
-               cuando quien dispara es el catálogo: ahí no se ha movido nada.
-               El motivo real ya venía calculado y no se enseñaba. */
-            .setContentText(motivo)
+            /* Ni «detectamos movimiento en reposo» —falso cuando dispara el
+               catálogo— ni el `motivo`, que está escrito para el registro. */
+            .setContentText("Pulsa si estás bien o si fue falsa alarma.")
             .setCategory(Notification.CATEGORY_STATUS)
             .setAutoCancel(true)
             .setContentIntent(abrir)

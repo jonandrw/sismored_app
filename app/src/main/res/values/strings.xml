@@ -6,7 +6,7 @@
     <string name="detener">DETENER</string>
     <string name="bateria">PERMITIR QUE SIGA ACTIVA SIN BATERÍA</string>
     <string name="teclas">ACTIVAR EL ATAJO DE VOLUMEN</string>
-    <string name="desc_teclas">Permite pedir ayuda pulsando el botón de volumen tres veces, aunque la pantalla esté bloqueada y no puedas mirar el móvil. SismoRed no lee el contenido de la pantalla ni de otras aplicaciones: solo escucha las teclas de volumen.</string>
+    <string name="desc_teclas">Pide ayuda con tres pulsaciones de volumen, aunque la pantalla esté bloqueada. No lee la pantalla ni otras apps: solo esas teclas.</string>
     <string name="malla_apagada">MALLA APAGADA · falta el micrófono</string>
     <string name="panico_sub">ACTIVAR ALERTA EN TODA LA RED</string>
     <string name="diagnostico">Diagnóstico</string>
@@ -17,9 +17,7 @@
     <string name="t_entorno">Entorno</string>
     <string name="t_registro">Registro</string>
     <string name="t_ajustes">Ajustes</string>
-    <string name="ayuda_entorno">Las cuatro se quedan en marcha hasta que las apagas, y ninguna arranca sola: mientras esperas, no gastan batería.
-
-El tono es uno y el altavoz es uno, así que <i>movimiento</i> y <i>respiración</i> no pueden estar encendidas a la vez: al encender una se apaga la otra. Y mientras suene cualquiera de las dos, la malla no oye a otros móviles.</string>
+    <string name="ayuda_entorno">Ninguna arranca sola y se quedan en marcha hasta que las apagas. <i>Movimiento</i> y <i>respiración</i> comparten altavoz: al encender una se apaga la otra, y mientras suenan la malla no oye.</string>
     <string name="t_ficha">Ficha</string>
     <string name="t_busqueda">Buscar</string>
     <string name="guion">—</string>
@@ -61,11 +59,9 @@ El tono es uno y el altavoz es uno, así que <i>movimiento</i> y <i>respiración
     <string name="rot_ajustes">ACTIVAR UNA VEZ</string>
     <string name="rot_registro">REGISTRO</string>
     <string name="autotest">COMPROBAR TODO</string>
-    <string name="desc_radio">Si quedas atrapado, tu móvil emite una señal de radio de muy poca potencia para que quien te busque desde arriba sepa hacia dónde cavar. SismoRed no se conecta a nada ni rastrea a nadie: solo emite mientras la alarma esté activa, y escucha cuando eres tú quien busca.</string>
-    <string name="desc_radio_ubicacion">Tu versión de Android pide el permiso de UBICACIÓN para esto. Lo exige el sistema, no la app: entiende que oír radios cercanas permitiría deducir dónde estás. SismoRed no mira tu posición, no la guarda y no la envía a ninguna parte.</string>
-    <string name="desc_micro">La app escucha para dos cosas: recibir avisos de otros móviles cercanos y reconocer si hay un derrumbe, un grito o golpes a tu alrededor.
-
-El sonido se analiza y se descarta al momento. No se graba, no se guarda y no sale del móvil.</string>
+    <string name="desc_radio">Emite una señal de radio de poca potencia para que sepan hacia dónde cavar. Solo mientras la alarma está activa.</string>
+    <string name="desc_radio_ubicacion">Android exige el permiso de UBICACIÓN para oír radios cercanas. Lo pide el sistema, no la app: tu posición no se mira, ni se guarda, ni se envía.</string>
+    <string name="desc_micro">Escucha para recibir avisos de otros móviles y reconocer derrumbes, gritos o golpes. Se analiza y se descarta al momento: no graba ni envía nada.</string>
     <!-- ===== títulos de tarjeta ===== -->
     <string name="rot_preparacion">PREPARACIÓN DE LA RED</string>
     <string name="n1">1</string>
@@ -252,11 +248,7 @@ El sonido se analiza y se descarta al momento. No se graba, no se guarda y no sa
     <string name="ob_bateria">Batería sin límites</string>
     <string name="ob_bateria_para">Para que el sistema no apague la vigilancia al cabo de unas horas.</string>
     <string name="matada_titulo">Tu móvil paró SismoRed</string>
-    <string name="matada_texto">Al cerrar la app, el sistema mató la vigilancia. No fue SismoRed: algunos móviles (sobre todo Xiaomi y Redmi) cierran las apps al deslizarlas fuera de recientes, aunque estén vigilando.
-
-Para que siga funcionando con la app cerrada hay que darle INICIO AUTOMÁTICO, y fijarla en recientes con el candado.
-
-Mientras no lo hagas, SismoRed solo vigila con la app abierta.</string>
+    <string name="matada_texto">El sistema mató la vigilancia al cerrar la app. Algunos móviles, sobre todo Xiaomi y Redmi, lo hacen al deslizarla fuera de recientes. Dale INICIO AUTOMÁTICO y fíjala con el candado.</string>
     <string name="matada_ajustes">IR AL AJUSTE</string>
     <string name="matada_luego">Ahora no</string>
     <!-- ==================== ACERCA DE ====================
@@ -365,11 +357,7 @@ Deténla con el botón DETENER o pulsando una vez el volumen. Y comunícalo en e
     <string name="d_apagar">Detiene la vigilancia y el servicio en segundo plano.</string>
 
     <string name="reactivar_titulo">SismoRed vuelve a vigilar</string>
-    <string name="reactivar_texto">La habías apagado del todo y al abrirla se reactiva sola.
-
-Falta una cosa que la aplicación no puede hacer por su cuenta: volver a activar el atajo de volumen. Activar un servicio de accesibilidad tiene que hacerlo una persona en Ajustes.
-
-Sin él, no podrás pedir ayuda con la pantalla bloqueada.</string>
+    <string name="reactivar_texto">Falta volver a activar el atajo de volumen: eso solo puede hacerlo una persona en Ajustes. Sin él no podrás pedir ayuda con la pantalla bloqueada.</string>
     <string name="reactivar_ir">ACTIVAR EL ATAJO</string>
     <string name="rot_opciones">OPCIONES</string>
     <string name="rot_no_la_quiero">SI NO LA QUIERES ACTIVA</string>
@@ -433,9 +421,7 @@ Sin él, no podrás pedir ayuda con la pantalla bloqueada.</string>
     <string name="ph_med">Asma. Alérgico a penicilina.</string>
     <string name="ph_contacto">María 600 123 456</string>
 
-    <string name="ayuda">Aquí queda anotado todo lo que va pasando: cada alerta que llega de otro móvil, cada sonido que reconoce y cada comprobación que haces.
-
-Se guarda solo en este móvil y no sale de aquí. Si algo no te cuadra, este es el primer sitio donde mirar.</string>
+    <string name="ayuda">Todo lo que va pasando queda anotado aquí, y no sale del móvil. Si algo no te cuadra, mira primero aquí.</string>
 
     <!-- ===== los muros de ayuda, convertidos en pasos =====
          Eran parrafos de tres y cuatro frases al pie de la tarjeta. Cada parrafo
@@ -476,7 +462,7 @@ Se guarda solo en este móvil y no sale de aquí. Si algo no te cuadra, este es 
          Antes eran dos etiquetas sueltas, y «Frecuencia doppler» a secas no le dice
          nada a quien esta encima de un escombro. -->
     <string name="sub_ajuste_senal">Estos dos mandos los comparten el movimiento, la respiración y el barrido.</string>
-    <string name="l_doppler_d">18,5 kHz de fábrica, donde casi no se oye. Bájala si tu móvil no llega tan alto o si quieres comprobar que suena: por debajo de 16 kHz se oye claramente, pero entonces tapa los golpes que intentas escuchar, y entre 16 y 18 pisa a la malla. Cuanto más baja, menos fina es la medida.</string>
+    <string name="l_doppler_d">18,5 kHz de fábrica, donde casi no se oye. Por debajo de 16 kHz se oye claro pero tapa los golpes; entre 16 y 18 pisa a la malla. Cuanto más baja, menos fina la medida.</string>
     <string name="l_volsenal_d">De 1 a 10. Súbelo para atravesar un escombro grueso; a cambio, la malla oye peor mientras suene. El cambio se aplica al volver a encender la herramienta.</string>
 
     <!-- La caja de internet, en pasos. Era un muro de dos párrafos largos. -->
@@ -520,11 +506,7 @@ Es la única forma de comprobar el tramo que no se puede ensayar de otra manera.
     <string name="alerta_google_titulo">SismoRed · alerta sísmica</string>
     <string name="b_alerta_google">ALERTA DE GOOGLE</string>
     <string name="d_alerta_google">Reparte por sonido la alerta que solo llega a algunos.</string>
-    <string name="d_alerta_google_aviso">La alerta sísmica de Google llega segundos antes de que sacuda, pero solo a los móviles con internet y con la función activada: en un salón de clases no le llegó al 80 %.
-
-Si la activas, SismoRed la oye y la reparte por sonido a los móviles de alrededor que no la han recibido.
-
-Para leerla hace falta el permiso de acceso a notificaciones, que Android da entero. SismoRed se sale de cualquier notificación que no venga de los servicios de Google antes de mirar su contenido, y no guarda ni envía nada de ninguna. La app funciona entera sin este permiso.</string>
+    <string name="d_alerta_google_aviso">SismoRed oye la alerta de Google y la reparte por sonido a los móviles de alrededor. Necesita el permiso de acceso a notificaciones; se sale de todo lo que no venga de Google sin mirarlo. Funciona entera sin esto.</string>
     <string name="b_alerta_google_activar">ABRIR LOS AJUSTES</string>
     <string name="b_alerta_google_probar">PROBAR SIMULADA</string>
     <string name="d_alerta_google_on">Activa. Oye la alerta de Google y la reparte por sonido.</string>
@@ -656,9 +638,7 @@ Para leerla hace falta el permiso de acceso a notificaciones, que Android da ent
     <string name="fsi_btn_fabricante">PERMISOS DEL FABRICANTE</string>
     <string name="fsi_titulo">La pregunta no puede salir sola</string>
     <string name="fsi_texto">Sin esto, «¿estás bien?» llega como un aviso normal y puede pasarte desapercibido — y si no lo contestas, la sirena arranca sola.</string>
-    <string name="fsi_texto_fabricante">Sin esto, «¿estás bien?» llega como un aviso normal y puede pasarte desapercibido — y si no lo contestas, la sirena arranca sola.
-
-En Xiaomi y Redmi hacen falta &lt;b&gt;los dos&lt;/b&gt;: el de Android y el propio del fabricante, que se llama «mostrar ventanas emergentes en segundo plano» y no se puede comprobar desde aquí.</string>
+    <string name="fsi_texto_fabricante">Sin esto, «¿estás bien?» llega como un aviso normal y puede pasarte desapercibido. En Xiaomi y Redmi hacen falta &lt;b&gt;los dos&lt;/b&gt;: el de Android y el del fabricante, que no se puede comprobar desde aquí.</string>
 
     <string name="buscar_on">Buscando supervivientes</string>
     <string name="buscar_on_sub">Este móvil no grita: escucha y deja oír</string>
@@ -706,7 +686,7 @@ En Xiaomi y Redmi hacen falta &lt;b&gt;los dos&lt;/b&gt;: el de Android y el pro
     <string name="vigilia_medido">Medido en once días de registro: de 503 sacudidas detectadas, solo doce duraron tres segundos o más, y ninguna de esas doce ocurrió entre la 1 y las 7. Lo que separa un terremoto de un golpe en la mesa no es la fuerza, es que dura.</string>
 
     <string name="ajustes_sismo_online">Contrastar con el catálogo sísmico público</string>
-    <string name="ajustes_sismo_online_sub">Consulta los sismos publicados por el EMSC para corroborar lo que mide el móvil. No manda nada tuyo: tu ubicación no viaja y la distancia se calcula aquí. Aun así hace peticiones a un servidor ajeno. Apagado de fábrica.</string>
+    <string name="ajustes_sismo_online_sub">Contrasta lo que mide el móvil con los sismos publicados por EMSC y el SGC. Tu ubicación no viaja; la distancia se calcula aquí. Apagado de fábrica.</string>
 
     <string name="ajustes_envio">Enviar partes cuando haya internet</string>
     <string name="ajustes_envio_sub">La hora, el motivo de la alarma y los saltos de la malla. Nunca tu ficha, ni tu ubicación, ni audio. Apagado de fábrica.</string>
