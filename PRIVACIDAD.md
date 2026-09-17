@@ -43,8 +43,8 @@ SismoRed es una herramienta comunitaria de código abierto orientada a la detecc
 
 ## 3. Conectividad y Redes Abiertas
 
-### A. Consulta Pasiva a Redes Sísmicas Abiertas Internacionales (EMSC / USGS / FDSN)
-- **Qué es:** Para evitar que un sismo real pase inadvertido cuando el usuario se encuentra solo o sin otros nodos de la malla cercanos, SismoRed puede consultar periódicamente los catálogos sismológicos públicos y abiertos internacionales (FDSN GeoJSON vía EMSC / USGS).
+### A. Consulta Pasiva a Catálogos Sísmicos Abiertos (EMSC y SGC)
+- **Qué es:** Para evitar que un sismo real pase inadvertido cuando el usuario se encuentra solo o sin otros nodos de la malla cercanos, SismoRed puede consultar periódicamente los catálogos sismológicos públicos y abiertos (FDSN GeoJSON vía EMSC, y el feed del Servicio Geológico Colombiano, que es el que cubre los sismos locales pequeños que los catálogos globales no publican).
 - **Viene apagado.** Es la única función de la app que sale a internet, así que
   no se enciende sola: hay un interruptor en *Ajustes → Si aparece internet*, y
   mientras usted no lo active, SismoRed no hace ninguna petición de red.

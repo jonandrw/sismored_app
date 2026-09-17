@@ -287,11 +287,11 @@
 
 <b>La aplicación nunca enciende el GPS.</b> Solo lee el último lugar que otra aplicación ya había averiguado.
 
-<b>Qué sale del móvil, y cuándo.</b> Únicamente con la alarma o el modo rescate activos: por radio (Bluetooth) viajan tu nombre de pila y tu grupo sanguíneo, que ocupan 31 bytes; por Wi‑Fi, si existe una red local, viaja la ficha completa junto con la última posición conocida, y la recibe quien esté en esa misma red. Todo se interrumpe en cuanto detienes la alarma.
+<b>Qué sale del móvil, y cuándo.</b> Únicamente con la alarma o el modo rescate activos: por radio (Bluetooth) viajan tu nombre de pila, tu grupo sanguíneo y tu estado en una trama de 31 bytes, y en tramas siguientes tu edad, tu medicación y tu contacto; por Wi‑Fi, si existe una red local, viaja la ficha completa junto con la última posición conocida, y la recibe quien esté en esa misma red. Todo se interrumpe en cuanto detienes la alarma.
 
 <b>El sonido no se graba jamás.</b> El micrófono se analiza al vuelo en memoria volátil y se descarta de inmediato. Tras una sacudida, abre una ventana breve de 10 segundos buscando posibles expresiones de auxilio para corroborar el sismo localmente. No se almacena audio en disco ni se sube a ningún servidor.
 
-<b>Consultas sísmicas abiertas.</b> Si dispones de internet, la app puede consultar catálogos públicos y abiertos (EMSC/USGS) para saber si tiembla cerca. Es una consulta de solo lectura: nunca envía tu posición, ni identificadores, ni datos personales. El cálculo de distancia se hace 100% en tu teléfono.</string>
+<b>Consultas sísmicas abiertas.</b> Si dispones de internet, la app puede consultar catálogos públicos y abiertos (el EMSC y el Servicio Geológico Colombiano) para saber si tiembla cerca. Es una consulta de solo lectura: nunca envía tu posición, ni identificadores, ni datos personales. El cálculo de distancia se hace 100% en tu teléfono. <b>Comprobación de versión.</b> Una vez al día como mucho, la app pregunta si existe una versión más nueva. Solo pregunta y compara el número; nunca descarga ni instala por su cuenta.</string>
 
     <string name="ac_rot_permisos">POR QUÉ CADA PERMISO</string>
     <string name="ac_permisos"><b>Micrófono.</b> Para oír los avisos de otros móviles, reconocer un derrumbe o golpes, y confirmar expresiones de auxilio durante un sismo. No graba en disco ni transmite voz.
@@ -304,7 +304,7 @@
 
 <b>Pasos.</b> Para saber si sigues caminando después de un terremoto, que es la señal más barata de que estás bien. Es un contador que tu móvil ya lleva incorporado.
 
-<b>Notificaciones y batería.</b> Para que la vigilancia siga viva cuando la necesitas.
+<b>Acceso a notificaciones.</b> Solo para leer la alerta sísmica de Google y repartirla por la malla a los móviles sin internet. Se descarta cualquier notificación que no venga de los servicios de Google antes de mirar su contenido. <b>Notificaciones y batería.</b> Para que la vigilancia siga viva cuando la necesitas.
 
 Todos son opcionales. Sin ellos la aplicación funciona a medias, y te indica en Diagnóstico qué le falta.</string>
 
