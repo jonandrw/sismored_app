@@ -1338,6 +1338,10 @@ class ServicioSos : Service() {
                móvil hace una hora no dice nada de ahora. */
             interaccion = p != null && sucesoDesde > 0 &&
                 p.ultimaInteraccion > sucesoDesde,
+            /* La mano vale igual, y con el mismo corte: tiene que aparecer
+               DESPUÉS del suceso. Si ya estaba antes, el sismógrafo ni siquiera
+               habría disparado. */
+            manoDespues = sucesoDesde > 0 && sismo.ultimaMano > sucesoDesde,
             /* Y cuánto hace de la última vez, que es lo que decide si la sirena
                tiene sentido. −1 si no se sabe: no saber no puede costarle la
                sirena a quien duerme. */

@@ -152,6 +152,8 @@ object Cascada {
         val pasosDespues: Int = -1,
         /** Alguien ha desbloqueado la pantalla DESPUÉS del suceso. */
         val interaccion: Boolean = false,
+        /** Una mano ha levantado o girado el móvil DESPUÉS del suceso. */
+        val manoDespues: Boolean = false,
         /**
          * Cuánto hace que alguien tocó este móvil, en ms. −1 = no se sabe.
          *
@@ -388,6 +390,17 @@ object Cascada {
             "sigue andando (${p.pasosDespues} pasos): está bien, paso a repetidor")
         if (p.interaccion) return Decision(Accion.NADA, Quien.NADIE,
             "ha desbloqueado el móvil después del terremoto: está consciente")
+        /* Cogerlo cuenta tanto como desbloquearlo. Medido en campo: un tirón del
+           cable disparó el sismógrafo con el móvil todavía clasificado en reposo,
+           nadie contestó la pregunta —no había nada que contestar— y a los 60 s
+           salió la baliza de rescate. Entre medias el móvil había sido levantado
+           y girado, que es algo que un inconsciente no hace.
+
+           No borra la detección hacia atrás, y por eso vale también si el
+           terremoto fue real: quien coge su móvil está consciente, y marcarlo
+           como víctima que no contesta es mentirle al que busca. */
+        if (p.manoDespues) return Decision(Accion.NADA, Quien.NADIE,
+            "ha cogido el móvil después del terremoto: está consciente")
 
         /* ---- 5. Nadie ha contestado ----
            A partir de aquí se enciende la baliza, y el rótulo importa tanto como
@@ -512,6 +525,13 @@ object Cascada {
             Triple("dormida, no contesta y no anda", Accion.DESPERTAR,
                 Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true,
                     preguntado = true, pasosDespues = 0, quietoMs = 300_000L)),
+            /* El tirón del cable del 17-09: disparo con el móvil aún clasificado
+               en reposo, nadie contestó porque no había a quién preguntar, y a
+               los 60 s baliza de rescate. La mano llegó 7 s tarde, fuera de la
+               ventana retroactiva del sismógrafo, pero muy dentro del minuto. */
+            Triple("lo cogió después y nunca contestó", Accion.NADA,
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true,
+                    preguntado = true, quietoMs = 300_000L, manoDespues = true)),
             Triple("derrumbe y el móvil sale despedido", Accion.BALIZA,
                 Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, estruendo = true,
                     caidaImpacto = true, preguntado = true, quietoMs = 300_000L)),

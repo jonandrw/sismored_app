@@ -327,7 +327,7 @@ class Sismografo(
     /** Grados entre la gravedad rápida y la lenta: sube en cuanto una mano toca
      *  el móvil, y en una mesa se queda en décimas. Se ve en Diagnóstico. */
     @Volatile var manoGrados = 0.0; private set
-    private var ultimaMano = 0L
+    @Volatile var ultimaMano = 0L; private set
 
     /** ¿Ha habido una mano en los últimos segundos? Es lo que impide que
      *  levantar el móvil dispare la alarma con el umbral fino puesto. */
