@@ -1812,6 +1812,15 @@ class MainActivity : AppCompatActivity() {
            ALERTA AHORA. Aquí sí se puede encontrar, y sigue pidiendo
            confirmación antes de encenderse. */
         findViewById<View>(R.id.sw_envio)?.setOnClickListener { conmutarEnvio() }
+        /* Las condiciones de la vigilia son largas porque hacen falta, pero un
+           muro de texto en Ajustes no se lee. La condicion esencial se ve
+           siempre y el resto se despliega. */
+        findViewById<View>(R.id.vigilia_leer_mas)?.setOnClickListener { v ->
+            val det = findViewById<View>(R.id.vigilia_detalle) ?: return@setOnClickListener
+            val abierto = det.visibility == View.VISIBLE
+            det.visibility = if (abierto) View.GONE else View.VISIBLE
+            (v as? TextView)?.setText(if (abierto) R.string.vigilia_mas else R.string.vigilia_menos)
+        }
         findViewById<View>(R.id.sw_vigilia)?.setOnClickListener {
             op.vigiliaNocturna = !op.vigiliaNocturna
             arrancarServicio(ServicioSos.ACCION_OPCIONES)

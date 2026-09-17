@@ -3389,28 +3389,64 @@
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/barlow"
-                                android:text="@string/vigilia_como_tit"
-                                android:textColor="@color/ambar"
-                                android:textSize="15sp"
-                                android:textStyle="bold" />
-                            <TextView
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="8dp"
-                                android:fontFamily="@font/barlow"
-                                android:lineSpacingMultiplier="1.35"
-                                android:text="@string/vigilia_como_txt"
-                                android:textColor="@color/tx_sec"
-                                android:textSize="14sp" />
-                            <TextView
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="12dp"
-                                android:fontFamily="@font/mono"
                                 android:lineSpacingMultiplier="1.3"
-                                android:text="@string/vigilia_medido"
+                                android:text="@string/vigilia_resumen"
+                                android:textColor="@color/ambar"
+                                android:textSize="14sp" />
+
+                            <!-- El resto, plegado. La condicion esencial se lee
+                                 siempre; el porque y la medida, quien quiera. -->
+                            <LinearLayout
+                                android:id="@+id/vigilia_detalle"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical"
+                                android:visibility="gone">
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="12dp"
+                                    android:fontFamily="@font/barlow"
+                                    android:text="@string/vigilia_como_tit"
+                                    android:textColor="@color/tx"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold" />
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="6dp"
+                                    android:fontFamily="@font/barlow"
+                                    android:lineSpacingMultiplier="1.35"
+                                    android:text="@string/vigilia_como_txt"
+                                    android:textColor="@color/tx_sec"
+                                    android:textSize="14sp" />
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="12dp"
+                                    android:fontFamily="@font/mono"
+                                    android:lineSpacingMultiplier="1.3"
+                                    android:text="@string/vigilia_medido"
+                                    android:textColor="#7C858D"
+                                    android:textSize="12sp" />
+                            </LinearLayout>
+
+                            <TextView
+                                android:id="@+id/vigilia_leer_mas"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="10dp"
+                                android:background="?attr/selectableItemBackground"
+                                android:clickable="true"
+                                android:focusable="true"
+                                android:fontFamily="@font/mono"
+                                android:letterSpacing="0.15"
+                                android:paddingTop="6dp"
+                                android:paddingBottom="6dp"
+                                android:paddingEnd="12dp"
+                                android:text="@string/vigilia_mas"
                                 android:textColor="#7C858D"
-                                android:textSize="12sp" />
+                                android:textSize="11sp" />
                         </LinearLayout>
                     </LinearLayout>
 
