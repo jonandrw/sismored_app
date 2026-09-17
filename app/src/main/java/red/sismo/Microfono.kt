@@ -6,7 +6,9 @@ import android.content.pm.PackageManager
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioRecord
+import android.media.AudioRecordingConfiguration
 import android.media.MediaRecorder
+import android.os.Build
 import android.media.audiofx.AcousticEchoCanceler
 import android.media.audiofx.AutomaticGainControl
 import android.media.audiofx.NoiseSuppressor
@@ -53,7 +55,17 @@ class Microfono(private val ctx: Context) {
     @Volatile var sr = 48000; private set
     @Volatile var fuenteCruda = false; private set
 
+    /**
+     * El sistema puede enmudecer la captura sin cerrarla: otra app coge el
+     * micrófono, o el fabricante lo decide, y `read` sigue devolviendo marcos
+     * pero llenos de ceros. Sin esto la malla se queda sorda durante segundos
+     * sin que nadie se entere, y luego no hay forma de saber si la baliza no
+     * llegó o si es que no estábamos escuchando.
+     */
+    @Volatile var silenciado = false; private set
+
     private var record: AudioRecord? = null
+    private var vigilante: AudioManager.AudioRecordingCallback? = null
     private var usuarios = 0
     private val oyentes = java.util.concurrent.CopyOnWriteArrayList<Oyente>()
 
@@ -88,6 +100,12 @@ class Microfono(private val ctx: Context) {
         usuarios = usuarios and quien.inv()
         if (usuarios != 0) return
         abierto = false
+        silenciado = false
+        vigilante?.let { cb ->
+            vigilante = null
+            try { (ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager).unregisterAudioRecordingCallback(cb) }
+            catch (_: Exception) {}
+        }
         val r = record; record = null
         try { r?.stop() } catch (_: Exception) {}
         try { r?.release() } catch (_: Exception) {}
@@ -129,6 +147,7 @@ class Microfono(private val ctx: Context) {
         record = r
         abierto = true
         Log.i(TAG, "microfono: $sr Hz" + if (fuenteCruda) " (fuente cruda)" else " (voice_recognition)")
+        vigilarMudez(am, r.audioSessionId)
 
         thread(name = "microfono", isDaemon = true) {
             val trozo = ShortArray(SALTO)
@@ -151,6 +170,22 @@ class Microfono(private val ctx: Context) {
                 }
             }
         }
+    }
+
+    /** Lo avisa la propia plataforma desde Android 10; no hay que olfatear ceros. */
+    private fun vigilarMudez(am: AudioManager, sesion: Int) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
+        val cb = object : AudioManager.AudioRecordingCallback() {
+            override fun onRecordingConfigChanged(configs: MutableList<AudioRecordingConfiguration>) {
+                val mia = configs.firstOrNull { it.clientAudioSessionId == sesion } ?: return
+                if (mia.isClientSilenced == silenciado) return
+                silenciado = mia.isClientSilenced
+                Log.i(TAG, if (silenciado) "microfono: enmudecido por el sistema, sordos"
+                           else "microfono: vuelve a oírse")
+            }
+        }
+        try { am.registerAudioRecordingCallback(cb, null); vigilante = cb }
+        catch (e: Exception) { Log.e(TAG, "no se pudo vigilar la mudez del microfono", e) }
     }
 
     private fun apagarEfectos(sesion: Int) {

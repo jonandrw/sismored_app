@@ -799,6 +799,9 @@ class MallaAcustica(
     private fun procesar(marco: ShortArray) {
         // no oírse a sí mismo. La racha en curso queda partida: no se juzga.
         if (System.currentTimeMillis() < puertaHasta) { olvidoPuerta++; perderSincronismo(); return }
+        /* Enmudecidos por el sistema: los marcos vienen a cero. Juzgarlos sería
+           dar por buena una racha partida por un hueco que no oímos. */
+        if (mic.silenciado) { perderSincronismo(); return }
         val hop = decodificar(marco)
         verCadencia(tonoVivo)
         if (hop == 0) return
