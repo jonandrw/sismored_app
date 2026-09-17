@@ -153,6 +153,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         op = Opciones(this)
+        Actualizacion.comprobar(this)
         if (Altavoz.audio == null) {
             Altavoz.audio = getSystemService(android.content.Context.AUDIO_SERVICE) as? android.media.AudioManager
         }
