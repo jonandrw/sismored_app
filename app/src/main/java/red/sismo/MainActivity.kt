@@ -1837,6 +1837,15 @@ class MainActivity : AppCompatActivity() {
            tampoco. Y cuando el sistema ya no va a volver a preguntar —porque se
            denegó dos veces— la única vía son los ajustes de la app, así que
            allí se manda en vez de dejar el toque en nada. */
+        findViewById<View>(R.id.btn_fsi_ya)?.setOnClickListener {
+            op.fsiFabricanteDado = true
+            pintarDiagnostico(forzar = true)
+        }
+        /* Y el camino de vuelta: tocar la linea discreta reabre el aviso. */
+        findViewById<View>(R.id.fsi_ya_dado)?.setOnClickListener {
+            op.fsiFabricanteDado = false
+            pintarDiagnostico(forzar = true)
+        }
         findViewById<View>(R.id.permiso_micro)?.setOnClickListener {
             if (hayMicro()) abrirAjustesDeLaApp() else pedirMicrofono()
         }
@@ -3196,8 +3205,16 @@ class MainActivity : AppCompatActivity() {
         } else {
             getString(R.string.fsi_texto)
         }
+        /* El aviso se calla cuando Android da su parte por buena Y la persona
+           ha dicho que dio la del fabricante. Lo segundo no se puede comprobar,
+           asi que en su lugar queda una linea discreta que lo recuerda. */
+        val zanjado = pantallaCompletaOk && (!hayFabricante || op.fsiFabricanteDado)
         findViewById<View>(R.id.aviso_pantalla_completa)?.visibility =
-            if (pantallaCompletaOk && !hayFabricante) View.GONE else View.VISIBLE
+            if (zanjado) View.GONE else View.VISIBLE
+        findViewById<View>(R.id.fsi_ya_dado)?.visibility =
+            if (zanjado && hayFabricante) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.btn_fsi_ya)?.visibility =
+            if (hayFabricante && !op.fsiFabricanteDado) View.VISIBLE else View.GONE
         findViewById<View>(R.id.btn_fsi_android)?.visibility =
             if (intentPantallaCompleta() != null && !pantallaCompletaOk) View.VISIBLE else View.GONE
         findViewById<View>(R.id.btn_fsi_miui)?.visibility =

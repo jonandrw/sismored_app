@@ -103,24 +103,6 @@ class Opciones(ctx: Context) {
         get() = p.getLong("op_latido", 0L)
         set(v) = p.edit().putLong("op_latido", v).apply()
 
-    /** El sistema mató el servicio y el watchdog no pudo levantarlo por falta de
-     *  la exención de batería. Se guarda para poder decírselo al usuario: creerse
-     *  vigilado sin estarlo es peor que saber que no lo estás. */
-    /**
-     * Consultar el catálogo público de sismos del EMSC como segunda opinión.
-     *
-     * **Apagado de fábrica, y no por capricho.** La app promete en la bienvenida
-     * y en la política de privacidad que no hay telemetría y que nada sale del
-     * móvil sin que se vea. Esto no manda datos tuyos —la ubicación no viaja, la
-     * distancia se calcula aquí— pero sí hace peticiones a un tercero, y eso
-     * deja tu IP y tu horario de uso en un servidor ajeno. Encenderlo tiene que
-     * ser una decisión, igual que [envio].
-     *
-     * Para qué sirve: medido sobre once días de registros, un sismo real de M4.9
-     * es indistinguible en este acelerómetro de la vida cotidiana. La única
-     * salida es una segunda opinión, y si no hay otro móvil en la malla, esta es
-     * la que queda.
-     */
     /**
      * Vigilia nocturna: de 01:00 a 07:00, el móvil quieto y el oído fino.
      *
@@ -136,9 +118,44 @@ class Opciones(ctx: Context) {
     var vigiliaNocturna: Boolean
         get() = leer("op_vigilia_nocturna", false); set(v) = poner("op_vigilia_nocturna", v)
 
+    /**
+     * Consultar el catálogo público de sismos del EMSC como segunda opinión.
+     *
+     * **Apagado de fábrica, y no por capricho.** La app promete en la bienvenida
+     * y en la política de privacidad que no hay telemetría y que nada sale del
+     * móvil sin que se vea. Esto no manda datos tuyos —la ubicación no viaja, la
+     * distancia se calcula aquí— pero sí hace peticiones a un tercero, y eso
+     * deja tu IP y tu horario de uso en un servidor ajeno. Encenderlo tiene que
+     * ser una decisión, igual que [envio].
+     *
+     * Para qué sirve: medido sobre once días de registros, un sismo real de M4.9
+     * es indistinguible en este acelerómetro de la vida cotidiana. La única
+     * salida es una segunda opinión, y si no hay otro móvil en la malla, esta es
+     * la que queda.
+     */
     var sismoOnline: Boolean
         get() = leer("op_sismo_online", false); set(v) = poner("op_sismo_online", v)
 
+    /**
+     * El usuario dice que ya dio el permiso del fabricante para que
+     * «¿ESTÁS BIEN?» salga sobre la pantalla bloqueada.
+     *
+     * Hace falta guardarlo porque ese permiso **no se puede consultar**: en
+     * MIUI se llama «mostrar ventanas emergentes en segundo plano» y Android no
+     * ofrece forma de preguntar si está dado. Sin esto la app avisaba para
+     * siempre, con todos los permisos puestos, y un aviso que no se va nunca
+     * es un aviso que se deja de leer.
+     *
+     * Ojo con lo que esto NO es: no es que la app haya comprobado nada. Es que
+     * la persona lo afirma, y por eso el texto que queda dice exactamente eso
+     * y deja el camino de vuelta abierto.
+     */
+    var fsiFabricanteDado: Boolean
+        get() = leer("op_fsi_fabricante", false); set(v) = poner("op_fsi_fabricante", v)
+
+    /** El sistema mató el servicio y el watchdog no pudo levantarlo por falta de
+     *  la exención de batería. Se guarda para poder decírselo al usuario: creerse
+     *  vigilado sin estarlo es peor que saber que no lo estás. */
     var watchdogImpotente: Boolean
         get() = p.getBoolean("op_watchdog_impotente", false)
         set(v) = p.edit().putBoolean("op_watchdog_impotente", v).apply()
