@@ -15,8 +15,7 @@ mirar qué hace y con qué números lo decide. Aquí no se esconde lo que no fun
 una sección entera dedicada a ello— y la mejor forma de ayudar no es escribir código.
 Está contada en [`CONTRIBUIR.md`](CONTRIBUIR.md).
 
-El sitio del proyecto está en <https://sismored.pages.dev> (el dominio
-`sismored.app` todavía no está conectado).
+El sitio del proyecto es <https://sismored.app>.
 
 ---
 
