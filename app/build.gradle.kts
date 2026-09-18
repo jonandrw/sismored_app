@@ -77,7 +77,12 @@ android {
         jvmTarget = "17"
     }
     buildFeatures {
-        viewBinding = true
+        /* Apagado: no se usa en ningún sitio —la app resuelve las vistas con
+           findViewById— y con activity_main.xml, que tiene cientos de ids, el
+           constructor generado supera los 255 parámetros que admite Java y la
+           compilación se cae. Un generador que nadie usa no puede decidir
+           cuántos ids caben en una pantalla. */
+        viewBinding = false
         // Para que «Acerca de» saque la versión de aquí y no de un literal.
         buildConfig = true
     }

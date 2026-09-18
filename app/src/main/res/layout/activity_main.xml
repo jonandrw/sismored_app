@@ -85,21 +85,6 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- Estado de la vigilia nocturna. Solo se ve con el interruptor
-             encendido: dice si está armada de verdad o cuánto reposo le
-             falta, porque con ciertos hábitos puede no armarse nunca y
-             eso hay que poder verlo antes de confiar en ella. -->
-        <TextView
-            android:id="@+id/txt_vigilia"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:fontFamily="@font/mono"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:paddingBottom="8dp"
-            android:textSize="11sp"
-            android:visibility="gone" />
-
         <!-- ===== SUBBARRA (VISTAS DE SEGUNDO NIVEL) ===== -->
         <LinearLayout
             android:id="@+id/subbarra"
@@ -675,6 +660,69 @@
                             android:lineSpacingMultiplier="1.35"
                             android:textColor="@color/dim"
                             android:textSize="11sp" />
+                    </LinearLayout>
+
+                    <!-- Estado de la vigilia nocturna. Va al final de Inicio
+                         y no en la barra: es información de esta pantalla, no
+                         de toda la app. Solo se ve con el interruptor
+                         encendido, porque con ciertos hábitos la vigilia puede
+                         no armarse nunca y eso hay que poder verlo antes de
+                         confiar en ella. -->
+                    <LinearLayout
+                        android:id="@+id/caja_vigilia"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:layout_marginBottom="18dp"
+                        android:background="@drawable/tarjeta_vigilia"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="16dp"
+                        android:paddingTop="12dp"
+                        android:paddingBottom="12dp"
+                        android:visibility="gone">
+
+                        <ImageView
+                            android:id="@+id/vig_icono"
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:layout_marginEnd="13dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_luna" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="@font/mono"
+                                android:letterSpacing="0.1"
+                                android:text="@string/vigilia_rotulo"
+                                android:textAllCaps="true"
+                                android:textColor="@color/dim"
+                                android:textSize="10sp" />
+
+                            <TextView
+                                android:id="@+id/txt_vigilia"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:fontFamily="@font/barlow"
+                                android:textColor="@color/tx"
+                                android:textSize="14sp" />
+                        </LinearLayout>
+
+                        <View
+                            android:id="@+id/vig_punto"
+                            android:layout_width="8dp"
+                            android:layout_height="8dp"
+                            android:layout_marginStart="10dp"
+                            android:background="@drawable/punto_rojo" />
                     </LinearLayout>
                 </LinearLayout>
 

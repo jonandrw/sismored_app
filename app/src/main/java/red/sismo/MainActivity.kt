@@ -1354,39 +1354,39 @@ class MainActivity : AppCompatActivity() {
 
     /** Se repinta con el tic de medio segundo: un contador que no baja
      *  no es un contador, y este dice cuánto falta para estar armada. */
+    /** Se repinta con el tic de medio segundo: un contador que no baja
+     *  no es un contador, y este dice cuánto falta para estar armada. */
     private fun pintarVigilia() {
+        val caja = findViewById<android.view.View>(R.id.caja_vigilia) ?: return
+        if (!op.vigiliaNocturna) { caja.visibility = View.GONE; return }
+        caja.visibility = View.VISIBLE
+
         val linea = findViewById<android.widget.TextView>(R.id.txt_vigilia) ?: return
-        if (!op.vigiliaNocturna) { linea.visibility = View.GONE; return }
-        linea.visibility = View.VISIBLE
+        val punto = findViewById<android.view.View>(R.id.vig_punto)
+        val icono = findViewById<android.widget.ImageView>(R.id.vig_icono)
+
         val h = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
         val enVentana = h >= Opciones.VIGILIA_DESDE_H && h < Opciones.VIGILIA_HASTA_H
         val quieto = ServicioSos.quietoParaVigilia
-        /* Abrir la app enciende la pantalla, y eso descalifica la vigilia
-           treinta segundos. Sin decirlo, el usuario ve «faltan N s de
-           reposo» sin entender por qué el contador no baja. */
         val pantallaHace = ServicioSos.pantallaHace
-        when {
-            !enVentana -> {
-                linea.text = getString(R.string.vigilia_fuera)
-                linea.setTextColor(getColor(R.color.dim))
-            }
-            pantallaHace < 30_000L -> {
-                linea.text = getString(R.string.vigilia_pantalla,
-                    ((30_000L - pantallaHace) / 1000L + 1).toInt())
-                linea.setTextColor(getColor(R.color.dim))
-            }
-            quieto >= Opciones.VIGILIA_REPOSO_MIN_MS -> {
-                linea.text = getString(R.string.vigilia_armada)
-                linea.setTextColor(getColor(R.color.gr))
-            }
+
+        /* Un solo mensaje, y el color lo dice antes que el texto: verde solo
+           cuando está armada de verdad. */
+        val (txt, color) = when {
+            !enVentana -> getString(R.string.vigilia_fuera, Opciones.VIGILIA_DESDE_H) to R.color.dim
+            pantallaHace < 30_000L ->
+                getString(R.string.vigilia_pantalla, ((30_000L - pantallaHace) / 1000L + 1).toInt()) to R.color.dim
+            quieto >= Opciones.VIGILIA_REPOSO_MIN_MS -> getString(R.string.vigilia_armada) to R.color.gr
             else -> {
                 val restan = Opciones.VIGILIA_REPOSO_MIN_MS - quieto
-                linea.text = if (restan < 60_000L)
-                    getString(R.string.vigilia_esperando_seg, (restan / 1000L).toInt())
-                else getString(R.string.vigilia_esperando, (restan / 60_000L + 1).toInt())
-                linea.setTextColor(getColor(R.color.dim))
+                (if (restan < 60_000L) getString(R.string.vigilia_esperando_seg, (restan / 1000L).toInt())
+                 else getString(R.string.vigilia_esperando, (restan / 60_000L + 1).toInt())) to R.color.dim
             }
         }
+        linea.text = txt
+        linea.setTextColor(getColor(if (color == R.color.gr) R.color.gr else R.color.tx))
+        punto?.background?.setTint(getColor(color))
+        icono?.imageTintList = android.content.res.ColorStateList.valueOf(getColor(color))
     }
 
     /** El botón grande del pie de Buscar. No tenía listener: se veía, se
