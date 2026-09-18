@@ -23,6 +23,23 @@ class Opciones(ctx: Context) {
     private fun leer(k: String, def: Boolean) = p.getBoolean(k, def)
     private fun poner(k: String, v: Boolean) = p.edit().putBoolean(k, v).apply()
 
+    /**
+     * Acortar las esperas de la vigilia para poder probarla. Ver [pruebas].
+     *
+     * El `BuildConfig.DEBUG` del getter es el cerrojo que importa: en una
+     * compilación de release esto devuelve false aunque la clave esté escrita
+     * en el disco, así que no hay forma de que una versión publicada se arme
+     * a los diez segundos.
+     */
+    var pruebasVigilia: Boolean
+        get() = BuildConfig.DEBUG && leer("op_pruebas_vigilia", false)
+        set(v) { poner("op_pruebas_vigilia", v); pruebas = BuildConfig.DEBUG && v }
+
+    /* El estático se sincroniza al construir: las constantes de la vigilia lo
+       leen y no tienen Context con el que mirar el disco. Lo construyen tanto
+       el servicio como la pantalla, así que basta con esto. */
+    init { pruebas = pruebasVigilia }
+
     /** Las cinco casillas de la vista Respuesta. Todas encendidas de fábrica:
      *  quien no ha tocado nada tiene que tener la respuesta completa. */
     var linterna: Boolean
@@ -337,7 +354,7 @@ class Opciones(ctx: Context) {
          * con el móvil a mano y lo toca cada rato, esto no se va a armar nunca
          * y es mejor que lo sepa antes que después.
          */
-        const val VIGILIA_REPOSO_MIN_MS = 30 * 60_000L
+        val VIGILIA_REPOSO_MIN_MS: Long get() = if (pruebas) 10_000L else 30 * 60_000L
 
         /**
          * Cuánto hay que aguantar si además se oye un motor.
@@ -355,8 +372,28 @@ class Opciones(ctx: Context) {
          */
         const val VIGILIA_SOSTENIDO_MOTOR_MS = 8000L
 
-        /** La franja, en hora local. De 01:00 a 06:59. */
-        const val VIGILIA_DESDE_H = 1
-        const val VIGILIA_HASTA_H = 7
+        /** La franja, en hora local. De 01:00 a 06:59; con [pruebas], el día entero. */
+        val VIGILIA_DESDE_H: Int get() = if (pruebas) 0 else 1
+        val VIGILIA_HASTA_H: Int get() = if (pruebas) 24 else 7
+
+        /**
+         * Modo de pruebas de la vigilia nocturna.
+         *
+         * Lo que estorba para probarla no es el detector: es **esperar**. Con
+         * los valores buenos hay que dejar el móvil media hora sin rozarlo y
+         * además que sean entre la una y las siete. Esto baja el reposo a diez
+         * segundos y abre la franja al día entero. Lo que NO toca es
+         * [VIGILIA_SOSTENIDO_MS]: los tres segundos de suelo moviéndose son
+         * justo lo que se quiere medir, y falsearlos sería probar otra cosa.
+         *
+         * Antes esto se hacía editando las constantes a mano y devolviéndolas
+         * después con un `git checkout`. Basta olvidarse una vez para que una
+         * versión salga armándose a los diez segundos a cualquier hora.
+         *
+         * Por eso hay dos cerrojos: el interruptor solo se lee en
+         * compilaciones de depuración —ver el getter de [pruebasVigilia]— y en
+         * release el valor es constante aunque alguien escriba la clave.
+         */
+        @Volatile @JvmStatic var pruebas = false; internal set
     }
 }

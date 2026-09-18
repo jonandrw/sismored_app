@@ -277,6 +277,8 @@ class MainActivity : AppCompatActivity() {
         if (BuildConfig.DEBUG) when (intent?.getStringExtra("probar")) {
             "pregunta" -> arrancarServicio(ServicioSos.ACCION_PROBAR_PREGUNTA)
             "simulacro" -> arrancarServicio(ServicioSos.ACCION_SIMULACRO_TOTAL)
+            "vigilia-express" -> conmutarVigiliaExpress(true)
+            "vigilia-normal" -> conmutarVigiliaExpress(false)
         }
     }
 
@@ -3398,6 +3400,21 @@ class MainActivity : AppCompatActivity() {
 
     private fun hayMicro() =
         checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+
+    /**
+     * Vigilia en modo exprés, solo desde el puente de pruebas. Ver [Opciones.pruebas].
+     *
+     * Enciende también la vigilia nocturna: sin ella no se arma nada y la
+     * prueba saldría negativa por el motivo equivocado.
+     */
+    private fun conmutarVigiliaExpress(v: Boolean) {
+        op.pruebasVigilia = v
+        if (v) op.vigiliaNocturna = true
+        arrancarServicio(ServicioSos.ACCION_OPCIONES)
+        Log.i("SismoRed", "PRUEBAS: vigilia exprés " + (if (v) "ENCENDIDA" else "apagada") +
+            " · reposo ${Opciones.VIGILIA_REPOSO_MIN_MS / 1000}s · franja " +
+            "${Opciones.VIGILIA_DESDE_H}-${Opciones.VIGILIA_HASTA_H} h")
+    }
 
     private fun arrancarServicio(accion: String?) {
         /* Abrir la app y usarla es querer que funcione: se limpia la marca de
