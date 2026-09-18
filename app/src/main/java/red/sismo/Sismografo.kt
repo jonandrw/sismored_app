@@ -319,6 +319,29 @@ class Sismografo(
      */
     @Volatile var sostenidoMs = 0L; private set
     private var sostenidoDesde = 0L
+
+    /**
+     * El propio móvil está vibrando por algo suyo: está sonando el teléfono o
+     * hay una llamada en curso. Lo pone el servicio; ver `ServicioSos.enLlamada`.
+     *
+     * **No basta con callar la alarma mientras dura: hay que romper la racha.**
+     * Medido en el Huawei el 18 de septiembre de 2026 con la vigilia armada y
+     * el móvil solo en la mesa, sin nadie tocándolo:
+     *
+     *     14:17:39  empieza a sonar, los detectores se apagan
+     *     14:17:44  sostenido  3416 ms  ->  NADA   (el veto aguanta)
+     *     14:17:48  sostenido  8180 ms  ->  NADA
+     *     14:18:03  se cuelga
+     *     14:18:07  sostenido 26368 ms  ->  AUXILIO, sirena
+     *
+     * El veto funcionó los veinticuatro segundos de timbre, pero el contador
+     * seguía sumando por debajo, así que al levantarse ya llevaba veintiséis
+     * segundos acumulados y disparó en la primera evaluación libre. Vetar sin
+     * romper la racha no evita el falso positivo: lo aplaza.
+     *
+     * Una vibración propia es tan poco de fiar como una mano, y se trata igual.
+     */
+    @Volatile var vibracionPropia = false
     /**
      * Cuánto llevaba el móvil sin moverse justo ANTES de empezar la racha.
      *
@@ -1011,7 +1034,13 @@ class Sismografo(
            en cada semiciclo, así que contar muestras consecutivas mide mal.
            Un golpe en la mesa es un pico y esto se le queda en cero; un
            terremoto dura, y ahí está toda la diferencia. */
-        if (cicloTrabajo >= CICLO_MIN) {
+        /* El móvil vibrando por su cuenta no cuenta como suelo moviéndose, y
+           la racha se rompe ENTERA, igual que con una mano: callar la alarma
+           mientras dura no vale de nada si el contador sigue sumando por
+           debajo. Ver [vibracionPropia]. */
+        if (vibracionPropia) {
+            sostenidoDesde = 0L; sostenidoMs = 0L; flojoDesde = 0L
+        } else if (cicloTrabajo >= CICLO_MIN) {
             if (sostenidoDesde == 0L) {
                 /* La calma anterior al disturbio, o la de ahora mismo si el
                    movimiento es tan flojo que ni ha tocado el reloj. */
@@ -1053,6 +1082,12 @@ class Sismografo(
                 an = 0; ai = 0
                 Log.i("SismoRed", "sismografo: %.2f m/s2 pero no estaba quieto (%d s), no disparo"
                     .format(sta, quietoAntes / 1000))
+                return
+            }
+            if (vibracionPropia) {
+                an = 0; ai = 0
+                Log.i("SismoRed", "sismografo: %.2f m/s2 pero es el propio movil vibrando, no disparo"
+                    .format(sta))
                 return
             }
             if (hayMano) {

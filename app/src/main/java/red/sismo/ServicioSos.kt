@@ -2926,6 +2926,11 @@ class ServicioSos : Service() {
                     }
                     enReposoAhora = enReposo
                     sismo.vigiliaArmada = enVigilia(opciones)
+                    /* Que el sismógrafo sepa que la sacudida la está poniendo
+                       el propio teléfono. Aquí y no solo en la cascada: tiene
+                       que romper la racha mientras dura, no solo callarla.
+                       Ver [Sismografo.vibracionPropia]. */
+                    sismo.vibracionPropia = enLlamada()
                     /* El reloj que sobrevive al disturbio, no el
                        instantáneo: cuando llega la alerta del vecino
                        este móvil está encima de la misma mesa que se
