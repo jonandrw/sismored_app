@@ -115,6 +115,22 @@ object Cascada {
     const val DORMIDA_MS = 20 * 60_000L
 
     /**
+     * Lo mismo, pero para decidir si hay que avisar de que **un vecino** pide
+     * ayuda. Más corto a propósito: cinco minutos.
+     *
+     * **El árbol es uno, pero la matriz de costes no.** [DORMIDA_MS] decide si
+     * se enciende la sirena de víctima, y equivocarse ahí cuesta un susto. Aquí
+     * lo que se decide es una vibración con un aviso que se explica solo, y
+     * equivocarse cuesta un zumbido — mientras que no avisar cuesta que alguien
+     * atrapado se quede sin que nadie lo oiga. Con los costes al revés, el
+     * listón tiene que estar más bajo.
+     *
+     * Elegido razonando, no midiendo: no hay forma de medir esto sin un
+     * derrumbe.
+     */
+    const val VECINO_DORMIDA_MS = 5 * 60_000L
+
+    /**
      * Todo lo medido en un instante. `pasosDespues = -1` significa **no se sabe**
      * —hay móviles sin contador—, y eso nunca puede leerse como «no ha andado»:
      * un dato que no existe no es un dato que valga cero.
@@ -414,7 +430,7 @@ object Cascada {
                salón de clase —donde N sirenas taparían a la víctima— de las
                tres de la mañana, donde sin ruido no se entera nadie. */
             val duerme = p.regimen == Postura.Regimen.EN_REPOSO &&
-                (p.msDesdeInteraccion < 0L || p.msDesdeInteraccion > DORMIDA_MS)
+                (p.msDesdeInteraccion < 0L || p.msDesdeInteraccion > VECINO_DORMIDA_MS)
             return if (duerme)
                 Decision(Accion.AVISAR_VECINO, Quien.NADIE,
                     "un vecino pide ayuda $aCuantos y aquí no se entera nadie")

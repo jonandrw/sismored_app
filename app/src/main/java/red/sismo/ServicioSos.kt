@@ -548,6 +548,7 @@ class ServicioSos : Service() {
         /** El aviso de que quien pide ayuda es otro. Aparte de [ID_PREGUNTA]
          *  a propósito: no es la misma cosa y no puede pisarla. */
         const val ID_VECINO = 16
+        const val CANAL_VECINO = "sismored_vecino"
         const val CANAL_SISMO_CERCANO = "sismored_sismo_cercano"
         const val ACCION_FALSA_ALARMA = "red.sismo.FALSA_ALARMA"
 
@@ -2177,13 +2178,16 @@ class ServicioSos : Service() {
         if (ahora - ultimoAvisoVecino < SOCORRO_VALE_MS) return
         ultimoAvisoVecino = ahora
         anotar("VECINO PIDE AYUDA · ${d.motivo}")
-        /* Vibración larga y pulso, que es la rampa de despertar sin la sirena
-           de víctima al final. Suena distinto a propósito: quien llegue a
-           buscar tiene que poder distinguir de oído a quién están avisando de
-           quién pide ayuda. */
-        try { vibrarLargo() } catch (_: Exception) {}
+        /* NADA DEL REPERTORIO DE VÍCTIMA. Ni la sirena ni `pulsoRescate`, que
+           son los tres pitidos cuadrados de 3 kHz diseñados para oírse desde
+           debajo de un escombro: ése es el sonido de «estoy aquí, cavad», y
+           usarlo para avisar a un vecino es decir con el altavoz lo contrario
+           de lo que dice la pantalla.
+           El aviso va por vibración con ritmo propio y por el sonido de
+           notificación del sistema, que el canal pone solo. Distinto por
+           construcción y sin inventar ninguna forma de onda. */
+        try { vibrarVecino() } catch (_: Exception) {}
         try { destello("vecino") } catch (_: Exception) {}
-        reloj.postDelayed({ if (!enAlarma && !enRescate) try { pulsoRescate() } catch (_: Exception) {} }, 1500L)
         sacarAvisoVecino(d.motivo)
     }
 
@@ -2197,7 +2201,33 @@ class ServicioSos : Service() {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val b = Notification.Builder(this, CANAL)
+        /* Canal propio, y con el sonido de alarma del sistema. El canal del
+           servicio va en silencio —la sirena la pone la app—, y aquí hace
+           falta que suene algo: quien duerme no se despierta con una
+           notificación muda. Que lo ponga el sistema y no una onda nuestra es
+           lo que garantiza que no se parezca al sonido de una víctima. */
+        val canalId = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val nm = getSystemService(NotificationManager::class.java)
+            if (nm.getNotificationChannel(CANAL_VECINO) == null) {
+                nm.createNotificationChannel(NotificationChannel(
+                    CANAL_VECINO, "Un vecino pide ayuda", NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "Otro móvil cerca ha detectado movimiento peligroso"
+                    setSound(
+                        android.media.RingtoneManager
+                            .getDefaultUri(android.media.RingtoneManager.TYPE_ALARM),
+                        android.media.AudioAttributes.Builder()
+                            .setUsage(android.media.AudioAttributes.USAGE_ALARM)
+                            .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build()
+                    )
+                    enableVibration(false)     // la vibración la pone [vibrarVecino]
+                })
+            }
+            CANAL_VECINO
+        } else CANAL
+
+        val b = Notification.Builder(this, canalId)
             .setSmallIcon(R.drawable.ic_stat_sismored)
             .setContentTitle(getString(R.string.vecino_tit))
             .setContentText(getString(R.string.vecino_txt))
@@ -2242,6 +2272,21 @@ class ServicioSos : Service() {
     private fun pararRampa() {
         rampaTarea?.let { reloj.removeCallbacks(it) }
         rampaTarea = null
+    }
+
+    /** Ritmo propio del aviso de vecino: tres cortas y una larga, al revés
+     *  que [vibrarLargo], que son tres largas iguales. Se nota en la muñeca
+     *  sin tener que mirar, y no se confunde con la alarma propia. */
+    private fun vibrarVecino() {
+        if (!opciones.vibracion) return
+        try {
+            val patron = longArrayOf(0, 120, 120, 120, 120, 120, 300, 700)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrador?.vibrate(VibrationEffect.createWaveform(patron, -1))
+            } else {
+                @Suppress("DEPRECATION") vibrador?.vibrate(patron, -1)
+            }
+        } catch (_: Exception) {}
     }
 
     private fun vibrarLargo() {
