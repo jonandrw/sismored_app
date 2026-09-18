@@ -388,6 +388,17 @@ class MallaAcustica(
     /** Mientras esto sea > 0, el micrófono está silenciado por nuestra propia emisión. */
     @Volatile private var puertaHasta = 0L
 
+    /**
+     * El altavoz de este móvil está sacando algo AHORA: una baliza, un reenvío
+     * o lo que haya pedido [ensordecer].
+     *
+     * Existe para el acelerómetro, no para el micrófono. Al micrófono ya lo
+     * protege [puertaHasta]; al sismógrafo no lo protegía nadie, y una baliza
+     * son cuatro segundos de tono a todo volumen por el mismo chasis en el que
+     * está el sensor. Ver `Sismografo.vibracionPropia`.
+     */
+    val emitiendoAhora: Boolean get() = System.currentTimeMillis() < puertaHasta
+
     /** Cierra esa misma puerta [ms] milisegundos desde ahora. La usa el interfono:
      *  saca voz por el altavoz a todo volumen y la malla no puede tomar eso por
      *  una alerta de otro móvil. */

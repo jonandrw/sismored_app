@@ -519,6 +519,11 @@ class ServicioSos : Service() {
          *  larga, y es poco como para dejar un hueco que importe. */
         const val MICRO_LIBRE_MS = 5 * 60_000L
 
+        /** Cuánto se da por vigente la petición de ayuda de un vecino. La
+         *  baliza se repite cada 8 s mientras dure su alarma, así que un
+         *  minuto sin oírla es que ha parado o se ha ido. */
+        const val SOCORRO_VALE_MS = 60_000L
+
         /** Hasta cuándo vale una alerta externa. Volátil y estático porque lo
          *  mira la cascada desde el hilo del sensor. */
         @Volatile var alertaExternaHasta = 0L
@@ -540,6 +545,9 @@ class ServicioSos : Service() {
         const val ID_PREGUNTA_DISCRETA = 14
         const val CANAL_DISCRETO = "sismored_discreto"
         const val ID_SISMO_CERCANO = 15
+        /** El aviso de que quien pide ayuda es otro. Aparte de [ID_PREGUNTA]
+         *  a propósito: no es la misma cosa y no puede pisarla. */
+        const val ID_VECINO = 16
         const val CANAL_SISMO_CERCANO = "sismored_sismo_cercano"
         const val ACCION_FALSA_ALARMA = "red.sismo.FALSA_ALARMA"
 
@@ -570,6 +578,11 @@ class ServicioSos : Service() {
     private val reloj = Handler(Looper.getMainLooper())
 
     private var receptorOnline: ReceptorSismicoOnline? = null
+
+    /** A cuántos móviles está el vecino que pide ayuda, y hasta cuándo vale
+     *  ese dato. Ver [Cascada.Pruebas.socorroVecino]. */
+    @Volatile private var socorroVecino = 0
+    @Volatile private var socorroVecinoHasta = 0L
 
     /* ---------- la cascada ----------
        El estado del suceso en curso. Todo esto es de un solo suceso: se pone en
@@ -778,13 +791,31 @@ class ServicioSos : Service() {
                    TIENEN que pasar la alerta al siguiente: un móvil que oye y no
                    reenvía es un agujero en la malla, y era justo lo que pasaba —
                    el que buscaba la anotaba y ahí se acababa el viaje. */
+                /* SIEMPRE se reenvía, decida lo que decida la cascada: un
+                   móvil que oye y no reenvía es un agujero en la malla. */
+                if (malla?.reenviar(hop) != true)
+                    anotar("no la reenvío: ya ha dado los $hop saltos o he emitido demasiado")
+
                 if (buscando || repetidor) {
                     val quien = if (buscando) "estás buscando" else "has dicho que estás bien"
                     anotar("ALERTA OÍDA a $hop saltos · no sueno porque $quien")
-                    if (malla?.reenviar(hop) != true)
-                        anotar("no la reenvío: ya ha dado los $hop saltos o he emitido demasiado")
                 } else {
-                    panico("malla acústica (salto $hop)")
+                    /* AQUÍ SE LLAMABA A `panico()` DIRECTO, y ese era el fallo.
+                       Quien oía a un vecino atrapado se convertía él mismo en
+                       víctima: sirena, baliza propia en bucle, linterna. En un
+                       salón con varios móviles, una sola pulsación los dejaba a
+                       todos gritando, y eso tapa a la víctima y corrompe el
+                       radar de saltos —lo único que orienta a quien busca—.
+
+                       Además había DOS decisores para lo mismo y no estaban de
+                       acuerdo: esto encendía la sirena mientras la cascada
+                       decía PREGUNTAR. Ahora decide ella sola, con
+                       [Cascada.Pruebas.socorroVecino]. */
+                    socorroVecino = hop
+                    socorroVecinoHasta = System.currentTimeMillis() + SOCORRO_VALE_MS
+                    anotar("un vecino pide ayuda a $hop " +
+                           (if (hop > 1) "móviles de distancia" else "móvil, justo al lado"))
+                    evaluar("baliza de un vecino (salto $hop)")
                 }
             },
             onLlamada = {
@@ -1276,6 +1307,28 @@ class ServicioSos : Service() {
      *
      * `getMode` no pide ningún permiso, al revés que `TelephonyManager`.
      */
+    /**
+     * Este teléfono está produciendo él mismo la sacudida que va a medir.
+     *
+     * **La invariante correcta no es «no pasar a víctima», es que el
+     * acelerómetro calle siempre que suene el altavoz propio.** Se llegó a
+     * ella tapando fuentes de una en una —primero la vibración de la llamada—
+     * hasta ver que eran la misma: medido el 18 de septiembre de 2026, la
+     * sirena del Huawei movió su propio acelerómetro 0,67 m/s² durante 3,4 s y
+     * su cascada lo leyó como «terremoto confirmado».
+     *
+     * Son tres fuentes y todas valen igual:
+     *  - el timbre o una llamada en curso ([enLlamada]),
+     *  - la sirena y la vibración de la alarma o del rescate,
+     *  - **una baliza de la malla o un reenvío**, que son cuatro segundos de
+     *    tono a todo volumen por el mismo chasis donde está el sensor.
+     *
+     * Al micrófono ya lo protegía la puerta anti-eco; al sismógrafo no lo
+     * protegía nadie.
+     */
+    private fun altavozPropio(): Boolean =
+        enLlamada() || enAlarma || enRescate || malla?.emitiendoAhora == true
+
     private fun enLlamada(): Boolean = try {
         when ((getSystemService(Context.AUDIO_SERVICE) as? AudioManager)?.mode) {
             AudioManager.MODE_RINGTONE,
@@ -1590,11 +1643,12 @@ class ServicioSos : Service() {
                 sismo.sostenidoMs >= exigidoNocturno(sismo.sostenidoMs) &&
                 sismo.quietoAntesDeLaRacha >= Opciones.VIGILIA_REPOSO_MIN_MS &&
                 !sismo.hayMano &&
-                /* Un teléfono que suena vibra, y su vibración es lo más
-                   parecido a un terremoto que este acelerómetro va a medir
-                   nunca: continua, de varios segundos y pegada al sensor.
-                   Ver [enLlamada]. */
-                !enLlamada() &&
+                /* Aquí había un `!enLlamada()`. Sobra desde que
+                   [Sismografo.vibracionPropia] rompe la racha en origen con
+                   cualquier altavoz propio sonando: si el móvil se está
+                   sacudiendo a sí mismo, `sostenidoMs` ya vale cero y esta
+                   condición no puede cumplirse. Dos guardias para lo mismo
+                   solo sirven para que un día discrepen. Ver [altavozPropio]. */
                 (p == null || p.interaccionHace() > 30_000L),
             caidaImpacto = huboCaida,
             preguntado = preguntaVencida,
@@ -1654,7 +1708,8 @@ class ServicioSos : Service() {
                reproduciendo nada. Si lo estás sujetando, lo que oye el micrófono
                eres tú o tu teléfono, no una persona bajo un escombro. */
             golpesCerca = oidoDeFiar && oidoReciente("golpes"),
-            gritoCerca = oidoDeFiar && oidoReciente("grito")
+            gritoCerca = oidoDeFiar && oidoReciente("grito"),
+            socorroVecino = if (System.currentTimeMillis() < socorroVecinoHasta) socorroVecino else 0
         )
     }
 
@@ -1757,6 +1812,7 @@ class ServicioSos : Service() {
                 cancelarWatchdogSuceso()
                 despertar(d)
             }
+            Cascada.Accion.AVISAR_VECINO -> avisarVecino(d)
             Cascada.Accion.AUXILIO -> {
                 cancelarWatchdogSuceso()
                 anotar("${Cascada.rotulo(d.quien)} · ${d.motivo}")
@@ -1861,8 +1917,14 @@ class ServicioSos : Service() {
         }
         ultimaPregunta = ahoraP
         preguntaHasta = ahoraP + PREGUNTA_MS
-        anotar("SISMO EN REPOSO — aviso discreto no invasivo (sin sirena) — $motivo")
-        try { reloj.post { sacarPreguntaDiscreta(motivo) } } catch (_: Exception) {}
+        /* Quién lo pide cambia lo que hay que decir, y decir lo que no es
+           deja a la persona sin saber qué hacer: si cree que lo ha detectado
+           SU móvil se queda quieta esperando; sabiendo que viene del de al
+           lado, puede ir. */
+        val porVecino = System.currentTimeMillis() < socorroVecinoHasta
+        anotar((if (porVecino) "UN VECINO PIDE AYUDA — aviso discreto (sin sirena)"
+                else "SISMO EN REPOSO — aviso discreto no invasivo (sin sirena)") + " — $motivo")
+        try { reloj.post { sacarPreguntaDiscreta(porVecino) } } catch (_: Exception) {}
         preguntaTarea?.let { reloj.removeCallbacks(it) }
         val t = Runnable {
             // El aviso discreto expira en silencio si nadie contesta.
@@ -1928,7 +1990,7 @@ class ServicioSos : Service() {
         }
     }
 
-    private fun sacarPreguntaDiscreta(motivo: String) {
+    private fun sacarPreguntaDiscreta(porVecino: Boolean) {
         val abrir = PendingIntent.getActivity(
             this, 14, Intent(this, MainActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
@@ -1950,10 +2012,11 @@ class ServicioSos : Service() {
 
         val b = Notification.Builder(this, canalId)
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
-            .setContentTitle("¿Sentiste un temblor?")
             /* Ni «detectamos movimiento en reposo» —falso cuando dispara el
                catálogo— ni el `motivo`, que está escrito para el registro. */
-            .setContentText("Pulsa si estás bien o si fue falsa alarma.")
+            .setContentTitle(if (porVecino) getString(R.string.vecino_tit) else "¿Sentiste un temblor?")
+            .setContentText(if (porVecino) getString(R.string.vecino_txt)
+                            else "Pulsa si estás bien o si fue falsa alarma.")
             .setCategory(Notification.CATEGORY_STATUS)
             .setAutoCancel(true)
             .setContentIntent(abrir)
@@ -2096,6 +2159,59 @@ class ServicioSos : Service() {
      * Cualquier señal de vida corta la rampa, y eso lo hace `cerrarSuceso` y
      * `estoyBien` al llamar a `pararRampa`.
      */
+    /**
+     * Despertar a alguien porque **un vecino** necesita ayuda.
+     *
+     * No es una alarma de este móvil y no puede parecerlo: no enciende baliza,
+     * no entra en modo víctima y no escala si nadie contesta. Ver
+     * [Cascada.Accion.AVISAR_VECINO].
+     *
+     * Lo importante de la pantalla es que diga **por qué**. «¿Estás bien?» a
+     * las tres de la mañana, sin contexto, no deja actuar a nadie: saber que
+     * el aviso viene del móvil de al lado y no del tuyo es lo que convierte a
+     * quien despiertas en alguien que puede ayudar.
+     */
+    private fun avisarVecino(d: Cascada.Decision) {
+        if (enAlarma || enRescate) return
+        val ahora = System.currentTimeMillis()
+        if (ahora - ultimoAvisoVecino < SOCORRO_VALE_MS) return
+        ultimoAvisoVecino = ahora
+        anotar("VECINO PIDE AYUDA · ${d.motivo}")
+        /* Vibración larga y pulso, que es la rampa de despertar sin la sirena
+           de víctima al final. Suena distinto a propósito: quien llegue a
+           buscar tiene que poder distinguir de oído a quién están avisando de
+           quién pide ayuda. */
+        try { vibrarLargo() } catch (_: Exception) {}
+        try { destello("vecino") } catch (_: Exception) {}
+        reloj.postDelayed({ if (!enAlarma && !enRescate) try { pulsoRescate() } catch (_: Exception) {} }, 1500L)
+        sacarAvisoVecino(d.motivo)
+    }
+
+    private var ultimoAvisoVecino = 0L
+
+    /** La notificación del aviso, a pantalla completa si el sistema deja: el
+     *  caso que importa es el móvil bloqueado en la mesilla. */
+    private fun sacarAvisoVecino(motivo: String) {
+        val abrir = PendingIntent.getActivity(
+            this, 21, Intent(this, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val b = Notification.Builder(this, CANAL)
+            .setSmallIcon(R.drawable.ic_stat_sismored)
+            .setContentTitle(getString(R.string.vecino_tit))
+            .setContentText(getString(R.string.vecino_txt))
+            .setStyle(Notification.BigTextStyle().bigText(getString(R.string.vecino_largo)))
+            .setCategory(Notification.CATEGORY_ALARM)
+            .setAutoCancel(true)
+            .setContentIntent(abrir)
+            .setFullScreenIntent(abrir, true)
+        try {
+            (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
+                .notify(ID_VECINO, b.build())
+        } catch (_: Exception) {}
+    }
+
     private fun despertar(d: Cascada.Decision) {
         if (enAlarma || enRescate) return
         if (rampaTarea != null) return                      // ya esta subiendo
@@ -2987,7 +3103,7 @@ class ServicioSos : Service() {
                        el propio teléfono. Aquí y no solo en la cascada: tiene
                        que romper la racha mientras dura, no solo callarla.
                        Ver [Sismografo.vibracionPropia]. */
-                    sismo.vibracionPropia = enLlamada()
+                    sismo.vibracionPropia = altavozPropio()
                     /* El reloj que sobrevive al disturbio, no el
                        instantáneo: cuando llega la alerta del vecino
                        este móvil está encima de la misma mesa que se

@@ -328,6 +328,14 @@ Sí. En Diagnóstico, mediante «Apagar del todo». Se detiene todo, incluido el
 <b>¿Y si salta una alarma falsa?</b>
 Deténla con el botón DETENER o pulsando una vez el volumen. Y comunícalo en el repositorio: los falsos positivos son lo que más ayuda a mejorar la aplicación.</string>
 
+    <!-- El aviso de que quien necesita ayuda es OTRO. Lo primero que tiene que
+         quedar claro es de quién viene, porque de eso depende qué puedes hacer:
+         si creyeras que es tu móvil el que ha detectado algo, te quedarías
+         quieto esperando; sabiendo que es el de al lado, puedes ir. -->
+    <string name="vecino_tit">Un vecino pide ayuda</string>
+    <string name="vecino_txt">Otro móvil cerca ha detectado movimiento peligroso</string>
+    <string name="vecino_largo">Otro móvil con SismoRed ha detectado movimiento peligroso cerca de ti y está pidiendo ayuda. Este móvil no ha notado nada: el aviso viene de fuera.\n\nAbre la app y usa BUSCAR para acercarte a la señal. Si aquí también hay daños, usa el botón de pánico.</string>
+
     <string name="lbl_autor">Autor</string>
     <string name="ac_autor">Juan Andrés Torres Orozco</string>
     <!-- La GPL pide que un programa interactivo enseñe el copyright y la

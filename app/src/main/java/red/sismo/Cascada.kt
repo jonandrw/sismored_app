@@ -61,7 +61,26 @@ object Cascada {
          */
         DESPERTAR,
         /** Todo: baliza, sirena, modo rescate. Hay pruebas de que hay alguien. */
-        AUXILIO
+        AUXILIO,
+        /**
+         * **Quien necesita ayuda es otro, no tú.** Un vecino pide auxilio por
+         * la malla y aquí no ha pasado nada.
+         *
+         * Hace falta una acción propia porque ninguna de las de arriba sirve:
+         * [DESPERTAR] enciende la baliza en el primer peldaño y escala a
+         * alarma, y [AVISAR] pregunta «¿estás bien?» y, si no contestas,
+         * la escalera de abajo acaba encendiéndola igual. Las dos convierten
+         * en víctima a quien solo es el vecino, y de ahí salía que un salón
+         * entero se pusiera a gritar por una sola pulsación.
+         *
+         * Lo que hace: ruido para despertar a quien duerma, decir **por qué**
+         * —«un vecino ha detectado movimiento peligroso»— y abrir la búsqueda.
+         * Lo que no hace nunca: baliza propia, modo víctima, ni escalar por
+         * falta de respuesta. Y el sonido es distinto del de una víctima, para
+         * que quien llegue a buscar distinga de oído a quién están avisando de
+         * quién pide ayuda.
+         */
+        AVISAR_VECINO
     }
 
     /** Qué se puede AFIRMAR, que no es lo mismo que qué se sospecha. Va escrito
@@ -186,6 +205,29 @@ object Cascada {
          * oye a alguien**: esa frase la sostienen los golpes.
          */
         val gritoCerca: Boolean = false,
+        /**
+         * Un vecino pide ayuda por la malla, y a cuántos móviles está (1..4).
+         * 0 = nadie.
+         *
+         * **Esto no puede llevar nunca a [Accion.AUXILIO].** Antes ni pasaba
+         * por aquí: el gestor de la malla llamaba a `panico()` directo, así
+         * que quien oía a un vecino atrapado **se convertía él mismo en
+         * víctima** —sirena, baliza propia en bucle, linterna—. En un salón
+         * con varios móviles, una sola pulsación dejaba a todos gritando y
+         * emitiendo, y eso rompe justo aquello para lo que existe la malla:
+         * las sirenas tapan a la víctima y la saturación del altavoz hace
+         * leer números de salto equivocados, que es lo único que orienta a
+         * quien busca.
+         *
+         * El propio proyecto ya tenía escrito el principio, pero solo para
+         * quien había pulsado «buscar»: *«quien está buscando NO grita,
+         * porque entonces no oye los escombros, que es lo único que tiene»*.
+         * Vale igual para todo el que no esté atrapado.
+         *
+         * Así que lo máximo aquí es despertar a alguien que duerme. El que
+         * está despierto se entera en silencio.
+         */
+        val socorroVecino: Int = 0,
         /** Relación STA/LTA medida en el sismógrafo contra el piso de ruido. */
         val ratioStaLta: Double = 1.0,
         /**
@@ -243,7 +285,12 @@ object Cascada {
            significa que no pasara: significa que el sensor no llega.
            Ojo con la diferencia: la alerta TEMPRANA (Google) sigue fuera, porque
            esa llega antes de que sacuda y ahí todavía no ha pasado nada. */
-        val algoPasó = p.sacudida || p.corroborada || p.alertaCatalogo
+        /* Y un vecino pidiendo ayuda cuenta igual, por el mismo motivo que el
+           catálogo: que aquí no se haya movido nada no significa que no haya
+           pasado, significa que aquí no llegó. Sin esto, la petición de un
+           vecino se cae en esta puerta y no la oye nadie — que es justo el
+           caso para el que existe la malla. */
+        val algoPasó = p.sacudida || p.corroborada || p.alertaCatalogo || p.socorroVecino > 0
         if (!algoPasó) {
             if (p.estruendo) return Decision(Accion.NADA, Quien.NADIE,
                 "estruendo sin sacudida: se anota y no se dispara")
@@ -351,6 +398,29 @@ object Cascada {
         if (p.sostenidaNocturna && !p.contestado) {
             return Decision(Accion.AUXILIO, Quien.PERSONA_PROBABLE,
                 "vigilia nocturna: el suelo lleva tres segundos moviéndose sin parar")
+        }
+        /* Un vecino pide ayuda y AQUÍ NO HA PASADO NADA: este móvil es el que
+           ayuda, no una víctima. Ver [Pruebas.socorroVecino] y [Accion.AVISAR_VECINO].
+
+           La guarda de los tres sensores propios es la que evita el caso que
+           mata: si el techo también se cayó aquí, este móvil TIENE que
+           encender su baliza, y de eso decide la escalera de abajo. Sin ella,
+           dos vecinos enterrados en el mismo derrumbe se avisarían el uno al
+           otro y ninguno pediría ayuda. */
+        if (p.socorroVecino > 0 && !p.sacudida && !p.estruendo && !p.caidaImpacto) {
+            val aCuantos = if (p.socorroVecino > 1) "a ${p.socorroVecino} móviles" else "justo al lado"
+            /* Y solo se hace ruido si de verdad no hay nadie mirando: al
+               despierto se le dice en silencio. Es lo mismo que separa el
+               salón de clase —donde N sirenas taparían a la víctima— de las
+               tres de la mañana, donde sin ruido no se entera nadie. */
+            val duerme = p.regimen == Postura.Regimen.EN_REPOSO &&
+                (p.msDesdeInteraccion < 0L || p.msDesdeInteraccion > DORMIDA_MS)
+            return if (duerme)
+                Decision(Accion.AVISAR_VECINO, Quien.NADIE,
+                    "un vecino pide ayuda $aCuantos y aquí no se entera nadie")
+            else
+                Decision(Accion.PREGUNTAR_DISCRETA, Quien.NADIE,
+                    "un vecino pide ayuda $aCuantos: te aviso sin ruido")
         }
         /* Un vecino ha confirmado un terremoto y aquí es de madrugada con
            la vigilia armada: eso suena, no pregunta en silencio.
@@ -626,6 +696,21 @@ object Cascada {
                veces en quince horas sin un solo sismo detras. */
             Triple("sacudida en reposo con STA/LTA alto y nada que la confirme", Accion.NADA,
                 Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, ratioStaLta = 28.1)),
+            /* El vecino que pide ayuda. Los tres casos que definen la regla, y
+               el tercero es el que evita un muerto. */
+            Triple("un vecino pide ayuda y aquí hay alguien despierto", Accion.PREGUNTAR_DISCRETA,
+                Pruebas(regimen = Regimen.ENCIMA, socorroVecino = 1, msDesdeInteraccion = 5_000L)),
+            Triple("un vecino pide ayuda de madrugada y aquí duermen", Accion.AVISAR_VECINO,
+                Pruebas(regimen = Regimen.EN_REPOSO, socorroVecino = 2,
+                    msDesdeInteraccion = 6 * 3600_000L)),
+            /* Y si el techo tambien se cayo AQUI, este movil no es el vecino:
+               es otra victima, y tiene que encender su baliza. Sin esta
+               guarda, dos enterrados en el mismo derrumbe se avisarian el uno
+               al otro y ninguno pediria ayuda. */
+            Triple("un vecino pide ayuda pero aquí también se derrumbó", Accion.BALIZA,
+                Pruebas(regimen = Regimen.EN_REPOSO, socorroVecino = 1, sacudida = true,
+                    estruendo = true, caidaImpacto = true, preguntado = true,
+                    quietoMs = 300_000L, msDesdeInteraccion = 6 * 3600_000L)),
             /* Vigilia nocturna: la duración es la que corrobora. */
             Triple("de madrugada, tres segundos seguidos de suelo moviéndose", Accion.AUXILIO,
                 Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sostenidaNocturna = true)),
