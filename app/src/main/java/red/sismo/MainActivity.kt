@@ -1887,11 +1887,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun montarDiagnostico() {
-        /* El envío por internet no tenía ningún control desde el rediseño: se
-           encendía desde el botón de la pantalla de malla que decía EMITIR
-           ALERTA AHORA. Aquí sí se puede encontrar, y sigue pidiendo
-           confirmación antes de encenderse. */
-        findViewById<View>(R.id.sw_envio)?.setOnClickListener { conmutarEnvio() }
         /* Las condiciones de la vigilia son largas porque hacen falta, pero un
            muro de texto en Ajustes no se lee. La condicion esencial se ve
            siempre y el resto se despliega. */
@@ -3292,7 +3287,6 @@ class MainActivity : AppCompatActivity() {
     private fun pintarDiagnostico(forzar: Boolean = false) {
         actualizarVistaPerfilEntorno()
         // Fuera del freno de dos segundos: un interruptor tiene que moverse al tocarlo.
-        actualizarSwTactico(R.id.sw_envio, op.envio)
         actualizarSwTactico(R.id.sw_sismo_online, op.sismoOnline)
         actualizarSwTactico(R.id.sw_vigilia, op.vigiliaNocturna)
         val ahora = System.currentTimeMillis()
@@ -3396,27 +3390,6 @@ class MainActivity : AppCompatActivity() {
 
 
     /* ===================== envío por internet ===================== */
-
-    /** Nada sale del móvil sin que alguien lea qué sale y diga que sí. */
-    private fun conmutarEnvio() {
-        if (op.envio) {
-            op.envio = false
-            anotar("envío por internet desactivado")
-            pintar()
-            return
-        }
-        AlertDialog.Builder(this)
-            .setTitle(R.string.rot_internet)
-            .setMessage(R.string.confirmar_envio)
-            .setPositiveButton("Activar") { _, _ ->
-                op.envio = true
-                anotar("envío por internet activado")
-                arrancarServicio(ServicioSos.ACCION_ENVIAR)
-                pintar()
-            }
-            .setNegativeButton("Cancelar", null)
-            .show()
-    }
 
     /* ===================== permisos y servicio ===================== */
 

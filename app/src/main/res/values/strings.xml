@@ -120,7 +120,6 @@
     <string name="sub_rescate_bateria">GASTA BATERÍA</string>
     <string name="b_comprobar">COMPROBAR QUE TODO FUNCIONA</string>
     <string name="b_enviar">ENVIAR SI HAY RED</string>
-    <string name="b_probar_envio">PROBAR AHORA</string>
     <string name="b_purgar">BORRAR ESPERA</string>
     <string name="b_marcar">MARCAR EVENTO</string>
     <string name="b_respuesta">HERRAMIENTAS DE RESPUESTA</string>
@@ -219,7 +218,6 @@
 
     <!-- ===== textos de ayuda ===== -->
     <string name="ayuda_deteccion">Esto y la malla usan el mismo micrófono, pero se encienden por separado: puedes dejar la malla toda la noche y los detectores solo cuando hagan falta.</string>
-    <string name="confirmar_envio">Al activarlo, cuando el móvil tenga internet enviará la hora, el motivo de la alarma y los saltos de la malla.\n\nNo envía tu ficha médica, ni tu ubicación, ni audio.\n\n¿Activar?</string>
     <string name="como_usarla">1. Rellena tu ficha médica y sube el volumen del móvil al máximo. Hazlo ahora, con calma: después no vas a tener tiempo.
 
 2. Deja encendidos el detector automático y ESCUCHAR MALLA. Con eso la app ya salta sola, sin que toques nada.
@@ -313,7 +311,7 @@ Todos son opcionales. Sin ellos la aplicación funciona a medias, y te indica en
 Vigilando, poco: el acelerómetro y el micrófono a ratos. La sirena, la linterna y la sonda sí consumen, y por eso no se encienden solas salvo en una emergencia.
 
 <b>¿Funciona sin internet?</b>
-Por completo. Es aquello para lo que está hecha. Los sensores y la malla funcionan 100% desconectados. Internet solo se usa de forma opcional y pasiva para corroborar sismos con catálogos públicos abiertos o para enviar partes si tú lo activas.
+Por completo. Es aquello para lo que está hecha. Los sensores y la malla funcionan 100% desconectados. Internet solo se usa de forma opcional y pasiva para corroborar sismos con catálogos públicos abiertos.
 
 <b>¿Sigue vigilando con la aplicación cerrada?</b>
 En la mayoría de los móviles, sí. En algunos, sobre todo Xiaomi y Redmi, el sistema la detiene al deslizarla fuera de recientes; cuando eso ocurre la aplicación te avisa y te lleva al ajuste que lo corrige. Puedes consultarlo en Diagnóstico, en «Sigue vigilando con la app cerrada».
@@ -466,12 +464,6 @@ Deténla con el botón DETENER o pulsando una vez el volumen. Y comunícalo en e
     <string name="l_volsenal_d">De 1 a 10. Súbelo para atravesar un escombro grueso; a cambio, la malla oye peor mientras suene. El cambio se aplica al volver a encender la herramienta.</string>
 
     <!-- La caja de internet, en pasos. Era un muro de dos párrafos largos. -->
-    <string name="paso_i1_t">Funciona entera sin internet</string>
-    <string name="paso_i1">La alerta viaja por sonido y por radio, de móvil a móvil.</string>
-    <string name="paso_i2_t">Con cobertura, manda un parte</string>
-    <string name="paso_i2">Solo hora, motivo y saltos. Ni ficha, ni ubicación, ni audio.</string>
-    <string name="paso_i3_t">Probar ahora manda una prueba</string>
-    <string name="paso_i3">En reposo la cola está vacía; esto deja ver el camino igual.</string>
 
     <string name="ff_titulo">FICHA MÉDICA · SISMORED</string>
     <string name="ff_cerrar">Toca la pantalla para cerrar</string>
@@ -688,8 +680,6 @@ Es la única forma de comprobar el tramo que no se puede ensayar de otra manera.
     <string name="ajustes_sismo_online">Contrastar con el catálogo sísmico público</string>
     <string name="ajustes_sismo_online_sub">Contrasta lo que mide el móvil con los sismos publicados por EMSC y el SGC. Tu ubicación no viaja; la distancia se calcula aquí. Apagado de fábrica.</string>
 
-    <string name="ajustes_envio">Enviar partes cuando haya internet</string>
-    <string name="ajustes_envio_sub">La hora, el motivo de la alarma y los saltos de la malla. Nunca tu ficha, ni tu ubicación, ni audio. Apagado de fábrica.</string>
 
     <string name="malla_portadora_pie">kHz · portadora</string>
     <string name="malla_banda_nota">La malla usa de 15,2 a 18,8 kHz. Los tonos de abajo se oyen: mucha gente los nota como un pitido agudo, y los niños casi siempre.</string>

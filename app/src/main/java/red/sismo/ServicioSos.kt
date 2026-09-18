@@ -81,8 +81,6 @@ class ServicioSos : Service() {
         const val ACCION_OPCIONES = "red.sismo.OPCIONES"
         /** MARCAR EVENTO: deja la hora anotada en el registro. */
         const val ACCION_MARCAR = "red.sismo.MARCAR"
-        /** Intenta soltar la cola de partes ahora mismo. */
-        const val ACCION_ENVIAR = "red.sismo.ENVIAR"
         /** El que busca llama hacia abajo: sirena audible + tono de llamada. */
         const val ACCION_LLAMAR = "red.sismo.LLAMAR"
         /** El que busca pide SILENCIO en la zona: todos los móviles que lo oigan
@@ -298,19 +296,12 @@ class ServicioSos : Service() {
         @Volatile var ultimoRegistro = ""
             private set
 
-        /** Partes esperando a que aparezca internet. */
-        @Volatile var enCola = 0; private set
-        /** Lo ultimo que dijo el envio de partes, para la consola de la tarjeta de
-         *  internet. Sin esto, pulsar y no ver nada era indistinguible de que la
-         *  funcion no existiera. */
-        @Volatile var redSalida = "—"
         /** Las fichas completas que han llegado por Wi-Fi, ya formateadas. Vacio si
          *  no hay ninguna: entonces el bloque de la pantalla no se enseña. */
         @Volatile var fichasWifi = ""
         /** Qué está pasando con la ficha por Wi-Fi, con sus palabras. Sin esto,
          *  el canal fallaba en silencio y no había forma de saber por qué. */
         @Volatile var fichaLanEstado = "sin arrancar"
-        @Volatile var tipoRed = "—"; private set
 
         /** Lo último que dijo la sonda. Va aquí y no al registro porque es lo que
          *  se lee en la propia tarjeta mientras la ráfaga está sonando. */
@@ -531,7 +522,6 @@ class ServicioSos : Service() {
     private var linterna: Linterna? = null
     /** Baliza de radio: la que permite encontrarte desde arriba. */
     private var radio: Baliza? = null
-    private lateinit var partes: Partes
     /** Saltos que lleva recorridos la alerta que estamos propagando. 0 = nace aquí. */
     private var saltoEntrante = 0
     private val reloj = Handler(Looper.getMainLooper())
@@ -619,7 +609,6 @@ class ServicioSos : Service() {
         } catch (e: Exception) { Log.e("SismoRed", "cascada: no se pudo comprobar", e) }
 
         opciones = Opciones(this)
-        partes = Partes(this)
         val am = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         /* Para que la sonda y el interfono puedan subir el canal de alarma, no
            solo la sirena: era la razón de que los chasquidos no se oyeran. */
@@ -860,7 +849,6 @@ class ServicioSos : Service() {
         publicar()
         publicarLienzos()
         vigilarLlamadas()
-        vigilarRed()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -876,18 +864,6 @@ class ServicioSos : Service() {
             ACCION_MALLA_ALERTA -> emitirAlertaMalla()
             ACCION_ESCUCHA_CONMUTAR -> conmutarEscucha()
             ACCION_MARCAR -> marcar()
-            /* Este es el boton PROBAR AHORA de la tarjeta de internet. Fuerza el
-               intento saltandose la espera entre reintentos, y si la cola esta
-               vacia encola un parte de PRUEBA: la cola solo se llena cuando salta
-               una alarma de verdad, asi que sin esto no habia forma de comprobar
-               que el camino funciona hasta el dia que hiciera falta. */
-            ACCION_ENVIAR -> {
-                if (partes.cuantos() == 0) {
-                    partes.encolarPrueba()
-                    anotar("Encolado un parte de prueba para comprobar el envio.")
-                }
-                partes.vaciar({ m -> anotar(m); redSalida = m }, forzar = true)
-            }
             ACCION_LLAMAR -> llamar()
             /* El progreso va solo a la pantalla y el resultado también al
                registro: si cada paso intermedio se anotara, ocho chasquidos y
@@ -1967,10 +1943,6 @@ class ServicioSos : Service() {
         try { emitirRadio(Baliza.ALARMA) } catch (_: Exception) {}
         try { fichaLan?.emitir(true); fichaLan?.escuchaFuerte(true) } catch (_: Exception) {}
         try { malla?.emitirEnBucle(saltoEntrante + 1) } catch (_: Exception) {}
-        try {
-            partes.encolar(d.motivo, saltoEntrante, mallaPorSalto)
-            enCola = partes.cuantos()
-        } catch (_: Exception) {}
         /* Y se pasa a rescate directamente, sin la sirena de por medio: quien no
            contesta no va a apagarla, y diez minutos de sirena son una mordida
            seria a la batería que aquí no compra nada. */
@@ -2152,14 +2124,6 @@ class ServicioSos : Service() {
         if (automatico) anotar("nadie ha reaccionado: se enciende todo sin esperar")
         try { emitirRadio(Baliza.ALARMA) } catch (_: Exception) {}
         try { fichaLan?.emitir(true); fichaLan?.escuchaFuerte(true) } catch (_: Exception) {}
-        /* El parte se encola siempre, haya red o no y esté el envío activado o
-           no. Sin consentimiento no sale del móvil nunca; con él, saldrá cuando
-           aparezca cobertura, que en un terremoto es horas después. */
-        try {
-            partes.encolar(motivo, saltoEntrante, mallaPorSalto)
-            enCola = partes.cuantos()
-            partes.vaciar({ m -> anotar(m); redSalida = m })
-        } catch (_: Exception) {}
         try { actualizarNotificacion() } catch (_: Exception) {}
         anotar("ALARMA: $motivo")
     }
@@ -2680,8 +2644,6 @@ class ServicioSos : Service() {
                    aquí, Diagnóstico se quedaba enseñando ese texto para siempre
                    con la baliza emitiendo. */
                 radio?.let { radioEmitiendo = it.emitiendo; radioMotivo = it.motivo }
-                enCola = partes.cuantos()
-                tipoRed = partes.tipoRed()
                 reloj.postDelayed(this, 500)
             }
         })
@@ -2736,29 +2698,6 @@ class ServicioSos : Service() {
                 reloj.postDelayed(this, OJEADA_CADA_MS)
             }
         }, OJEADA_CADA_MS)
-    }
-
-    /**
-     * Cuando aparece red, se intenta soltar la cola. No hay `WorkManager` porque
-     * este servicio ya está vivo por obligación: es lo que sostiene la sirena, y
-     * añadir otra pieza para repetir lo que ya hay sería pagar dos veces.
-     */
-    private fun vigilarRed() {
-        try {
-            val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-            cm.registerNetworkCallback(
-                NetworkRequest.Builder()
-                    .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                    .build(),
-                object : ConnectivityManager.NetworkCallback() {
-                    override fun onAvailable(network: Network) {
-                        if (partes.cuantos() > 0) partes.vaciar({ m -> anotar(m); redSalida = m })
-                    }
-                }
-            )
-        } catch (e: Exception) {
-            Log.e("SismoRed", "no se puede vigilar la red", e)
-        }
     }
 
     /**

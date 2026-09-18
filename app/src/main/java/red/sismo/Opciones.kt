@@ -126,7 +126,7 @@ class Opciones(ctx: Context) {
      * móvil sin que se vea. Esto no manda datos tuyos —la ubicación no viaja, la
      * distancia se calcula aquí— pero sí hace peticiones a un tercero, y eso
      * deja tu IP y tu horario de uso en un servidor ajeno. Encenderlo tiene que
-     * ser una decisión, igual que [envio].
+     * ser una decisión, y por eso viene apagado.
      *
      * Para qué sirve: medido sobre once días de registros, un sismo real de M4.9
      * es indistinguible en este acelerómetro de la vida cotidiana. La única
@@ -252,11 +252,6 @@ class Opciones(ctx: Context) {
      *  bolsillo no dice nada nuevo. */
     var avisoBusqueda: Boolean
         get() = leer("op_aviso_busqueda", true); set(v) = poner("op_aviso_busqueda", v)
-
-    /** Envío diferido de partes. Apagado de fábrica y siempre: nada sale del
-     *  móvil sin que alguien lo encienda a mano. */
-    var envio: Boolean
-        get() = leer("op_envio", false); set(v) = poner("op_envio", v)
 
     /**
      * Firma acústica del chasis del móvil para la sonda bio-sonar.
