@@ -217,6 +217,24 @@ class ServicioSos : Service() {
         @Volatile var mallaConfirmadas = 0; private set
         @Volatile var mallaTx = 0; private set
         @Volatile var mallaSalto = 0; private set
+
+        /**
+         * Hasta cuándo la notificación puede decir que hay alerta en la malla.
+         *
+         * **Los contadores no sirven para esto y era lo que se usaba.**
+         * `mallaTx` y `mallaConfirmadas` solo suben: una vez emitida o recibida
+         * una baliza, `> 0` se cumple para siempre, así que la barra se quedaba
+         * en «Retransmitiendo señal de socorro a nodos cercanos» hasta que
+         * alguien reiniciaba el servicio. Tras la prueba de campo del 18 de
+         * septiembre en el edificio se quedó así el resto del día, anunciando
+         * un rescate que había terminado hacía horas.
+         *
+         * Un aviso de la malla es un suceso, no un total, y por eso lo que se
+         * guarda es un instante.
+         */
+        @Volatile var mallaActividadHasta = 0L; private set
+        /** Lo que dura el aviso en la barra desde la última baliza. */
+        private const val MALLA_AVISO_MS = 5 * 60_000L
         /** Balizas confirmadas por salto: es lo que dibuja el radar. */
         @Volatile var mallaPorSalto = IntArray(MallaAcustica.MAX_HOP); private set
 
@@ -673,18 +691,42 @@ class ServicioSos : Service() {
                 if (u != null) ultimaUbicacion = u
                 u
             },
-            onAlertaSismica = { mag, dist, lugar, fuente ->
+            onAlertaSismica = { mag, dist, lugar, fuente, fechaMs ->
                 /* El receptor olvida lo que ya vio cuando el proceso muere,
                    asi que al arrancar vuelve a avisar de todo lo que siga
                    dentro de su ventana de veinte minutos. Con un reinicio
                    eso es una notificacion repetida; con varios, el mismo
                    sismo tres veces en el historial. La memoria tiene que
-                   sobrevivir al proceso. */
-                val huella = "$fuente|$mag|$lugar"
+                   sobrevivir al proceso.
+
+                   LA HUELLA ERA `fuente|mag|lugar` Y ASÍ NO DEDUPLICA NADA.
+                   Los dos catálogos publican el mismo terremoto con distinta
+                   magnitud y distinto nombre del sitio, así que los tres
+                   campos cambian y el aviso salía dos veces. Medido la noche
+                   del 17 al 18 de septiembre de 2026:
+
+                       01:19:38  SGC   M4.5  El Litoral del San Juán  ~55 km
+                       01:35:42  EMSC  M4.7  COLOMBIA                 ~56 km
+
+                   El mismo sismo, preguntado dos veces a la una de la mañana.
+                   Y una tercera cuando el SGC le revisó la magnitud a 4.6,
+                   porque eso también cambia la huella.
+
+                   Lo único que los dos dicen igual es la hora de ORIGEN. Se
+                   agrupa por ella en cubos de cinco minutos, que es lo que ya
+                   hacía `reportesRecientes` para la lista; aquí nunca se
+                   aplicó. El precio es no avisar de una réplica que caiga en
+                   el mismo cubo —el M3.2 de las 06:18 tras el M4.6 de las
+                   06:17—, y para avisar a alguien eso es lo que se quiere. */
+                val huella = "sismo|" + (fechaMs / 300_000L)
                 val prefs = getSharedPreferences("sismored", MODE_PRIVATE)
                 val visto = prefs.getLong("visto_" + huella.hashCode(), 0L)
                 if (System.currentTimeMillis() - visto < 30 * 60_000L) {
-                    Log.i("SismoRed", "alerta repetida, ya avisada: $huella")
+                    /* Con el sismo entero, no solo la huella: la huella es un
+                       número de cubo y no se lee. Esta línea es la prueba de
+                       que la deduplicación entre catálogos funciona. */
+                    Log.i("SismoRed",
+                        "alerta repetida, ya avisada: $fuente M$mag en $lugar (cubo $huella)")
                     return@ReceptorSismicoOnline
                 }
                 prefs.edit().putLong("visto_" + huella.hashCode(),
@@ -1044,6 +1086,8 @@ class ServicioSos : Service() {
     private fun anotar(m: String) {
         ultimoRegistro = m
         malla?.let {
+            if (it.tx > mallaTx || it.confirmadas > mallaConfirmadas)
+                mallaActividadHasta = System.currentTimeMillis() + MALLA_AVISO_MS
             mallaRx = it.rx; mallaTx = it.tx; mallaSalto = it.ultimoSalto
             mallaConfirmadas = it.confirmadas
             mallaPorSalto = it.porSalto.copyOf()
@@ -1267,8 +1311,10 @@ class ServicioSos : Service() {
             anotar("no se puede avisar: la malla no está encendida")
             return
         }
-        anotar("alerta emitida a la malla · $motivo")
-        try { m.emitirUna(MallaAcustica.CODIGO_ALERTA) } catch (_: Exception) {}
+        /* Solo se anota si de verdad ha salido. Ver [MallaAcustica.emitirUna]:
+           la vigilia nocturna llama aquí en cada evaluación del sismógrafo. */
+        val salio = try { m.emitirUna(MallaAcustica.CODIGO_ALERTA) } catch (_: Exception) { false }
+        if (salio) anotar("alerta emitida a la malla · $motivo")
     }
 
     private fun silencioZona() {
@@ -2673,8 +2719,10 @@ class ServicioSos : Service() {
                 temblando = sismo.ultimoTemblor > 0 &&
                     System.currentTimeMillis() - sismo.ultimoTemblor < TEMBLOR_MS
                 malla?.let {
+                    if (it.tx > mallaTx || it.confirmadas > mallaConfirmadas)
+                        mallaActividadHasta = System.currentTimeMillis() + MALLA_AVISO_MS
                     mallaRx = it.rx; mallaTx = it.tx; mallaSalto = it.ultimoSalto
-            mallaConfirmadas = it.confirmadas
+                    mallaConfirmadas = it.confirmadas
                     mallaPorSalto = it.porSalto.copyOf()
                     mallaNiveles = it.niveles.copyOf(); mallaSuelo = it.sueloDb
                     mallaEscuchando = it.escuchando
@@ -2932,7 +2980,22 @@ class ServicioSos : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val esAlarma = alarma || enRescate || preguntaHasta > System.currentTimeMillis()
+        /* LA PREGUNTA NO ES UNA ALARMA, y estaba contada como tal.
+
+           Con `preguntaHasta` aquí dentro, el aviso discreto —el que sale
+           cuando un catálogo confirma un sismo cerca y el móvil no ha notado
+           nada— pintaba la barra de rojo, la titulaba «ALARMA ACTIVA», ponía
+           debajo «Sirena y linterna en marcha · baliza emitiendo» y ofrecía un
+           botón DETENER. No sonaba nada: la pregunta es justo el estado
+           anterior a encender la sirena, y existe para no encenderla.
+
+           Pasó cinco veces la noche del 17 al 18 de septiembre, una por cada
+           aviso de catálogo. Es la misma clase de error que el de `mallaRx`
+           documentado aquí abajo: la notificación afirmando lo que el motor no
+           se cree. La pregunta ya tiene su propia notificación
+           ([ID_PREGUNTA_DISCRETA] y [ID_PREGUNTA]); la permanente no tiene que
+           gritar por ella. */
+        val esAlarma = alarma || enRescate
         /* LA NOTIFICACION SE CREIA LO QUE EL MOTOR NO SE CREE.
         
            Estaba escrita contra `mallaRx`, que cuenta CANDIDATOS: todo lo que el
@@ -2944,7 +3007,8 @@ class ServicioSos : Service() {
         
            En el registro de campo del 3 de septiembre pasa exactamente eso a las
            14:56:37, sin un solo movil con la app alrededor. */
-        val esMalla = !esAlarma && (mallaConfirmadas > 0 || mallaTx > 0)
+        /* Y por instante, no por contador: ver [mallaActividadHasta]. */
+        val esMalla = !esAlarma && System.currentTimeMillis() < mallaActividadHasta
 
         val layoutId = when {
             esAlarma -> R.layout.notif_alarma

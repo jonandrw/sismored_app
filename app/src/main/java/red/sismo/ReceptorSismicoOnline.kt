@@ -24,8 +24,12 @@ import kotlin.math.*
 class ReceptorSismicoOnline(
     private val getUbicacion: () -> Pair<Double, Double>? = { null },
     /** [fuente] es el catálogo que lo publicó: el registro no puede atribuirle
-     *  a la red europea un sismo que ha dado el servicio colombiano. */
-    private val onAlertaSismica: (mag: Double, distKm: Double, lugar: String, fuente: String) -> Unit,
+     *  a la red europea un sismo que ha dado el servicio colombiano.
+     *
+     *  [fechaMs] es la hora de ORIGEN del terremoto, y es lo único que los dos
+     *  catálogos dicen igual: la magnitud y el nombre del sitio no. Sin ella no
+     *  se puede saber que dos avisos son el mismo sismo. */
+    private val onAlertaSismica: (mag: Double, distKm: Double, lugar: String, fuente: String, fechaMs: Long) -> Unit,
     private val onRegistro: (String) -> Unit = {},
     /**
      * Cada cuánto preguntar, en milisegundos. Lo decide quien crea el receptor
@@ -352,7 +356,7 @@ class ReceptorSismicoOnline(
                         if (dist in 0.1..radio || (miLat == 0.0 && miLon == 0.0 && enColombia)) {
                             eventosVistos.add(id)
                             onRegistro("ALERTA SÍSMICA ONLINE RECIBIDA: M$mag en $place (~${dist.toInt()} km)")
-                            onAlertaSismica(mag, dist, place, if (sgc) "SGC" else "EMSC")
+                            onAlertaSismica(mag, dist, place, if (sgc) "SGC" else "EMSC", timeMs)
                         }
                     }
                 }
@@ -382,7 +386,11 @@ class ReceptorSismicoOnline(
                     if (dist in 0.1..RADIO_MAX_KM || (miLat == 0.0 && miLon == 0.0 && enColombia)) {
                         eventosVistos.add(id)
                         onRegistro("ALERTA SÍSMICA ONLINE RECIBIDA: M$mag en $place (~${dist.toInt()} km)")
-                        onAlertaSismica(mag, dist, place, if (sgc) "SGC" else "EMSC")
+                        /* Esta rama no saca la hora de origen del JSON, así que
+                           va la de ahora: solo corre si `org.json` falla entero,
+                           cosa que en Android no pasa. */
+                        onAlertaSismica(mag, dist, place, if (sgc) "SGC" else "EMSC",
+                            System.currentTimeMillis())
                     }
                 }
             }
@@ -442,7 +450,7 @@ class ReceptorSismicoOnline(
         var recibidaMag = 0.0
         val receptor = ReceptorSismicoOnline(
             getUbicacion = { Pair(4.81, -75.69) },
-            onAlertaSismica = { m, _, _, _ -> recibidaMag = m }
+            onAlertaSismica = { m, _, _, _, _ -> recibidaMag = m }
         )
         val ahoraIso = java.time.Instant.now().toString()
         val jsonMock = """{"features":[{"id":"test_choco_49","properties":{"mag":4.9,"flynn_region":"COLOMBIA","time":"$ahoraIso"},"geometry":{"coordinates":[-76.68,5.16,10.0]}}]}"""

@@ -996,9 +996,15 @@ class MallaAcustica(
     /**
      * Una trama: seis ráfagas de MARK + tono de salto. Se sintetiza entera y se
      * escribe de un tirón; a 48 kHz son 2,4 s, medio megabyte de nada.
+     *
+     * Devuelve si de verdad ha arrancado una emisión. Quien llama lo necesita
+     * para no anotar lo que no ha pasado: la vigilia nocturna pide emitir en
+     * cada evaluación del sismógrafo mientras dure la sacudida, y sin esto el
+     * registro se llenaba de «alerta emitida a la malla» —quince en tres
+     * segundos el 18 de septiembre— por una sola baliza real.
      */
-    fun emitirUna(hop: Int) {
-        if (emitiendo) return
+    fun emitirUna(hop: Int): Boolean {
+        if (emitiendo) return false
         val h0 = hop.coerceIn(1, TONOS.size)
         val sr = 48000
         val nOn = (BURST_ON * sr).toInt()
@@ -1081,6 +1087,7 @@ class MallaAcustica(
                 puertaHasta = maxOf(puertaHasta, System.currentTimeMillis() + 400)
             }
         }
+        return true
     }
 
     /* ================= autotest =================

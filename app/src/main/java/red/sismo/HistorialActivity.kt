@@ -142,7 +142,7 @@ class HistorialActivity : AppCompatActivity() {
             val oficiales = try {
                 ReceptorSismicoOnline(
                     getUbicacion = { ServicioSos.ultimaUbicacion },
-                    onAlertaSismica = { _, _, _, _ -> }
+                    onAlertaSismica = { _, _, _, _, _ -> }
                 ).reportesRecientes(7).map {
                     EventoBD(
                         tipo = 1, fechaMs = it.fechaMs,
