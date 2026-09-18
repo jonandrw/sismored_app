@@ -36,13 +36,14 @@ class Partes(private val ctx: Context) {
         private const val MAX = 50
         private const val REINTENTO_MS = 15000L
 
-        /* El mismo receptor que la PWA (`netlify/functions/aviso.js`), que solo
-           valida y registra. En la web era `/api/aviso` sobre el propio origen;
-           una app nativa no tiene origen, así que va la URL entera.
-           PENDIENTE: fijar el dominio definitivo al publicar en Netlify. Hasta
-           entonces el envío falla y los partes se quedan en cola, que es
-           exactamente el comportamiento previsto cuando no hay red. */
-        const val DESTINO = "https://sismored.netlify.app/api/aviso"
+        /* Una función de Cloudflare Pages que valida y guarda, nada más. En la
+           web era `/api/aviso` sobre el propio origen; una app nativa no tiene
+           origen, así que va la URL entera.
+
+           El receptor devuelve 2xx sólo cuando el parte está guardado de
+           verdad. Importa porque abajo la cola se borra con cualquier 2xx: un
+           200 de cortesía perdería los partes para siempre. */
+        const val DESTINO = "https://sismored.app/api/aviso"
     }
 
     private val p = ctx.getSharedPreferences("sismored", Context.MODE_PRIVATE)
