@@ -1088,7 +1088,9 @@ class ServicioSos : Service() {
         mallaEscuchando = m.escuchar()
         // La malla se autocomprueba sola al arrancar (ver MallaAcustica.arrancarRx).
         if (mallaEscuchando) {
-            if (!escuchaApagadaAMano) arrancarEscucha()
+            /* Antes arrancaba los detectores sin más. Ahora decide `ajustarEscucha`,
+               que además mira la hora, si suena audio y si hay emergencia. */
+            ajustarEscucha()
             /* La autocomprobación de la sonda, FUERA del hilo principal. Son
                filtros adaptados sobre decenas de ráfagas simuladas y tardan
                segundos; corriendo aquí bloqueaban la interfaz al arrancar, y si
@@ -1106,13 +1108,66 @@ class ServicioSos : Service() {
        `Microfono` cuenta usuarios, así que se puede apagar una sin dejar sorda a
        la otra. Y hacen falta por separado — alguien puede querer la malla toda
        la noche y los cinco detectores solo mientras esté atrapado. */
+    /**
+     * Decide si los detectores de audio deben estar corriendo, y lo aplica.
+     *
+     * La malla NO pasa por aquí: se queda escuchando siempre. Trabaja en
+     * 16-18 kHz, donde ni la música ni una voz tienen energía, y apagarla
+     * dejaría a este móvil sordo a la alerta del de al lado. Lo que se apaga
+     * son los detectores caros —estruendo, grito, voz, tono—, que son los que
+     * se comen la CPU y los que de día no sirven para nada.
+     *
+     * Medido: el micrófono abierto y su procesado fueron el 53 % del consumo
+     * de aplicaciones en un día, con los sensores de movimiento en 0,03.
+     *
+     * Las cuatro reglas, en orden de mando:
+     *
+     *  1. **Alarma o rescate: encendidos siempre.** Aunque sea mediodía y
+     *     aunque suene música. Es cuando hay que oír golpes bajo el escombro,
+     *     y quedarse sordo ahí sería el único fallo que no se puede permitir.
+     *  2. **Apagados a mano: apagados.** La decisión del usuario manda.
+     *  3. **Con audio sonando: apagados.** Con música o un vídeo, lo único que
+     *     producen son falsos — una noche dieron 26 gritos de auxilio, todos
+     *     de la música.
+     *  4. **Si no, solo con la vigilia armada.** De día, en reposo, el oído
+     *     no aporta nada que el acelerómetro no tenga.
+     */
+    private fun ajustarEscucha() {
+        val e = escucha ?: return
+        val emergencia = enAlarma || enRescate
+        val debe = when {
+            emergencia -> true
+            escuchaApagadaAMano -> false
+            sonandoAudio() -> false
+            else -> vigiliaArmadaAqui
+        }
+        if (debe == e.escuchando) return
+        if (debe) arrancarEscucha() else {
+            e.parar()
+            oyeEscuchando = false
+        }
+    }
+
+    /** ¿Está el móvil reproduciendo algo? Música, un vídeo, una llamada. */
+    private fun sonandoAudio(): Boolean = try {
+        (getSystemService(Context.AUDIO_SERVICE) as? AudioManager)?.isMusicActive == true
+    } catch (_: Exception) { false }
+
+    /** Los detectores ahora se encienden y se apagan solos varias veces al día.
+     *  El autotest tarda segundos y comprueba código que no ha cambiado entre
+     *  una vez y la siguiente, así que corre una sola vez por arranque. */
+    private var detectoresComprobados = false
+
     private fun arrancarEscucha() {
         val e = escucha ?: return
         if (e.escuchando) return
         if (e.arrancar()) {
-            // igual que la sonda: comprobar no puede colgar la pantalla
-            thread(name = "autotest-escucha", isDaemon = true) {
-                try { e.autotest(); comprobarDetectores() } catch (_: Exception) {}
+            if (!detectoresComprobados) {
+                detectoresComprobados = true
+                // igual que la sonda: comprobar no puede colgar la pantalla
+                thread(name = "autotest-escucha", isDaemon = true) {
+                    try { e.autotest(); comprobarDetectores() } catch (_: Exception) {}
+                }
             }
             oyeEscuchando = true
             oyeDesde = System.currentTimeMillis()
@@ -2644,6 +2699,7 @@ class ServicioSos : Service() {
                    aquí, Diagnóstico se quedaba enseñando ese texto para siempre
                    con la baliza emitiendo. */
                 radio?.let { radioEmitiendo = it.emitiendo; radioMotivo = it.motivo }
+                ajustarEscucha()
                 reloj.postDelayed(this, 500)
             }
         })
