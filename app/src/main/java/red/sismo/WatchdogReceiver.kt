@@ -137,5 +137,12 @@ class WatchdogReceiver : BroadcastReceiver() {
 
         // Siempre re-programar el siguiente pulso mientras deba vigilar
         programar(context, INTERVALO_MS)
+
+        /* Lo último, y después de reprogramar: mirar si hay versión nueva no
+           puede estorbar a lo que este receptor existe para hacer. Se entra
+           cada 15 minutos pero la propia comprobación solo sale a la red una
+           vez al día, así que esto es lo que hace que se entere de una versión
+           nueva quien instaló la app y no ha vuelto a abrirla. */
+        Actualizacion.comprobar(context)
     }
 }

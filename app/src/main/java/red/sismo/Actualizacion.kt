@@ -6,6 +6,8 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Build
 import android.util.Log
@@ -54,14 +56,23 @@ object Actualizacion {
     /**
      * Mira si hay algo más nuevo, como mucho una vez al día.
      *
-     * Se llama al abrir la app, no desde el servicio: comprobar
-     * actualizaciones no tiene nada que ver con vigilar un terremoto, y el
-     * servicio no debe gastar red en esto.
+     * La llaman dos sitios: [MainActivity] al abrir, y el [WatchdogReceiver]
+     * en su pulso de 15 minutos. Lo segundo es lo que hace que se entere quien
+     * instala la app y no vuelve a abrirla en meses, que es el caso normal de
+     * una app de emergencia. Los dos pasan por la misma puerta de 24 h, así que
+     * los pulsos de más no cuestan nada.
      */
     fun comprobar(ctx: Context) {
         val p = ctx.getSharedPreferences("sismored", Context.MODE_PRIVATE)
         val ahora = System.currentTimeMillis()
         if (ahora - p.getLong("ultimaComprobacionUpdate", 0L) < CADA_MS) return
+
+        /* Sin red no se gasta el turno del día. Importa desde que esto lo
+           despierta el watchdog: un pulso de madrugada con el wifi apagado
+           marcaría la comprobación como hecha y no volvería a mirar hasta el
+           día siguiente. */
+        if (!hayRed(ctx)) return
+
         p.edit().putLong("ultimaComprobacionUpdate", ahora).apply()
 
         thread(name = "actualizacion", isDaemon = true) {
@@ -85,6 +96,12 @@ object Actualizacion {
                            else v.nombre.isNotBlank() && v.nombre != nombreInstalado(ctx)
             if (hayNueva) avisar(ctx, v)
         }
+    }
+
+    private fun hayRed(ctx: Context): Boolean {
+        val cm = ctx.getSystemService(ConnectivityManager::class.java) ?: return false
+        val cap = cm.getNetworkCapabilities(cm.activeNetwork ?: return false) ?: return false
+        return cap.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
     private fun nombreInstalado(ctx: Context): String = try {
