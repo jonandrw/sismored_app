@@ -16,6 +16,26 @@ class Ficha(ctx: Context) {
 
     private val p = ctx.getSharedPreferences("ficha", Context.MODE_PRIVATE)
 
+    /**
+     * Cuándo autorizó el titular que esto se emita. 0 = todavía no.
+     *
+     * El grupo sanguíneo, las alergias y la medicación son **datos sensibles
+     * de salud** —artículo 5 de la Ley 1581 de 2012— y el artículo 6 prohíbe
+     * tratarlos sin autorización explícita del titular. Guardarlos en el
+     * propio móvil cae en el ámbito doméstico que el artículo 2 excluye, pero
+     * esta app los EMITE a terceros por Bluetooth y por wifi, y ahí la
+     * exclusión deja de valer.
+     *
+     * Por eso se pide una vez, antes de rellenar nada, y se guarda la fecha:
+     * una autorización que no consta no sirve de nada. Se revoca borrando la
+     * ficha.
+     */
+    var autorizadoEn: Long
+        get() = p.getLong("autorizado_en", 0L)
+        set(v) { p.edit().putLong("autorizado_en", v).apply() }
+
+    val autorizada: Boolean get() = autorizadoEn > 0L
+
     /* Nombres y apellidos, separados. Estaban en un campo solo y la pantalla
        adivinaba dónde partirlo: con cuatro palabras acertaba, con tres dejaba
        un nombre arriba y todo lo demás abajo, y con nombres compuestos o

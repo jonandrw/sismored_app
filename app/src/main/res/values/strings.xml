@@ -773,6 +773,19 @@ Es la única forma de comprobar el tramo que no se puede ensayar de otra manera.
     <string name="vigilia_esperando">VIGILIA · faltan %d min de reposo</string>
     <string name="vigilia_fuera">VIGILIA · empieza a la 1</string>
     <string name="hist_titulo">Sismos</string>
+    <string name="fauth_titulo">Antes de rellenar la ficha</string>
+    <string name="fauth_texto">Tu grupo sanguíneo, tus alergias y tu medicación son datos de salud.
+
+Con la alarma o el modo rescate encendidos, este móvil los emite por Bluetooth y por Wi-Fi <b>sin cifrar</b>, y puede leerlos cualquiera que esté cerca, no solo un rescatista. Esa es la única forma de que quien te encuentre inconsciente sepa qué no puede darte.
+
+En reposo no se emite nada. Todo se guarda solo en este móvil: no hay cuenta, no hay servidor y nadie más lo recibe. Puedes retirar la autorización borrando la ficha.
+
+Si la rellenas por otra persona, necesitas su consentimiento o su representación legal.
+
+Pon solo lo que aceptes que lea quien te esté buscando.</string>
+    <string name="fauth_si">Entiendo y autorizo</string>
+    <string name="fauth_no">Ahora no</string>
+    <string name="fauth_registrada">autorización de la ficha médica concedida por el titular</string>
     <string name="hist_nuevos">NUEVOS</string>
     <string name="hist_semana">7 DÍAS</string>
     <string name="hist_todo">TODO</string>

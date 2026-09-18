@@ -2059,7 +2059,8 @@ class MainActivity : AppCompatActivity() {
     private fun montarFicha() {
         val f = Ficha(this)
         findViewById<View>(R.id.btn_desbloquear_ficha)?.setOnClickListener {
-            mostrarDialogoEditarFicha(f)
+            if (f.autorizada) mostrarDialogoEditarFicha(f)
+            else pedirAutorizacionFicha(f)
         }
         findViewById<View>(R.id.btn_rescatado_ficha)?.setOnClickListener {
             arrancarServicio(ServicioSos.ACCION_PARAR)
@@ -2103,6 +2104,40 @@ class MainActivity : AppCompatActivity() {
         poner(R.id.ff_med, f.medicacion)
         poner(R.id.ff_contacto_nombre, f.contacto)
         poner(R.id.ff_contacto_tel, f.telefono)
+    }
+
+    /**
+     * La autorización para emitir la ficha, una vez y antes de rellenarla.
+     *
+     * Aquí sí va un párrafo, y va a propósito: es el único sitio de la app
+     * donde el texto no informa sino que pide permiso, y una autorización que
+     * no dice qué se autoriza no es una autorización. El grupo sanguíneo, las
+     * alergias y la medicación son datos sensibles de salud, y esta app los
+     * emite sin cifrar a cualquiera que esté cerca.
+     *
+     * Se puede cancelar: la app entera funciona sin ficha.
+     */
+    private fun pedirAutorizacionFicha(f: Ficha) {
+        android.app.AlertDialog.Builder(this)
+            .setTitle(R.string.fauth_titulo)
+            .setMessage(getString(R.string.fauth_texto))
+            .setPositiveButton(R.string.fauth_si) { _, _ ->
+                f.autorizadoEn = System.currentTimeMillis()
+                /* Que conste, y con fecha: una autorización que no deja
+                   rastro no se puede demostrar ni revocar. Va al mismo
+                   registro que todo lo demás y no sale del móvil. */
+                lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                    try {
+                        red.sismo.data.SismoDatabase.getDatabase(this@MainActivity)
+                            .eventoDao().insertar(red.sismo.data.EventoBD(
+                                tipo = 1, fechaMs = System.currentTimeMillis(),
+                                mensaje = getString(R.string.fauth_registrada)))
+                    } catch (_: Exception) {}
+                }
+                mostrarDialogoEditarFicha(f)
+            }
+            .setNegativeButton(R.string.fauth_no, null)
+            .show()
     }
 
     private fun mostrarDialogoEditarFicha(f: Ficha) {
