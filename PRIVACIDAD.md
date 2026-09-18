@@ -101,3 +101,31 @@ Al no almacenar información en servidores externos, no existen bases de datos r
 >
 > 4. **Aceptación:**  
 >    El uso de esta aplicación implica la comprensión y aceptación de la naturaleza experimental y solidaria del proyecto.
+
+---
+
+## Quién responde por estos datos
+
+**Nadie los trata, porque nadie los recibe.** No hay servidor, ni cuenta, ni
+analítica: la ficha médica, los ajustes y el registro viven en el móvil y no
+llegan al autor de la aplicación ni a ningún tercero. Por eso aquí no hay un
+«Responsable del Tratamiento» en el sentido de la Ley 1581 de 2012: no existe
+una base de datos que alguien mantenga sobre nadie.
+
+Lo que sí hay es una **emisión que el titular autoriza**. El grupo sanguíneo,
+las alergias y la medicación son datos sensibles de salud (art. 5), así que la
+app pide autorización explícita antes de dejar rellenar la ficha, advierte de
+que se emiten sin cifrar y guarda la fecha en que se concedió. La emisión se
+apoya en el supuesto que la propia ley prevé en el art. 6: salvaguardar el
+interés vital del titular. Se revoca borrando la ficha.
+
+El ámbito doméstico que excluye el art. 2 cubre lo que se guarda en el móvil,
+pero **deja de cubrir en cuanto se suministra a terceros** — y eso es
+exactamente lo que hace la baliza. De ahí que la autorización no sea opcional.
+
+## Contacto
+
+El proyecto lo mantiene **Juan Andrés Torres Orozco**.
+
+- Avisos legales y retirada de contenido: `legal@sismored.app`
+- Fallos de seguridad: `seguridad@sismored.app`

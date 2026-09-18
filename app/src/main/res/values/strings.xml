@@ -281,7 +281,7 @@
 <b>No predice terremotos.</b> Reacciona a lo que ya está ocurriendo.</string>
 
     <string name="ac_rot_datos">TUS DATOS</string>
-    <string name="ac_datos">No hay cuenta, no hay servidor y no hay publicidad. Nada se envía a los autores de la aplicación ni a nadie más, salvo lo que se detalla a continuación.
+    <string name="ac_datos">No hay cuenta, no hay servidor y no hay publicidad, asi que <b>nadie trata tus datos porque nadie los recibe</b>: no existe una base de datos que alguien mantenga sobre ti. Nada se envía a los autores de la aplicación ni a nadie más, salvo lo que se detalla a continuación.
 
 <b>Qué se guarda en el móvil.</b> Tu ficha médica (nombre, grupo sanguíneo, edad, alergias o medicación y un contacto); la última posición que tu móvil ya conocía; y un registro de lo que va detectando. Todo ello permanece en este teléfono y se elimina al desinstalar. La ficha puedes borrarla cuando quieras desde la pestaña Ficha.
 
