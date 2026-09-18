@@ -107,8 +107,26 @@ class Microfono(private val ctx: Context) {
      */
     @Volatile var silenciado = false; private set
 
+    /**
+     * Otra aplicación está grabando.
+     *
+     * **La malla tiene el micrófono cogido todo el día, y eso deja al teléfono
+     * sin grabadora.** Comprobado en el Redmi el 18 de septiembre de 2026: con
+     * SismoRed en marcha, `dumpsys audio` enseña un solo cliente —`riid 16295,
+     * src:VOICE_RECOGNITION, silenced:false, pack:red.sismo`— y la grabadora
+     * del sistema no consigue arrancar. No es un fallo de la grabadora: es que
+     * nadie más cabe.
+     *
+     * Una app de emergencia no puede cobrarse el precio de que el móvil deje
+     * de poder grabar. Así que cuando aparece otro cliente de grabación, se le
+     * cede el micrófono y se recupera cuando lo suelta.
+     */
+    @Volatile var otroGrabando = false; private set
+
     private var record: AudioRecord? = null
     private var vigilante: AudioManager.AudioRecordingCallback? = null
+    /** La sesión de nuestra captura, o −1 si ahora mismo no hay ninguna. */
+    @Volatile private var sesionActual = -1
     /** Volátil: lo escribe quien abre y cierra, y lo lee el hilo de captura
      *  en cada vuelta para decidir el tamaño de lectura. */
     @Volatile private var usuarios = 0
@@ -158,11 +176,11 @@ class Microfono(private val ctx: Context) {
         if (usuarios != 0) return
         abierto = false
         silenciado = false
-        vigilante?.let { cb ->
-            vigilante = null
-            try { (ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager).unregisterAudioRecordingCallback(cb) }
-            catch (_: Exception) {}
-        }
+        /* El vigilante NO se da de baja: si se fuera con el micrófono, nadie
+           avisaría de que la otra app ya lo ha soltado y no se volvería a
+           escuchar nunca. Se queda puesto y sin sesión propia, con lo que todo
+           lo que vea cuenta como ajeno, que es justo lo correcto. */
+        sesionActual = -1
         val r = record; record = null
         try { r?.stop() } catch (_: Exception) {}
         try { r?.release() } catch (_: Exception) {}
@@ -296,9 +314,22 @@ class Microfono(private val ctx: Context) {
     /** Lo avisa la propia plataforma desde Android 10; no hay que olfatear ceros. */
     private fun vigilarMudez(am: AudioManager, sesion: Int) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
+        sesionActual = sesion
+        if (vigilante != null) return          // ya puesto, y se queda para siempre
         val cb = object : AudioManager.AudioRecordingCallback() {
             override fun onRecordingConfigChanged(configs: MutableList<AudioRecordingConfiguration>) {
-                val mia = configs.firstOrNull { it.clientAudioSessionId == sesion } ?: return
+                /* Cualquier cliente de grabación que no sea el nuestro. El
+                   sistema entrega la lista anonimizada a quien no tiene
+                   permisos privilegiados, pero las entradas están, que es lo
+                   único que hace falta para saber que hay alguien más. */
+                val otros = configs.count { it.clientAudioSessionId != sesionActual }
+                val hayOtro = otros > 0
+                if (hayOtro != otroGrabando) {
+                    otroGrabando = hayOtro
+                    Log.i(TAG, if (hayOtro) "microfono: otra app quiere grabar ($otros), le cedo el micro"
+                               else "microfono: la otra app ha soltado el micro")
+                }
+                val mia = configs.firstOrNull { it.clientAudioSessionId == sesionActual } ?: return
                 if (mia.isClientSilenced == silenciado) return
                 silenciado = mia.isClientSilenced
                 Log.i(TAG, if (silenciado) "microfono: enmudecido por el sistema, sordos"

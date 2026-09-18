@@ -494,6 +494,31 @@ class ServicioSos : Service() {
          */
         const val ACCION_ALERTA_EXTERNA = "red.sismo.ALERTA_EXTERNA"
 
+        /**
+         * Soltar el micrófono un rato para que otra app pueda grabar.
+         *
+         * **Hace falta porque la detección automática no llega a todo.** La
+         * malla tiene el micrófono cogido a todas horas, y la grabadora de
+         * MIUI —comprobado en el Redmi el 18 de septiembre de 2026— no se pone
+         * en cola: mira si el micro está ocupado y contesta «no se puede
+         * grabar cuando el mic está en uso» sin llegar a pedirlo. Como nunca
+         * abre una captura, [Microfono.otroGrabando] no se entera y no hay
+         * nada que ceder. Es un pez que se muerde la cola y solo lo rompe la
+         * persona.
+         *
+         * Va en la notificación permanente y no dentro de la app: cuando te
+         * hace falta estás en la grabadora, no en SismoRed.
+         *
+         * Y vuelve sola. Apagar la malla a mano deja el móvil sin vigilancia
+         * hasta que alguien se acuerde de encenderla, y de eso nadie se
+         * acuerda a las dos de la mañana.
+         */
+        const val ACCION_SOLTAR_MICRO = "red.sismo.SOLTAR_MICRO"
+
+        /** Cuánto se suelta el micrófono de una vez. Da para una nota de voz
+         *  larga, y es poco como para dejar un hueco que importe. */
+        const val MICRO_LIBRE_MS = 5 * 60_000L
+
         /** Hasta cuándo vale una alerta externa. Volátil y estático porque lo
          *  mira la cascada desde el hilo del sensor. */
         @Volatile var alertaExternaHasta = 0L
@@ -991,12 +1016,16 @@ class ServicioSos : Service() {
             ACCION_RESCATADO -> rescatado()
             ACCION_RESCATE_HECHO -> rescateHecho()
             ACCION_ALERTA_EXTERNA -> alertaSismicaExterna(intent.getBooleanExtra("malla", false))
+            ACCION_SOLTAR_MICRO -> {
+                micLibreHasta = System.currentTimeMillis() + MICRO_LIBRE_MS
+                cederMicrofono()
+            }
             ACCION_VER_FICHA -> mostrarFichaSola(previa = true)
             ACCION_DIAGNOSTICO -> comprobarTodo()
         }
         // ya estamos en primer plano: aquí sí se puede grabar. Si el usuario apagó
         // la malla a mano, no se le vuelve a encender por la espalda.
-        if (intent?.action != ACCION_MALLA_CONMUTAR && !mallaApagadaAMano) arrancarMalla()
+        if (intent?.action != ACCION_MALLA_CONMUTAR && !mallaApagadaAMano && !micCedido) arrancarMalla()
         // Si el sistema mata el proceso, que lo vuelva a levantar.
         return START_STICKY
     }
@@ -1110,6 +1139,44 @@ class ServicioSos : Service() {
     private var mallaApagadaAMano = false
     private var escuchaApagadaAMano = false
 
+    /** Hemos soltado el micrófono porque otra app lo quería. */
+    private var micCedido = false
+    /** Hasta cuándo lo hemos soltado a petición de la persona. Ver [ACCION_SOLTAR_MICRO]. */
+    @Volatile private var micLibreHasta = 0L
+
+    /**
+     * Cederle el micrófono a otra aplicación que quiera grabar.
+     *
+     * Una app de emergencia no puede cobrarse el precio de que el teléfono
+     * deje de tener grabadora. Ver [Microfono.otroGrabando] para lo que se
+     * midió: con la malla en marcha, la grabadora del Redmi no arranca.
+     *
+     * **Salvo en emergencia.** Si esto está en alarma, en rescate o buscando,
+     * el micrófono es lo único que le queda a quien está debajo, y ahí no se
+     * cede por mucho que otra app lo pida.
+     */
+    private fun cederMicrofono() {
+        val m = mic ?: return
+        val emergencia = enAlarma || enRescate || buscando
+        val aMano = System.currentTimeMillis() < micLibreHasta
+        val ceder = (m.otroGrabando || aMano) && !emergencia
+        if (ceder == micCedido) return
+        micCedido = ceder
+        if (ceder) {
+            try { escucha?.parar() } catch (_: Exception) {}
+            oyeEscuchando = false
+            try { malla?.parar() } catch (_: Exception) {}
+            mallaEscuchando = false
+            anotar(if (aMano) "micrófono libre ${MICRO_LIBRE_MS / 60_000} minutos: ya puedes grabar"
+                   else "otra app está grabando: le dejo el micrófono y dejo de escuchar")
+        } else {
+            micLibreHasta = 0L
+            anotar("el micrófono vuelve a estar libre: retomo la escucha")
+            if (!mallaApagadaAMano) arrancarMalla()
+        }
+        try { actualizarNotificacion() } catch (_: Exception) {}
+    }
+
     private fun arrancarMalla() {
         val m = malla ?: return
         if (m.escuchando) return
@@ -1165,6 +1232,7 @@ class ServicioSos : Service() {
         val emergencia = enAlarma || enRescate
         val debe = when {
             emergencia -> true
+            micCedido -> false                 // se lo hemos dejado a otra app
             escuchaApagadaAMano -> false
             sonandoAudio() -> false
             else -> vigiliaArmadaAqui
@@ -2935,6 +3003,7 @@ class ServicioSos : Service() {
                     if (m && !motorSonando) motorDesde = System.currentTimeMillis()
                     if (!m) motorDesde = 0L
                     motorSonando = m
+                    cederMicrofono()
                     /* El relevo caduca solo si no ha vuelto a pasar nada. */
                     if (repetidor && contestoBien > 0L &&
                         System.currentTimeMillis() - contestoBien > REPETIDOR_MS) {
@@ -3093,6 +3162,12 @@ class ServicioSos : Service() {
                       else "Un móvil cercano pidió ayuda hace unos segundos"
             rv.setTextViewText(R.id.notif_titulo, tit)
             rv.setTextViewText(R.id.notif_texto, sub)
+        } else if (micCedido) {
+            val quedan = ((micLibreHasta - System.currentTimeMillis()) / 60_000L) + 1
+            rv.setTextViewText(R.id.notif_titulo, "Micrófono libre")
+            rv.setTextViewText(R.id.notif_texto,
+                if (micLibreHasta > 0) "Puedes grabar · vuelvo a escuchar en $quedan min"
+                else "Otra app está grabando · vuelvo cuando lo suelte")
         } else {
             rv.setTextViewText(R.id.notif_titulo, "Servicio activo")
             rv.setTextViewText(R.id.notif_texto, "Sigue vivo con la pantalla apagada · permanente")
@@ -3110,6 +3185,19 @@ class ServicioSos : Service() {
             .setOngoing(true)
             .setContentIntent(abrir)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
+
+        /* El botón para poder grabar, en la barra y no dentro de la app:
+           cuando hace falta estás en la grabadora. Ver [ACCION_SOLTAR_MICRO].
+           En alarma no aparece —ahí el micrófono no se negocia— y mientras
+           está cedido tampoco, que ya lo dice el propio texto. */
+        if (!esAlarma && !micCedido) {
+            b.addAction(Notification.Action.Builder(
+                null as android.graphics.drawable.Icon?,
+                /* Lo que hace SismoRed, no lo que consigue la otra app: es el
+                   mismo verbo que usa el registro y la tarjeta de la malla. */
+                "DEJAR DE ESCUCHAR", pi(ACCION_SOLTAR_MICRO)
+            ).build())
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             b.setStyle(Notification.DecoratedCustomViewStyle())
