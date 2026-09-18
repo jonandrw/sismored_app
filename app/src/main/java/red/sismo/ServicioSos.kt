@@ -2858,34 +2858,53 @@ class ServicioSos : Service() {
                         enReposo -> opciones.umbralReposo
                         else -> opciones.umbral
                     }
+                    /* DENTRO DEL `if` SOLO VA EL UMBRAL. Todo lo demás vivía
+                       aquí dentro y se congelaba.
+
+                       La condición es «el umbral ha cambiado», y una vez el
+                       móvil se asienta el umbral deja de cambiar: se queda en
+                       el de reposo, o en el de vigilia, y ya no se mueve. A
+                       partir de ese momento no se recalculaba `vigiliaArmadaAqui`
+                       —que es la bandera que arma la vigilia nocturna entera y
+                       decide si el motor de audio escucha—, ni el contador de
+                       la tarjeta, ni si hay un motor cerca, ni la caducidad del
+                       relevo.
+
+                       Se ve en dos sitios: el 18 de septiembre el Huawei se
+                       quedó clavado en «esperando 6 s de reposo» con el
+                       acelerómetro marcando 134 s, y la noche del 17 el móvil
+                       siguió de repetidor 4 h 41 min en vez de la media hora
+                       que dice el mensaje. El Redmi se armaba bien por pura
+                       suerte de a qué altura de la quietud le tocó el último
+                       cambio de umbral. */
                     if (abs(sismo.umbral - nuevo) > 0.01) {
                         sismo.umbral = nuevo
                         umbralActivo = nuevo
-                        enReposoAhora = enReposo
-                        sismo.vigiliaArmada = enVigilia(opciones)
-                        /* El reloj que sobrevive al disturbio, no el
-                           instantáneo: cuando llega la alerta del vecino
-                           este móvil está encima de la misma mesa que se
-                           mueve, así que `quietoDesdeHace` vale cero y la
-                           vía rápida no se activaba nunca. Medido el 17 de
-                           septiembre: el segundo móvil tardó 11,7 s. */
-                        vigiliaArmadaAqui = enVigilia(opciones) && enReposo &&
-                            maxOf(sismo.quietoDesdeHace(), sismo.quietoAntesDeLaRacha) >=
-                                Opciones.VIGILIA_REPOSO_MIN_MS
-                        quietoParaVigilia = sismo.quietoDesdeHace()
-                        pantallaHace = postura?.interaccionHace() ?: Long.MAX_VALUE
-                        val m = escucha?.motorCerca == true
-                        if (m && !motorSonando) motorDesde = System.currentTimeMillis()
-                        if (!m) motorDesde = 0L
-                        motorSonando = m
-                        /* El relevo caduca solo si no ha vuelto a pasar nada. */
-                        if (repetidor && contestoBien > 0L &&
-                            System.currentTimeMillis() - contestoBien > REPETIDOR_MS) {
-                            repetidor = false
-                            anotar("media hora sin novedad: dejo de ser solo repetidor y vuelvo a vigilar")
-                        }
                         anotar("Móvil %s: vigilo a %.2f m/s²".format(
                             if (enReposo) "en reposo" else "encima de ti", nuevo))
+                    }
+                    enReposoAhora = enReposo
+                    sismo.vigiliaArmada = enVigilia(opciones)
+                    /* El reloj que sobrevive al disturbio, no el
+                       instantáneo: cuando llega la alerta del vecino
+                       este móvil está encima de la misma mesa que se
+                       mueve, así que `quietoDesdeHace` vale cero y la
+                       vía rápida no se activaba nunca. Medido el 17 de
+                       septiembre: el segundo móvil tardó 11,7 s. */
+                    vigiliaArmadaAqui = enVigilia(opciones) && enReposo &&
+                        maxOf(sismo.quietoDesdeHace(), sismo.quietoAntesDeLaRacha) >=
+                            Opciones.VIGILIA_REPOSO_MIN_MS
+                    quietoParaVigilia = sismo.quietoDesdeHace()
+                    pantallaHace = postura?.interaccionHace() ?: Long.MAX_VALUE
+                    val m = escucha?.motorCerca == true
+                    if (m && !motorSonando) motorDesde = System.currentTimeMillis()
+                    if (!m) motorDesde = 0L
+                    motorSonando = m
+                    /* El relevo caduca solo si no ha vuelto a pasar nada. */
+                    if (repetidor && contestoBien > 0L &&
+                        System.currentTimeMillis() - contestoBien > REPETIDOR_MS) {
+                        repetidor = false
+                        anotar("media hora sin novedad: dejo de ser solo repetidor y vuelvo a vigilar")
                     }
                     calmaMedida = sismo.calmaMedida
                     giroGrados = sismo.giroGrados
