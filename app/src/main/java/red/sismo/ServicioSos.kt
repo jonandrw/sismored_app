@@ -680,7 +680,7 @@ class ServicioSos : Service() {
             },
             onRegistro = { m -> anotar(m) }
         )
-        oyentePanico = Microfono.Oyente { marco ->
+        oyentePanico = Microfono.Oyente { marco, _ ->
             detectorPanico?.procesarMarco(marco, marco.size, mic?.sr?.toDouble() ?: 48000.0)
         }
         receptorOnline = ReceptorSismicoOnline(

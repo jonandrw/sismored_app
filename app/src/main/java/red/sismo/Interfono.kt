@@ -136,7 +136,7 @@ class Interfono(
         val res = sr.toDouble() / Microfono.N
         val k0 = (VOZ_HZ_MIN / res).roundToInt().coerceAtLeast(1)
         val k1 = (VOZ_HZ_MAX / res).roundToInt().coerceAtMost(espectro.size - 1)
-        return Microfono.Oyente { marco ->
+        return Microfono.Oyente { marco, _ ->
             Fft.magnitudes(marco, ventana, espectro)
             var s = 0.0
             for (k in k0..k1) s += espectro[k] * espectro[k]
@@ -151,7 +151,7 @@ class Interfono(
     private class Grabadora : Microfono.Oyente {
         val trozos = ArrayList<ShortArray>()
         @Volatile var grabando = false
-        override fun onMarco(marco: ShortArray) {
+        override fun onMarco(marco: ShortArray, tMs: Long) {
             if (grabando) trozos.add(marco.copyOf())
         }
         fun junto(): ShortArray {

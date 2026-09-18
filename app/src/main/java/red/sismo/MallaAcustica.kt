@@ -398,8 +398,8 @@ class MallaAcustica(
     private val h = Handler(Looper.getMainLooper())
     /** La tasa real la fija el micrófono compartido, no esta clase. */
     private val srRx get() = mic.sr
-    private val oyente = Microfono.Oyente { marco ->
-        try { procesar(marco) } catch (e: Exception) { Log.e(TAG, "malla decodificar", e) }
+    private val oyente = Microfono.Oyente { marco, tMs ->
+        try { procesar(marco, tMs) } catch (e: Exception) { Log.e(TAG, "malla decodificar", e) }
     }
 
     /* ---------- ventana de Hann, precalculada ----------
@@ -549,7 +549,10 @@ class MallaAcustica(
     private var confirma = 0
     private var confirmaHop = 0
 
-    private fun decodificar(x: ShortArray): Int {
+    /** [tMs], cuándo se capturó el marco, decide la vigencia de la portadora.
+     *  Por omisión el reloj de ahora: es lo que quieren los autotests, que
+     *  inyectan marcos sintéticos sin micrófono de por medio. */
+    private fun decodificar(x: ShortArray, tMs: Long = System.currentTimeMillis()): Int {
         val umbral = maxOf(dB(ruidoFondo(x)) + MARGEN_DB, SUELO_ABS_DB)
         val vMark = dB(pico(x, MARK))
         /* El espectro que ve la pantalla. No es un adorno ni una FFT aparte:
@@ -577,7 +580,7 @@ class MallaAcustica(
            ese derrame no puede hacerse pasar por una alerta. */
         val hayMark = vMark > umbral && vMark >= mejorV
         val hayTono = mejorV > umbral && mejorV > vMark
-        if (hayMark) ultimoMark = System.currentTimeMillis()
+        if (hayMark) ultimoMark = tMs
 
         /* Para la cadencia da igual cual de los dos sea: lo que se mide es el
            tren de rafagas, y siguen saliendo una cada 400 ms. */
@@ -614,7 +617,7 @@ class MallaAcustica(
         if (mejorV - segundoV < SEPARACION_DB) { confirma = 0; return 0 }
         /* Y un tono sin portadora reciente no es de la malla: es un pitido
            cualquiera que ha caido en esa frecuencia. */
-        if (System.currentTimeMillis() - ultimoMark > MARK_VALE_MS) { confirma = 0; return 0 }
+        if (tMs - ultimoMark > MARK_VALE_MS) { confirma = 0; return 0 }
         confirma = if (mejor == confirmaHop) confirma + 1 else 1
         confirmaHop = mejor
         /* DOS marcos, no tres. Se probó con tres y el autotest lo cazó: el
@@ -767,8 +770,7 @@ class MallaAcustica(
      * con lo cual ya no está falsificando nada. La cadencia se sigue exigiendo:
      * eso descarta un ruido cualquiera, no a un impostor.
      */
-    private fun corroborada(hop: Int): Boolean {
-        val now = System.currentTimeMillis()
+    private fun corroborada(hop: Int, now: Long): Boolean {
         val antes = corrob.size
         corrob.retainAll { now - it.first < CORROB_VENTANA && it.second == hop }
         if (antes > 0 && corrob.isEmpty()) olvidarCadencia()      // se perdió la pista: a empezar
@@ -815,18 +817,22 @@ class MallaAcustica(
      *  salto una docena de veces, y el registro es la prueba de lo que pasó. */
     private var ultimoAvisoCandidato = 0L
 
-    private fun procesar(marco: ShortArray) {
+    /** [tMs] es cuándo se capturó el marco. Todo lo que se decide aquí dentro
+     *  se decide con ese reloj y no con el de ahora: la puerta anti-eco tiene
+     *  que juzgar el audio por cuándo entró por el micrófono, no por cuándo la
+     *  CPU llegó a mirarlo. Ver [Microfono.Oyente]. */
+    private fun procesar(marco: ShortArray, tMs: Long) {
         // no oírse a sí mismo. La racha en curso queda partida: no se juzga.
-        if (System.currentTimeMillis() < puertaHasta) { olvidoPuerta++; perderSincronismo(); return }
+        if (tMs < puertaHasta) { olvidoPuerta++; perderSincronismo(); return }
         /* Enmudecidos por el sistema: los marcos vienen a cero. Juzgarlos sería
            dar por buena una racha partida por un hueco que no oímos. */
         if (mic.silenciado) { perderSincronismo(); return }
-        val hop = decodificar(marco)
+        val hop = decodificar(marco, tMs)
         verCadencia(tonoVivo)
         if (hop == 0) return
         rx++
-        if (!corroborada(hop)) {
-            val now = System.currentTimeMillis()
+        if (!corroborada(hop, tMs)) {
+            val now = tMs
             if (now - ultimoAvisoCandidato > RELAY_MS) {
                 ultimoAvisoCandidato = now
                 /* Con los tres numeros delante: cual de las tres condiciones

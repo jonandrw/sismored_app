@@ -206,8 +206,11 @@ class Escucha(
         puertaHasta = maxOf(puertaHasta, System.currentTimeMillis() + ms)
     }
 
-    private val oyente = Microfono.Oyente { marco ->
-        if (System.currentTimeMillis() < puertaHasta) return@Oyente
+    private val oyente = Microfono.Oyente { marco, tMs ->
+        /* Por cuándo se capturó, no por cuándo toca procesarlo: la puerta
+           existe para no juzgar el audio que salió de nuestro propio
+           altavoz. Ver [Microfono.Oyente]. */
+        if (tMs < puertaHasta) return@Oyente
         if (++cuenta >= MARCOS_POR_TICK) {
             cuenta = 0
             // el PCM crudo va por parámetro y no se lee de dentro: así el

@@ -40,6 +40,41 @@ class Microfono(private val ctx: Context) {
         private const val SEGUNDOS_ANILLO = 2
         private const val TAG = "SismoRed"
 
+        /**
+         * Cuántos [SALTO] se piden al micrófono de una vez cuando lo único que
+         * escucha es la malla.
+         *
+         * **El tamaño de análisis y el de lectura eran el mismo número, y no
+         * tienen por qué serlo.** Leyendo de [SALTO] en [SALTO] el procesador
+         * despertaba 47 veces por segundo —21 ms— y no podía dormirse nunca:
+         * ése es el gasto de tener la malla escuchando, no el micrófono, que
+         * son microamperios.
+         *
+         * Con 24 se pide medio segundo de golpe. El DMA llena el búfer
+         * mientras el procesador duerme, y al despertar se corren sobre ese
+         * bloque las mismas 24 ventanas de [N] con el mismo solape: **la
+         * secuencia de marcos que sale es idéntica**, no es una aproximación.
+         * Lo único que se paga es medio segundo de retraso, y contra una
+         * baliza que suena 4 s de cada 8 durante horas eso no existe.
+         */
+        /**
+         * Cuánto se puede vaciar de una vez: 72 saltos, 1,5 s de audio.
+         *
+         * **No es «cuánto llega», es «cuánto cabe sacar».** Estaba en 24 —512
+         * ms, apenas 62 más que la siesta— y con eso el Redmi no llegaba: si
+         * procesar los marcos de una vuelta pasa de ese margen, la siguiente
+         * encuentra más audio del que puede sacar, el retraso se acumula y el
+         * búfer acaba saturado perdiendo muestras, o sea perdiendo balizas. Se
+         * vio en el registro como «bloque lleno» sin parar. El Huawei sí
+         * llegaba: es cosa del procesador, así que el margen tiene que ser
+         * grande para no depender del aparato.
+         */
+        private const val SALTOS_POR_LECTURA = 72
+
+        /** Lo que duerme el hilo entre vaciados: es esto lo que fija el gasto,
+         *  porque es lo que tarda el proceso en volver a existir. */
+        private const val MS_SIESTA = 450L
+
         // quién tiene el micrófono abierto, como el micUsers de la PWA
         const val USA_MALLA = 1
         const val USA_FORENSE = 2
@@ -48,8 +83,17 @@ class Microfono(private val ctx: Context) {
         const val USA_PANICO = 16
     }
 
-    /** Se llama desde el hilo del micrófono, no desde el principal. */
-    fun interface Oyente { fun onMarco(marco: ShortArray) }
+    /**
+     * Se llama desde el hilo del micrófono, no desde el principal.
+     *
+     * [tMs] es **cuándo se capturó** este marco, no cuándo le ha tocado el
+     * turno a la CPU. Los dos números eran el mismo mientras se leía de 21 ms
+     * en 21 ms, y aun así no eran lo mismo: con el móvil cargado el marco se
+     * fechaba tarde y la cadencia de la malla se medía torcida. Leyendo por
+     * bloques la diferencia deja de ser un sesgo y pasa a ser medio segundo,
+     * así que el instante tiene que viajar con el marco.
+     */
+    fun interface Oyente { fun onMarco(marco: ShortArray, tMs: Long) }
 
     @Volatile var abierto = false; private set
     @Volatile var sr = 48000; private set
@@ -66,7 +110,21 @@ class Microfono(private val ctx: Context) {
 
     private var record: AudioRecord? = null
     private var vigilante: AudioManager.AudioRecordingCallback? = null
-    private var usuarios = 0
+    /** Volátil: lo escribe quien abre y cierra, y lo lee el hilo de captura
+     *  en cada vuelta para decidir el tamaño de lectura. */
+    @Volatile private var usuarios = 0
+
+    /**
+     * Cuántas muestras pedir de una vez.
+     *
+     * Grande cuando **solo** está la malla: es el caso de todo el día y de
+     * toda la noche, y ahí lo que importa es que el procesador duerma.
+     * Pequeño en cuanto se engancha cualquier otro —forense, interfono,
+     * sonda, pánico—, porque ésos aparecen durante una alarma y entonces
+     * manda la latencia y la batería da igual.
+     */
+    private fun tamanoLectura(): Int =
+        if (usuarios == USA_MALLA) SALTO * SALTOS_POR_LECTURA else SALTO
     private val oyentes = java.util.concurrent.CopyOnWriteArrayList<Oyente>()
 
     /* Anillo de PCM crudo en float, para tono y nivel. */
@@ -131,9 +189,15 @@ class Microfono(private val ctx: Context) {
         }
         if (min <= 0) throw IllegalStateException("sin tasa de muestreo utilizable")
 
+        /* Dos segundos de holgura, en BYTES —que es lo que pide el
+           constructor y lo que devuelve `getMinBufferSize`—. Estaba en
+           `N * 8` = 16 KB, o sea 8192 muestras: 170 ms, y con eso no se puede
+           pedir medio segundo de golpe sin desbordar. Ampliar el búfer no
+           gasta nada, son 187 KB y no consume corriente: lo que decide el
+           gasto es cada cuánto se despierta a leerlo. */
         val r = AudioRecord(
             fuente, sr, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT,
-            maxOf(min, N * 8)                 // holgura: perder marcos es perder balizas
+            maxOf(min, sr * 2 * 2)
         )
         if (r.state != AudioRecord.STATE_INITIALIZED) { r.release(); throw IllegalStateException("AudioRecord no inicializa") }
 
@@ -150,23 +214,81 @@ class Microfono(private val ctx: Context) {
         vigilarMudez(am, r.audioSessionId)
 
         thread(name = "microfono", isDaemon = true) {
-            val trozo = ShortArray(SALTO)
+            val bloque = ShortArray(SALTO * SALTOS_POR_LECTURA)
             val marco = ShortArray(N)
+            var modoAnterior = 0
+            var saturado = false
+            var tAviso = 0L
             while (abierto) {
+                /* Se relee en cada vuelta: una alarma puede engancharse al
+                   micrófono en mitad de la noche y a partir de ahí hay prisa. */
+                val pedir = tamanoLectura()
+                if (pedir != modoAnterior) {
+                    modoAnterior = pedir
+                    Log.i(TAG, if (pedir > SALTO)
+                        "microfono: solo la malla, leo $pedir muestras por siesta de $MS_SIESTA ms"
+                        else "microfono: hay prisa (usuarios=$usuarios), leo de $SALTO en $SALTO")
+                }
                 var leidas = 0
-                while (leidas < SALTO && abierto) {
-                    val n = try { r.read(trozo, leidas, SALTO - leidas) } catch (e: Exception) { -1 }
-                    if (n <= 0) { if (n < 0) return@thread else continue }
-                    leidas += n
+                if (pedir > SALTO) {
+                    /* NO SE ESPERA EN EL `read`, SE DUERME Y SE VACÍA.
+
+                       Pedir el bloque entero con la lectura bloqueante no sirve
+                       de nada: `AudioRecord` despierta al hilo por su futex en
+                       cada periodo del HAL, así que aunque el bucle de Java dé
+                       dos vueltas por segundo, el hilo se despertaba 48 —medido
+                       el 18 de septiembre: 2 lecturas/s y 2.887 conmutaciones
+                       voluntarias en 60 s—. El tamaño de lectura no manda sobre
+                       los despertares; mandar sobre ellos es no estar esperando.
+
+                       Durmiendo por reloj propio y vaciando con lectura NO
+                       bloqueante, el proceso se queda fuera de la ecuación
+                       medio segundo entero. El servidor de audio sigue
+                       corriendo —eso no lo controla nadie desde aquí—, pero el
+                       nuestro deja de acompañarlo. */
+                    /* Si la vuelta anterior salió llena hay retraso acumulado:
+                       se vacía otra vez sin dormir hasta ponerse al día. */
+                    if (!saturado) {
+                        try { Thread.sleep(MS_SIESTA) } catch (_: InterruptedException) { break }
+                        if (!abierto) break
+                    }
+                    val n = try { r.read(bloque, 0, pedir, AudioRecord.READ_NON_BLOCKING) }
+                            catch (e: Exception) { -1 }
+                    if (n < 0) return@thread
+                    /* Múltiplo de SALTO: el resto se queda en el búfer del
+                       sistema y entra en la siguiente vuelta, que es justo lo
+                       que conserva la continuidad de la ventana deslizante. */
+                    leidas = (n / SALTO) * SALTO
+                    saturado = n >= pedir
+                    if (saturado && System.currentTimeMillis() - tAviso > 10_000L) {
+                        tAviso = System.currentTimeMillis()
+                        Log.i(TAG, "microfono: no doy abasto, puede faltar audio")
+                    }
+                    if (leidas == 0) continue
+                } else {
+                    while (leidas < pedir && abierto) {
+                        val n = try { r.read(bloque, leidas, pedir - leidas) } catch (e: Exception) { -1 }
+                        if (n <= 0) { if (n < 0) return@thread else continue }
+                        leidas += n
+                    }
                 }
                 if (!abierto) break
-                // ventana deslizante: se tira la mitad vieja y entra el trozo nuevo
-                System.arraycopy(marco, SALTO, marco, 0, N - SALTO)
-                System.arraycopy(trozo, 0, marco, N - SALTO, SALTO)
-                empujarAnillo(trozo)
-                for (o in oyentes) {
-                    // un oyente que falle no puede dejar sordos a los demás
-                    try { o.onMarco(marco) } catch (e: Exception) { Log.e(TAG, "oyente de microfono", e) }
+                /* El bloque acaba de llegar entero, así que este instante es el
+                   de su ÚLTIMA muestra. El de cada marco se saca restando lo
+                   que queda de bloque por detrás. */
+                val tFin = System.currentTimeMillis()
+                var off = 0
+                while (off + SALTO <= leidas) {
+                    // ventana deslizante: se tira la mitad vieja y entra el trozo nuevo
+                    System.arraycopy(marco, SALTO, marco, 0, N - SALTO)
+                    System.arraycopy(bloque, off, marco, N - SALTO, SALTO)
+                    empujarAnillo(bloque, off, SALTO)
+                    off += SALTO
+                    val tMarco = tFin - ((leidas - off).toLong() * 1000L) / sr
+                    for (o in oyentes) {
+                        // un oyente que falle no puede dejar sordos a los demás
+                        try { o.onMarco(marco, tMarco) } catch (e: Exception) { Log.e(TAG, "oyente de microfono", e) }
+                    }
                 }
             }
         }
@@ -194,10 +316,19 @@ class Microfono(private val ctx: Context) {
         try { if (AutomaticGainControl.isAvailable()) AutomaticGainControl.create(sesion)?.enabled = false } catch (_: Exception) {}
     }
 
-    private fun empujarAnillo(x: ShortArray) {
+    /** Por tramos hasta el final del anillo, para no hacer un módulo por
+     *  muestra: son 48.000 por segundo y esto está en el camino caliente. */
+    private fun empujarAnillo(x: ShortArray, off: Int, len: Int) {
         synchronized(cerrojo) {
             if (anillo.isEmpty()) return
-            for (v in x) { anillo[w] = v / 32768f; w = (w + 1) % anillo.size }
+            var i = off
+            var quedan = len
+            while (quedan > 0) {
+                val cabe = minOf(quedan, anillo.size - w)
+                for (k in 0 until cabe) anillo[w + k] = x[i + k] / 32768f
+                w = (w + cabe) % anillo.size
+                i += cabe; quedan -= cabe
+            }
         }
     }
 
