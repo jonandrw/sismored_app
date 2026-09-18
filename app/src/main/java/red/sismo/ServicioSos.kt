@@ -544,11 +544,7 @@ class ServicioSos : Service() {
     private var saltoEntrante = 0
     private val reloj = Handler(Looper.getMainLooper())
 
-    private var detectorPanico: DetectorPanicoVoz? = null
-    @Volatile private var sucesoVozPanico = false
-    @Volatile private var sucesoVozPanicoHasta = 0L
     private var receptorOnline: ReceptorSismicoOnline? = null
-    private var oyentePanico: Microfono.Oyente? = null
 
     /* ---------- la cascada ----------
        El estado del suceso en curso. Todo esto es de un solo suceso: se pone en
@@ -671,18 +667,6 @@ class ServicioSos : Service() {
            Oír una baliza confirmada es exactamente igual de serio que notar el
            terremoto uno mismo: se dispara la alarma completa y se reemite. */
         mic = Microfono(this)
-        detectorPanico = DetectorPanicoVoz(
-            onPanicoConfirmado = { frase, conf ->
-                sucesoVozPanico = true
-                sucesoVozPanicoHasta = System.currentTimeMillis() + 60_000L
-                anotar("PÁNICO POR VOZ CORROBORADO ($frase, " + (conf * 100).toInt() + "%)")
-                evaluar("pánico por voz: $frase")
-            },
-            onRegistro = { m -> anotar(m) }
-        )
-        oyentePanico = Microfono.Oyente { marco, _ ->
-            detectorPanico?.procesarMarco(marco, marco.size, mic?.sr?.toDouble() ?: 48000.0)
-        }
         receptorOnline = ReceptorSismicoOnline(
             getUbicacion = {
                 val u = if (ubicacion?.hay() == true) Pair(ubicacion!!.lat(), ubicacion!!.lon()) else null
@@ -1486,9 +1470,6 @@ class ServicioSos : Service() {
                sola no decide nada y no merece estar encendida todo el día. */
             try { postura?.vigilarLuz(true) } catch (_: Exception) {}
             try { ubicacion?.refrescar() } catch (_: Exception) {}
-            detectorPanico?.activarVentana(10_000L)
-            mic?.abrir(Microfono.USA_PANICO)
-            oyentePanico?.let { mic?.registrar(it) }
             reprogramarWatchdogSuceso()
         }
         evaluar(motivo)
@@ -1521,7 +1502,6 @@ class ServicioSos : Service() {
                Se acumula igual que el resto de la evidencia del suceso. */
             sacudidaFuerte = fuerteAhora(),
             ratioStaLta = sismo.ratioStaLta,
-            vozPanico = sucesoVozPanico && System.currentTimeMillis() < sucesoVozPanicoHasta,
             ondaP = sismo.hayOndaP,
             estruendo = sucesoEstruendo || estruendoAhora,
             corroborada = sucesoCorroborada || saltoEntrante > 0,
@@ -1584,30 +1564,43 @@ class ServicioSos : Service() {
                 quieto
             ).let { if (it == Long.MAX_VALUE) -1L else it },
             quietoMs = quieto,
-            /* Golpes o voz junto al móvil en el último minuto. La voz no se
-               enciende nunca contra grabaciones humanas reales —comprobado
-               contra las 21 del banco—, así que quien de verdad manda aquí es el
-               de golpes, y ese todavía no se ha medido contra audio real. */
-            /* Y con el móvil en la mano esto NO cuenta. De campo: viendo un
+            /* Golpes y grito, cada uno por su lado desde el 18 de septiembre de
+               2026: no valen lo mismo y juntarlos hacía que el grito arrastrase
+               al rescatista la certeza de los golpes. Ver [Cascada.Pruebas.gritoCerca].
+
+               Aquí decía que el detector de grito «no se enciende nunca contra
+               grabaciones humanas reales, comprobado contra las 21 del banco».
+               Eso ya no es cierto y probablemente nunca lo fue: es justo la
+               frase que `banco.py` avisa en su cabecera de haber producido
+               mientras el port medía un detector que la app ya no llevaba.
+               Pasado hoy el banco, de las 21 de Humanos salen 7 como GRITO.
+
+               Y con el móvil en la mano esto NO cuenta. De campo: viendo un
                vídeo, el micrófono llamó «GRITO DE AUXILIO 85 %» a 706 Hz
                sostenidos del propio vídeo, y eso subió la decisión de PREGUNTAR
                a AUXILIO — baliza completa con sirena, saltándose el escalón
                silencioso.
-            
+
                La frase que esta prueba sostiene es «se oye a alguien JUNTO AL
                MÓVIL», y el móvil de alguien enterrado no está en una mano ni
                reproduciendo nada. Si lo estás sujetando, lo que oye el micrófono
                eres tú o tu teléfono, no una persona bajo un escombro. */
-            vozOGolpesCerca = !sismo.hayMano &&
-                sismo.quietoAntes > 20_000L &&
-                oyeCuando.let { c ->
-                val ahora = System.currentTimeMillis()
-                val iG = Escucha.CLAVES.indexOf("golpes")
-                val iV = Escucha.CLAVES.indexOf("grito")
-                (iG >= 0 && c[iG] > 0 && ahora - c[iG] < 60_000L) ||
-                (iV >= 0 && c[iV] > 0 && ahora - c[iV] < 60_000L)
-            }
+            golpesCerca = oidoDeFiar && oidoReciente("golpes"),
+            gritoCerca = oidoDeFiar && oidoReciente("grito")
         )
+    }
+
+    /** Se puede creer lo que oye el micrófono: nadie lo está sujetando y lleva
+     *  un rato quieto. Sin esto, lo que se oye eres tú o tu propio teléfono. */
+    private val oidoDeFiar: Boolean
+        get() = !sismo.hayMano && sismo.quietoAntes > 20_000L
+
+    /** ¿Ha saltado ese detector de [Escucha] en el último minuto? */
+    private fun oidoReciente(clave: String): Boolean {
+        val i = Escucha.CLAVES.indexOf(clave)
+        if (i < 0) return false
+        val t = oyeCuando.getOrNull(i) ?: return false
+        return t > 0L && System.currentTimeMillis() - t < 60_000L
     }
 
     private fun evaluar(motivo: String) {
@@ -2226,10 +2219,6 @@ class ServicioSos : Service() {
         preguntaTarea?.let { reloj.removeCallbacks(it) }
         preguntaTarea = null
         quitarPregunta()
-        sucesoVozPanico = false
-        detectorPanico?.cancelarVentana()
-        oyentePanico?.let { mic?.quitar(it) }
-        mic?.cerrar(Microfono.USA_PANICO)
         quitarPreguntaDiscreta()
         try { postura?.vigilarLuz(false) } catch (_: Exception) {}
     }
@@ -2989,8 +2978,6 @@ class ServicioSos : Service() {
             try { WatchdogReceiver.cancelar(this) } catch (_: Exception) {}
         }
         try { receptorOnline?.parar() } catch (_: Exception) {}
-        detectorPanico?.cancelarVentana()
-        oyentePanico?.let { mic?.quitar(it) }
         try { sismo.parar() } catch (_: Exception) {}
         try { postura?.parar() } catch (_: Exception) {}
         try { escucha?.parar() } catch (_: Exception) {}

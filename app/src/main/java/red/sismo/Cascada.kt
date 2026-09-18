@@ -165,14 +165,29 @@ object Cascada {
         val msDesdeInteraccion: Long = -1L,
         /** Milisegundos que lleva el móvil sin que el acelerómetro note nada. */
         val quietoMs: Long = 0L,
-        /** El oído ha detectado voz o golpes junto al móvil. */
-        val vozOGolpesCerca: Boolean = false,
+        /** Golpes rítmicos junto al móvil. Es la señal canónica de alguien
+         *  atrapado y consciente: un ritmo regular no lo produce el entorno. */
+        val golpesCerca: Boolean = false,
+        /**
+         * El clasificador ha leído un grito junto al móvil.
+         *
+         * **Va aparte de [golpesCerca] porque no vale lo mismo, y eso está
+         * medido.** Sobre la biblioteca de `fx sounds` con el banco del 18 de
+         * septiembre de 2026, cuatro de las siete grabaciones de sirenas se
+         * clasifican como GRITO — camión de bomberos, ambulancia, sirena de
+         * policía y un SOS en morse—. Y no se arregla con un umbral: la
+         * modulación silábica de un grito infantil real es 0,11 y la de una
+         * sirena de policía 0,13, así que los rangos se solapan y cualquier
+         * corte que quite las sirenas se lleva los gritos por delante. Lo
+         * mismo con el vibrato, la tonalidad y la frecuencia.
+         *
+         * En un terremoto va a haber sirenas. Así que un grito enciende la
+         * baliza igual, pero **no basta para decirle a un rescatista que se
+         * oye a alguien**: esa frase la sostienen los golpes.
+         */
+        val gritoCerca: Boolean = false,
         /** Relación STA/LTA medida en el sismógrafo contra el piso de ruido. */
         val ratioStaLta: Double = 1.0,
-        /** Detección de expresiones de alarma o pánico por voz («¡temblor!», «¡Dios mío!», etc.).
-         *  Se anota y viaja en las pruebas, pero NO cuenta como opinión ajena: la oye
-         *  el micrófono de este mismo móvil. */
-        val vozPanico: Boolean = false,
         /**
          * Un catálogo sísmico oficial confirma un terremoto cerca, y **ya ha
          * pasado**. No es lo mismo que [alertaExterna] de una alerta temprana,
@@ -432,8 +447,13 @@ object Cascada {
         /* ---- 5. Nadie ha contestado ----
            A partir de aquí se enciende la baliza, y el rótulo importa tanto como
            la acción. */
-        if (p.vozOGolpesCerca) return Decision(Accion.AUXILIO, Quien.PERSONA,
-            "no contesta y se oye a alguien junto al móvil")
+        if (p.golpesCerca) return Decision(Accion.AUXILIO, Quien.PERSONA,
+            "no contesta y se oye a alguien golpeando junto al móvil")
+        /* Mismo AUXILIO, pero sin prometer que hay alguien: el clasificador
+           confunde un grito con una sirena y en un terremoto va a haber
+           sirenas. Ver [Pruebas.gritoCerca] para las cifras. */
+        if (p.gritoCerca) return Decision(Accion.AUXILIO, Quien.PERSONA_PROBABLE,
+            "no contesta y se oye un grito junto al móvil, que también puede ser una sirena")
         if (p.caidaImpacto && p.quietoMs > INMOVIL_MS) return Decision(Accion.BALIZA, Quien.MOVIL,
             "el móvil salió despedido y lleva inmóvil: marca el sitio del móvil, no el de nadie")
         /* Y aqui se recupera lo unico que se perdio al pedirle a la sirena una
@@ -564,9 +584,14 @@ object Cascada {
             Triple("derrumbe y el móvil sale despedido", Accion.BALIZA,
                 Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, estruendo = true,
                     caidaImpacto = true, preguntado = true, quietoMs = 300_000L)),
-            Triple("derrumbe y se la oye junto al móvil", Accion.AUXILIO,
+            Triple("derrumbe y se la oye golpear junto al móvil", Accion.AUXILIO,
                 Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, estruendo = true,
-                    preguntado = true, vozOGolpesCerca = true)),
+                    preguntado = true, golpesCerca = true)),
+            /* Un grito enciende la baliza igual, pero el rótulo baja: cuatro
+               de siete sirenas de la biblioteca se leen como GRITO. */
+            Triple("derrumbe y un grito que podría ser una sirena", Accion.AUXILIO,
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, estruendo = true,
+                    preguntado = true, gritoCerca = true)),
             /* El caso de campo que falló: se preguntó, nadie contestó, y salió
                NADA. La cascada decidía bien; lo que se había perdido era la
                prueba —`temblando` dura un minuto y la pregunta también—. Aquí
@@ -601,9 +626,6 @@ object Cascada {
                veces en quince horas sin un solo sismo detras. */
             Triple("sacudida en reposo con STA/LTA alto y nada que la confirme", Accion.NADA,
                 Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, ratioStaLta = 28.1)),
-            /* La voz la oye el micro de este mismo movil: es pista, no testigo. */
-            Triple("frase de pánico por voz, sin nadie mas que lo confirme", Accion.NADA,
-                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, vozPanico = true, msDesdeInteraccion = 6 * 3600_000L)),
             /* Vigilia nocturna: la duración es la que corrobora. */
             Triple("de madrugada, tres segundos seguidos de suelo moviéndose", Accion.AUXILIO,
                 Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sostenidaNocturna = true)),

@@ -80,7 +80,6 @@ class Microfono(private val ctx: Context) {
         const val USA_FORENSE = 2
         const val USA_SONDA = 4
         const val USA_INTERFONO = 8
-        const val USA_PANICO = 16
     }
 
     /**

@@ -30,8 +30,7 @@ class CascadaTest {
             sacudidaFuerte = false,
             ratioStaLta = 28.1,
             corroborada = false,
-            alertaExterna = false,
-            vozPanico = false
+            alertaExterna = false
         )
         val decision = Cascada.decidir(pruebas)
         assertEquals(
@@ -69,8 +68,7 @@ class CascadaTest {
             sacudidaFuerte = false,
             ratioStaLta = 4.0,
             corroborada = false,
-            alertaExterna = false,
-            vozPanico = false
+            alertaExterna = false
         )
         val decision = Cascada.decidir(pruebas)
         assertEquals(
@@ -81,28 +79,28 @@ class CascadaTest {
     }
 
     @Test
-    fun testCorroboracionPorVozDePanico() {
+    fun testVozSolaNoLevantaNada() {
         // La voz NO es una segunda opinión: la oye el micrófono de este mismo
         // móvil. Medido el 16 de septiembre de 2026 en el Redmi, diez detecciones
         // en quince horas de conversación corriente, y una de ellas sacó el
         // «¿estás bien?» a pantalla completa sin que hubiera temblado nada.
+        //
+        // El detector que las producía se quitó el 18 de septiembre —no
+        // reconocía ninguna frase y su «confianza» era el volumen— pero el
+        // invariante se queda: una sacudida con buen contraste y nadie que la
+        // corrobore no levanta nada.
         val pruebas = Cascada.Pruebas(
             regimen = Postura.Regimen.EN_REPOSO,
             sacudida = true,
             sacudidaFuerte = false,
             ratioStaLta = 12.0,
-            vozPanico = true,
             msDesdeInteraccion = 6 * 3600_000L
         )
         val decision = Cascada.decidir(pruebas)
         assertEquals(
-            "El pánico por voz se anota, pero solo no puede levantar nada",
+            "Una sacudida sin corroborar no puede levantar nada",
             Cascada.Accion.NADA,
             decision.accion
-        )
-        assertTrue(
-            "y sigue viajando en las pruebas, que para eso se mide",
-            pruebas.vozPanico
         )
     }
 
@@ -125,16 +123,10 @@ class CascadaTest {
         )
     }
 
-    @Test
-    fun testDetectorPanicoVozAutotest() {
-        val detector = DetectorPanicoVoz({ _, _ -> })
-        val (ok, log) = detector.autotest()
-        assertTrue("Autotest de DetectorPanicoVoz debe ser 100% OK: $log", ok)
-    }
 
     @Test
     fun testReceptorSismicoOnlineAutotest() {
-        val receptor = ReceptorSismicoOnline(onAlertaSismica = { _, _, _, _ -> })
+        val receptor = ReceptorSismicoOnline(onAlertaSismica = { _, _, _, _, _ -> })
         val (ok, log) = receptor.autotest()
         assertTrue("Autotest de ReceptorSismicoOnline debe ser 100% OK: $log", ok)
     }
