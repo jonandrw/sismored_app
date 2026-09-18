@@ -328,6 +328,14 @@ Sí. En Diagnóstico, mediante «Apagar del todo». Se detiene todo, incluido el
 <b>¿Y si salta una alarma falsa?</b>
 Deténla con el botón DETENER o pulsando una vez el volumen. Y comunícalo en el repositorio: los falsos positivos son lo que más ayuda a mejorar la aplicación.</string>
 
+    <string name="lbl_autor">Autor</string>
+    <string name="ac_autor">Juan Andrés Torres Orozco</string>
+    <!-- La GPL pide que un programa interactivo enseñe el copyright y la
+         ausencia de garantía. Hasta ahora la app solo ponía «GPL-3.0» como
+         etiqueta suelta, que no dice ni quién la escribió ni qué te permite. -->
+    <string name="ac_rot_licencia">LICENCIA Y AUTORÍA</string>
+    <string name="ac_licencia">Copyright © 2026 Juan Andrés Torres Orozco.\n\nSismoRed es <b>software libre</b>: puedes usarla, estudiarla, modificarla y repartirla bajo la Licencia Pública General de GNU, versión 3. Si la modificas y la repartes, tienes que publicar tus cambios con esa misma licencia.\n\nEs copyleft a propósito: en una app donde un fallo puede costar una vida, nadie debería poder cerrarla y venderla sin que se pueda auditar qué le hizo.\n\nSe entrega <b>sin ninguna garantía</b>, ni siquiera la de que sirva para un fin concreto.</string>
+
     <string name="ac_rot_contacto">CONTACTO Y VERSIÓN</string>
     <string name="ac_contacto">Todo el código está publicado y se puede revisar entero.</string>
     <string name="ac_repo">github.com/jonandrw/sismored_app</string>
@@ -595,6 +603,9 @@ Es la única forma de comprobar el tramo que no se puede ensayar de otra manera.
 
     <string name="ob3_tit">Dos reglas\nque no se rompen</string>
     <string name="ob3_txt"><b>Ningún indicador se inventa nada.</b> Si un dato no se puede medir, la pantalla dice que no se puede medir. Preferimos un «no lo sé» a un número bonito que mande a cavar donde no es.\n\n<b>Nada sale del móvil sin que se vea.</b> No hay telemetría. Lo único que se emite es tu baliza y tu ficha, y solo con la alarma o el rescate activos.\n\n<b>Aviso legal:</b> SismoRed es una herramienta comunitaria experimental de código abierto y <b>no sustituye a los servicios oficiales de emergencia (911 / 112)</b> ni a protección civil. Llama siempre a emergencias si tienes cobertura.</string>
+
+    <string name="ob_lic_tit">Es libre,\ny eso obliga</string>
+    <string name="ob_lic_txt">El código está publicado entero: puedes <b>mirarlo, cambiarlo y repartirlo</b> bajo la Licencia Pública General de GNU, versión 3.\n\nA cambio, quien la modifique y la reparta tiene que publicar sus cambios. En una app donde un fallo puede costar una vida, nadie debería poder cerrarla sin que se pueda auditar qué le hizo.\n\nSe entrega sin ninguna garantía.\nCopyright © 2026 Juan Andrés Torres Orozco.</string>
 
     <string name="ob4_tit">Lo que hace falta\npara que funcione</string>
     <string name="ob4_txt">Cada uno se pide para una cosa concreta y la app sigue funcionando sin los que deniegues. Toca cualquiera para concederlo.</string>

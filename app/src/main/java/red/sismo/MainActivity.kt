@@ -550,12 +550,15 @@ class MainActivity : AppCompatActivity() {
         return l
     }
 
-    /** Los cuatro pasos de la bienvenida: qué es, qué hace, qué promete y qué
-     *  permisos necesita. Solo el último pide algo. */
+    /** Los pasos de la bienvenida: qué es, qué hace, qué promete, con qué
+     *  derechos se entrega y qué permisos necesita. El de la licencia va antes
+     *  del último porque el último es el que pide algo, y quien concede unos
+     *  permisos debería saber ya bajo qué condiciones recibe la app. */
     private val pasosBienvenida = listOf(
         R.string.ob1_tit to R.string.ob1_txt,
         R.string.ob2_tit to R.string.ob2_txt,
         R.string.ob3_tit to R.string.ob3_txt,
+        R.string.ob_lic_tit to R.string.ob_lic_txt,
         R.string.ob4_tit to R.string.ob4_txt
     )
     private var pasoBienvenida = 0
