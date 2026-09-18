@@ -1192,9 +1192,45 @@ class ServicioSos : Service() {
         }
     }
 
-    /** ¿Está el móvil reproduciendo algo? Música, un vídeo, una llamada. */
+    /** ¿Está el móvil reproduciendo algo? Música, un vídeo. O sonando el teléfono. */
     private fun sonandoAudio(): Boolean = try {
-        (getSystemService(Context.AUDIO_SERVICE) as? AudioManager)?.isMusicActive == true
+        val am = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+        am?.isMusicActive == true || enLlamada()
+    } catch (_: Exception) { false }
+
+    /**
+     * El teléfono está sonando, o hay una llamada en curso.
+     *
+     * **Esto lo decía el comentario de [sonandoAudio] y el código no lo hacía**:
+     * `isMusicActive` mira el canal de música y un timbre va por el de llamada,
+     * así que una llamada entrante pasaba entera por debajo de la puerta.
+     *
+     * Lo que cuesta se midió el 18 de septiembre de 2026 a las 13:51, con la
+     * vigilia armada y los dos móviles en la mesa:
+     *
+     *     13:51:59  GRITO DE AUXILIO · 83% (1260 Hz sostenido)
+     *     13:52:04  malla: emitida baliza tx=1
+     *     13:52:09  panico(malla acústica salto 1)  ->  sirena
+     *
+     * El tono del timbre es un sostenido de 1260 Hz, y el detector de pánico
+     * mide volumen, no palabras: se lo creyó al 83 %. El acelerómetro no se
+     * movió en ningún momento —`quieto 86 s`, `calma 0,003`— o sea que el
+     * teléfono llamó a los vecinos por su propio timbre.
+     *
+     * Y tapa de paso lo otro: **al sonar también vibra**, y una vibración de
+     * llamada es sacudida continua de varios segundos acoplada directamente al
+     * acelerómetro, que es la firma exacta que busca la vigilia nocturna. Por
+     * eso esto veta las dos vías, la del micrófono y la del sismógrafo.
+     *
+     * `getMode` no pide ningún permiso, al revés que `TelephonyManager`.
+     */
+    private fun enLlamada(): Boolean = try {
+        when ((getSystemService(Context.AUDIO_SERVICE) as? AudioManager)?.mode) {
+            AudioManager.MODE_RINGTONE,
+            AudioManager.MODE_IN_CALL,
+            AudioManager.MODE_IN_COMMUNICATION -> true
+            else -> false
+        }
     } catch (_: Exception) { false }
 
     /** Los detectores ahora se encienden y se apagan solos varias veces al día.
@@ -1506,6 +1542,11 @@ class ServicioSos : Service() {
                 sismo.sostenidoMs >= exigidoNocturno(sismo.sostenidoMs) &&
                 sismo.quietoAntesDeLaRacha >= Opciones.VIGILIA_REPOSO_MIN_MS &&
                 !sismo.hayMano &&
+                /* Un teléfono que suena vibra, y su vibración es lo más
+                   parecido a un terremoto que este acelerómetro va a medir
+                   nunca: continua, de varios segundos y pegada al sensor.
+                   Ver [enLlamada]. */
+                !enLlamada() &&
                 (p == null || p.interaccionHace() > 30_000L),
             caidaImpacto = huboCaida,
             preguntado = preguntaVencida,
