@@ -44,7 +44,13 @@ se mueve.
 
 Es la mejor forma de mejorar la parte más débil del proyecto sin tocar Android.
 
-Primero se regeneran los WAV a partir de los originales (mono, 48 kHz, que es lo que
+Las carpetas llegan vacías: los 63 audios con los que están medidas las cifras de la
+auditoría son de Pixabay y no se pueden volver a repartir sueltos.
+[`fx sounds/fuentes.md`](fx%20sounds/fuentes.md) lleva la lista con el identificador
+de cada uno; descargándolos con el mismo nombre y en la misma carpeta, los números
+salen iguales. Valen igual tus propias grabaciones, y hacen más falta.
+
+Después se regeneran los WAV a partir de los originales (mono, 48 kHz, que es lo que
 graba el móvil). El script solo rehace lo que falte, así que correrlo de más no
 cuesta nada:
 

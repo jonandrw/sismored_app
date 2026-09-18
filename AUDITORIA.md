@@ -141,15 +141,15 @@ $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
 
 ### 5.1 Paso 1: Compliance FGS y Watchdog Anti-Kill (AUD-08 y AUD-09) — COMPLETADO
 * **Archivos Modificados / Creados**:
-  * [AndroidManifest.xml](file:///c:/Users/AVIVAMIENTO/AndroidStudioProjects/SismoRedAndroid/app/src/main/AndroidManifest.xml): Añadido `<uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />`, tipo `mediaPlayback|microphone|connectedDevice` en `ServicioSos`, y receptor `WatchdogReceiver` con acciones `BOOT_COMPLETED`, `MY_PACKAGE_REPLACED`, `QUICKBOOT_POWERON`.
-  * [WatchdogReceiver.kt](file:///c:/Users/AVIVAMIENTO/AndroidStudioProjects/SismoRedAndroid/app/src/main/java/red/sismo/WatchdogReceiver.kt): Creado BroadcastReceiver que usa `AlarmManager.setExactAndAllowWhileIdle()` (con fallback seguro en Android 12+) para rearmar cada 15 min y resucitar `ServicioSos` si el latido se detiene o el proceso es liquidado por `OneKeyClean` de Xiaomi HyperOS.
-  * [ServicioSos.kt](file:///c:/Users/AVIVAMIENTO/AndroidStudioProjects/SismoRedAndroid/app/src/main/java/red/sismo/ServicioSos.kt):
+  * [AndroidManifest.xml](app/src/main/AndroidManifest.xml): Añadido `<uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />`, tipo `mediaPlayback|microphone|connectedDevice` en `ServicioSos`, y receptor `WatchdogReceiver` con acciones `BOOT_COMPLETED`, `MY_PACKAGE_REPLACED`, `QUICKBOOT_POWERON`.
+  * [WatchdogReceiver.kt](app/src/main/java/red/sismo/WatchdogReceiver.kt): Creado BroadcastReceiver que usa `AlarmManager.setExactAndAllowWhileIdle()` (con fallback seguro en Android 12+) para rearmar cada 15 min y resucitar `ServicioSos` si el latido se detiene o el proceso es liquidado por `OneKeyClean` de Xiaomi HyperOS.
+  * [ServicioSos.kt](app/src/main/java/red/sismo/ServicioSos.kt):
     * Declarado flag atómico `@Volatile var vivo = false; private set`.
     * En `onCreate()`: `vivo = true` y programación del watchdog.
     * En `alPrimerPlano()`: incorporación condicional de `FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE` (API $\ge 34$) con fallback escalonado ante rechazo de micrófono en segundo plano.
     * En `onDestroy()` y `apagarDelTodo()`: gestión rigurosa del estado de supervivencia y cancelación cuando el usuario apaga explícitamente la app.
     * En `vigilarInmovilidad()`: refresco periódico del watchdog en cada pulso de latido (10 s).
-  * [MainActivity.kt](file:///c:/Users/AVIVAMIENTO/AndroidStudioProjects/SismoRedAndroid/app/src/main/java/red/sismo/MainActivity.kt): Optimizado `servicioVivo()` para consultar `ServicioSos.vivo` y latido en memoria antes del fallback arcaico de `ActivityManager.getRunningServices()`.
+  * [MainActivity.kt](app/src/main/java/red/sismo/MainActivity.kt): Optimizado `servicioVivo()` para consultar `ServicioSos.vivo` y latido en memoria antes del fallback arcaico de `ActivityManager.getRunningServices()`.
 * **Verificación de Compilación Dual**:
   ```powershell
   $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
@@ -162,7 +162,7 @@ $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
 
 ### 5.2 Paso 2: Audio Forense y Formantes Vocales (AUD-01 y AUD-02) — COMPLETADO
 * **Archivos Modificados**:
-  * [`Escucha.kt`](file:///c:/Users/AVIVAMIENTO/AndroidStudioProjects/SismoRedAndroid/app/src/main/java/red/sismo/Escucha.kt):
+  * [`Escucha.kt`](app/src/main/java/red/sismo/Escucha.kt):
     * Disminución del umbral de acumulación de voz `need` de 6 a 4 (`"voz" to Evento("VOZ HUMANA CERCA", 4, 6000)`).
     * Incorporación de seguimiento diferencial entre fotogramas sucesivos: `lastHz` y `dhz = abs(hz - lastHz)`.
     * **Discriminador de Gruñidos Caninos**: Exige `rumble > 0.60 && vib > 0.50 && 70 < hz < 500` con penalización si hay formantes estables de habla humana (`speech > 0.60 && plano < 0.08 && dhz < 35 && sostenido > 6 && abs(jump) < 8.0`).
@@ -171,7 +171,7 @@ $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
     * **Protector de Grito / Llanto Humano**: Rango extendido a `300 < hz < 1600` (protegiendo a niños y mujeres que alcanzan $> 1200\,\text{Hz}$), rechazo de retumbes caninos `rumble < 0.20`, modulación estable `mod < 0.35`, saltos acotados `abs(jump) < 14.0` y vibrato no disperso `vib < 0.40`.
     * **Despertador de Voz Humana**: Rango ampliado de $70\text{--}480\,\text{Hz}$, modulación silábica relajada a $0.07\text{--}0.48$ (o $0.03\text{--}0.48$ si la energía en banda formántica `speech > 0.40`).
     * En `autotestClasificador()`: incorporación de modulación tonal natural en `chillido a ráfagas` para emular fisionomía animal no sintética.
-  * [`fx sounds/banco.py`](file:///c:/Users/AVIVAMIENTO/AndroidStudioProjects/SismoRedAndroid/fx%20sounds/banco.py): Sincronizado 100% idéntico en constantes y reglas de decisión con `Escucha.kt`.
+  * [`fx sounds/banco.py`](fx%20sounds/banco.py): Sincronizado 100% idéntico en constantes y reglas de decisión con `Escucha.kt`.
 * **Evidencia Empírica — Matriz de Confusión Comparativa**:
 
 | Carpeta | Total Audio | Estado Anterior (Línea Base) | Estado Actual (V14 Verificado) | Impacto de Seguridad |
@@ -189,17 +189,17 @@ $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
 
 ### 5.3 Paso 3: Sonda Bio-Sonar con Auto-Zero NLMS y Persistencia (AUD-04) — COMPLETADO
 * **Archivos Modificados / Creados**:
-  * [`Opciones.kt`](file:///c:/Users/AVIVAMIENTO/AndroidStudioProjects/SismoRedAndroid/app/src/main/java/red/sismo/Opciones.kt):
+  * [`Opciones.kt`](app/src/main/java/red/sismo/Opciones.kt):
     * Implementación de la propiedad serializada `var sondaFirma: DoubleArray?` persistida en `SharedPreferences` vía codificación binaria IEEE 754 float de 32 bits empaquetada en `ByteBuffer` y serializada a `java.util.Base64`.
-  * [`Sonda.kt`](file:///c:/Users/AVIVAMIENTO/AndroidStudioProjects/SismoRedAndroid/app/src/main/java/red/sismo/Sonda.kt):
+  * [`Sonda.kt`](app/src/main/java/red/sismo/Sonda.kt):
     * Inyección de dependencias opcional `op: Opciones? = null` en el constructor.
     * Restauración automática de la calibración de firma en `init` desde `op?.sondaFirma`.
     * Persistencia automática en `aprenderFirma(tramos)` y borrado sincronizado en `firmaBorrar()`.
     * **Filtro Adaptativo Auto-Zero NLMS** en `apilar()`: Cuando no existe firma previa aprendida manualmente (`firma == null`), se activa un filtro adaptativo NLMS en tiempo real que modela la respuesta impulsional estacionaria de acoplo directo altavoz $\rightarrow$ chasis $\rightarrow$ micrófono en el campo cercano ($< 50\,\text{cm}$, hasta 62 cm con taper de Hann).
     * **Chirps y Bio-pulsos**: Parametrización clara de chasquidos bio-acústicos ultra-cortos (8 ms Tukey, 2.5–4.2 kHz) para las herramientas de ciclo continuo a 10 Hz (`doppler()` y `respiracion()`) y pulsos de 100 ms (2.0–8.0 kHz con ventana Tukey) para la sonda radar de penetración en escombros (`sondear()` y `apilar()`).
-  * [`ServicioSos.kt`](file:///c:/Users/AVIVAMIENTO/AndroidStudioProjects/SismoRedAndroid/app/src/main/java/red/sismo/ServicioSos.kt):
+  * [`ServicioSos.kt`](app/src/main/java/red/sismo/ServicioSos.kt):
     * Paso de instancia `op = opciones` al instanciar `Sonda`.
-  * [`SondaTest.kt`](file:///c:/Users/AVIVAMIENTO/AndroidStudioProjects/SismoRedAndroid/app/src/test/java/red/sismo/SondaTest.kt):
+  * [`SondaTest.kt`](app/src/test/java/red/sismo/SondaTest.kt):
     * Banco de pruebas JUnit4 para verificar persistencia Base64, supresión de paredes fantasma por Auto-Zero NLMS a $< 50\,\text{cm}$ y paso completo de los 8 subtests de `Sonda.autotest()`.
 * **Resultados de Verificación Automatizada**:
   * `testSerializacionFirmaBase64`: **PASSED** (integridad bit a bit verificada).

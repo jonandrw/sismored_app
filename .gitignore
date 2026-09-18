@@ -18,16 +18,30 @@ captures/
 __pycache__/
 *.pyc
 
-# Los WAV son DERIVADOS de los MP3, no fuente.
-# Son 76 MB que se regeneran con una orden (ver CONTRIBUIR.md), así que no tienen
-# que viajar en el repositorio: los MP3 originales sí están, y con eso cualquiera
-# reconstruye el banco entero.
+# El banco de sonidos no se reparte. Los audios son de Pixabay, y su licencia
+# deja usarlos pero no volver a distribuirlos sueltos; además este repositorio
+# es GPL y no podemos relicenciar lo que no es nuestro. La lista con el id de
+# cada uno está en «fx sounds/fuentes.md»: con eso se rehace el banco igual.
+fx sounds/**/*.mp3
+fx sounds/**/*.wav
 fx sounds/wav/
 
 # Sistema
 .DS_Store
 Thumbs.db
 .maqueta/
+
+# Volcados del móvil de pruebas: llevan la ficha médica y la ubicación de una
+# persona real. Nunca entran, ni por descuido de un «git add .».
+sismored_db
+*.db
+seismic_report.md
+screen.png
+
+# Utilidades de andar por casa, con rutas de una máquina concreta.
+/*.py
+manual.html
+faviconsismored_io/
 
 # La firma de release nunca entra en el repositorio.
 keystore.properties

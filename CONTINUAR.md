@@ -1,9 +1,8 @@
 # SismoRed Android — dónde retomar
 
-Estado al 12 de agosto de 2026, y **este es el punto de partida**: aquí empieza el
-control de versiones. Todo lo descrito está **compilando e instalado limpio** en tres
-móviles —Huawei STK-LX3 (Android 10), Samsung A10s (Android 11) y Redmi 24094RAD4G
-(Android 15)— y ninguno da errores al arrancar.
+Estado al **17 de septiembre de 2026**. Todo lo descrito está **compilando e
+instalado limpio** en tres móviles —Huawei STK-LX3 (Android 10), Samsung A10s
+(Android 11) y Redmi 24094RAD4G (Android 15)— y ninguno da errores al arrancar.
 
 El repositorio es <https://github.com/jonandrw/sismored_app>. Quien llegue nuevo entra
 por `CONTRIBUIR.md`; este archivo es el estado real de cada pieza, y **hay que
@@ -65,8 +64,8 @@ convierten una suposición razonada en un dato:
    veces. Ese falso positivo puede mandar a cavar donde no hay nadie, y por eso es el
    más urgente de los tres.
 
-**Tercero, la malla entre dos móviles de verdad**, a través de una pared. El autotest
-sintético pasa y la corroboración funciona, pero nadie ha visto un salto real.
+**Tercero, la malla entre dos móviles de verdad.** ~~Nadie ha visto un salto
+real.~~ **Hecho el 16 y 17 de septiembre**, ver más abajo.
 
 **Cuarto, los detectores con el audio real de `fx sounds/`.** La pista sin explorar
 sigue siendo la misma: la modulación de la envolvente a baja frecuencia — un motor tiene
@@ -85,6 +84,53 @@ tocado, y va a encontrar en media hora cosas que no se pueden imaginar sentado.
 Lo que ya se puede firmar, mientras tanto: la ficha a pantalla completa, el PÁNICO con
 sirena y atajo de volumen, el modo rescate, y la baliza con tendencia de señal. Eso
 funciona sin red, sin otro móvil y sin nada que calibrar.
+
+---
+
+## Del 15 al 17 de septiembre de 2026
+
+Diez días de pruebas con dos móviles a la vez, un Huawei STK-LX3 y un Redmi
+24094RAD4G. Lo que se midió, no lo que se esperaba.
+
+**La malla salta de verdad.** Primer salto real medido entre 2,5 y 11,7 s. Con
+la vía rápida nueva —si la vigilia está armada y llega un código de alerta con
+la cadencia correcta, se corrobora sin esperar al resto de la trama— los dos
+móviles reaccionaron con 120 ms de diferencia. Esa última medida es la que vale.
+
+**La vigilia nocturna existe y funciona.** Se arma tras 30 minutos de quietud,
+entre la 1 y las 7, y por debajo baja el umbral del sismógrafo en vez del de
+audio: de noche interesa el movimiento, no el ruido. Si se levanta el móvil, se
+desarma. Al parar una alarma a mano, el ciclo vuelve a empezar.
+
+**Cuatro fallos encadenados que la hacían imposible de disparar**, todos
+corregidos: la calma previa se medía un fotograma atrás en vez de antes de todo
+el disturbio; una racha sostenida moría en cualquier bache de ciclo; el
+`sueloDeFiar` bloqueaba la regla nocturna; y el ESTOY BIEN se cancelaba a sí
+mismo. Detalle en `historia/sismografo.md`.
+
+**El bucle de realimentación de la malla**, en el que los dos móviles se
+respondían entre ellos sin parar: 20 emisiones en 94 s antes, 3 emisiones y 3,5
+minutos de silencio después.
+
+**El micrófono se queda mudo sin avisar.** MIUI se lo quitó a la app 14 s
+enteros durante una llamada de WhatsApp. Ahora se detecta y se anota.
+
+**Panel de sismos dentro de la app**, solo con lo que confirma un servicio
+sismológico —EMSC y SGC—, 7 días, agrupado por fecha.
+
+### Lo que estas pruebas dejan en evidencia
+
+- **El sismógrafo no ha detectado nunca un terremoto real.** Cruzando el catálogo
+  con el acelerómetro salen 10 coincidencias frente a las 8,4 que daría el azar.
+  Eso no es una señal.
+- **69 episodios nocturnos en 10 noches**, mediana de 0,3 s y máximo 6,6 s. Son
+  cortos, pero nadie ha dejado la vigilia puesta una noche entera con los valores
+  de producción.
+- **El discriminador de motor está sin calibrar.** `MOTOR_DB`, `MOTOR_GRAVE` y
+  `MOTOR_PLANITUD` son una primera aproximación escrita a ojo. Hace falta un
+  camión de verdad delante.
+- **El detector de pánico por voz saltó 5 veces en 2 minutos** con seguridades
+  del 79 al 95 %. O sobra sensibilidad o sobra el detector.
 
 ---
 

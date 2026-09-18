@@ -1,10 +1,13 @@
 # Informe de Campo y Diagnóstico Sísmico — 14 de Septiembre de 2026
 
-**Para**: Claude / Equipo de Desarrollo SismoRed  
-**De**: Gemini / Antigravity  
-**Fecha y Hora**: 14 de septiembre de 2026, 17:00 (Hora de Colombia)  
+> **Documento histórico.** Se conserva porque explica por qué la Cascada estaba
+> tan cerrada y con qué medidas se abrió. Lo que aquí se proponía ya está hecho:
+> el receptor de catálogos sísmicos y la vigilia nocturna entraron entre el 15 y
+> el 17 de septiembre. El estado de hoy vive en `CONTINUAR.md`.
+
+**Fecha y hora**: 14 de septiembre de 2026, 17:00 (hora de Colombia)  
 **Dispositivo de prueba medido**: Xiaomi Redmi 14C (`24094RAD4G` / `citrine_global`, Android 15), conectado por ADB.  
-**Base de datos analizada**: `sismored_db` (20.038 eventos registrados del 3 al 14 de septiembre).
+**Base de datos analizada**: el registro del propio móvil, 20.038 eventos del 3 al 14 de septiembre. No viaja en el repositorio: lleva la ficha médica y la ubicación de una persona real.
 
 ---
 
@@ -63,7 +66,7 @@ Otros episodios idénticos detectados hoy por el sensor:
 
 ## 3. El Diagnóstico Raíz: ¿Por qué la app no se inmutó?
 
-La razón exacta vive en [Cascada.kt:236-264](file:///c:/Users/AVIVAMIENTO/AndroidStudioProjects/SismoRedAndroid/app/src/main/java/red/sismo/Cascada.kt#L236-L264):
+La razón exacta vive en [Cascada.kt:236-264](app/src/main/java/red/sismo/Cascada.kt#L236-L264):
 
 ```kotlin
 val opinionAjena = p.corroborada || p.alertaExterna
@@ -87,7 +90,7 @@ En la base de datos del móvil encontramos **838 eventos descartados con esta mi
    - `p.alertaExterna`: Requiere recibir una notificación push de Google Play Services (`AlertaGoogle.kt`). En la base de datos hay **0 alertas externas** registradas en toda la semana (Google no emitió alerta para este sismo en este dispositivo).
    - Como el usuario prueba la app en solitario, `opinionAjena` es **siempre falsa**.
 2. **El corte de `sacudidaFuerte` es inalcanzable para sismos regionales**:
-   En [Sismografo.kt:469-496](file:///c:/Users/AVIVAMIENTO/AndroidStudioProjects/SismoRedAndroid/app/src/main/java/red/sismo/Sismografo.kt#L469-L496), `sacudidaFuerte` exige simultáneamente:
+   En [Sismografo.kt:469-496](app/src/main/java/red/sismo/Sismografo.kt#L469-L496), `sacudidaFuerte` exige simultáneamente:
    - `CICLO_FUERTE = 0.85` (85% de la ventana oscilando).
    - `FUERTE_MIN = 0.60 m/s²`.
    Cualquier sismo real sentido de 0,30 a 0,55 m/s² es clasificado como «sacudida floja» y enviado a la papelera con `Decision(Accion.NADA)`.
@@ -98,7 +101,7 @@ En la base de datos del móvil encontramos **838 eventos descartados con esta mi
 
 ## 4. Por qué se llegó a este extremo: El Terror a la Alarma Falsa
 
-Revisando [PreguntaActivity.kt](file:///c:/Users/AVIVAMIENTO/AndroidStudioProjects/SismoRedAndroid/app/src/main/java/red/sismo/PreguntaActivity.kt), se entiende perfectamente por qué Claude y tú endurecieron tanto la Cascada:
+Revisando [PreguntaActivity.kt](app/src/main/java/red/sismo/PreguntaActivity.kt), se entiende perfectamente por qué la Cascada se endureció tanto:
 - `PreguntaActivity` enciende la pantalla al **100% de brillo**.
 - Hace sonar un pitido en el **canal de alarma** cada segundo.
 - **Bloquea el botón Atrás**.
@@ -149,6 +152,5 @@ En los registros de hoy vimos que a los 5 segundos de cada temblor hubo `VOZ HUM
 
 ## 6. Siguientes Pasos Acordados
 
-1. **Revisión conjunta**: Claude puede revisar este informe y validar el ajuste del árbol en `Cascada.kt`.
-2. **Ajuste en `Cascada.kt`**: Introducir la acción `PREGUNTAR_DISCRETA` (o `PREGUNTAR_NOTIFICACION`) que no escale a baliza en caso de silencio para sacudidas aisladas con `STA/LTA >= 10x` y `giroGrados < 0.8°`.
-3. **Diseño del módulo KWS**: Evaluar la integración de un modelo offline INT8 de palabras clave de auxilio en el pipeline de audio.
+1. **Ajuste en `Cascada.kt`**: Introducir la acción `PREGUNTAR_DISCRETA` (o `PREGUNTAR_NOTIFICACION`) que no escale a baliza en caso de silencio para sacudidas aisladas con `STA/LTA >= 10x` y `giroGrados < 0.8°`.
+2. **Diseño del módulo KWS**: Evaluar la integración de un modelo offline INT8 de palabras clave de auxilio en el pipeline de audio.

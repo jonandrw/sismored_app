@@ -1,4 +1,4 @@
- # SismoRed
+# SismoRed
 
 Una app de terremotos que funciona **sin internet, sin cuenta y sin servidor**. Hace
 sonar una sirena con la pantalla bloqueada y el móvil en silencio, propaga la alerta de
@@ -8,6 +8,15 @@ teléfono.
 
 Está pensada para el momento en que no hay cobertura, no hay luz y nadie va a mirar la
 pantalla.
+
+**Bienvenido, y gracias por asomarte.** Esto se abre en canal a propósito: es una app
+que puede equivocarse cuando alguien la necesita, así que cualquiera tiene que poder
+mirar qué hace y con qué números lo decide. Aquí no se esconde lo que no funciona —hay
+una sección entera dedicada a ello— y la mejor forma de ayudar no es escribir código.
+Está contada en [`CONTRIBUIR.md`](CONTRIBUIR.md).
+
+El sitio del proyecto está en <https://sismored.pages.dev> (el dominio
+`sismored.app` todavía no está conectado).
 
 ---
 
@@ -57,15 +66,22 @@ nada.
 
 ---
 
-## Estado, en una línea honesta
+## Estado, a 17 de septiembre de 2026
 
-Funciona y está instalado en tres móviles (Android 10, 11 y 15). Lo que ya se puede dar
-por bueno es la parte que no necesita calibrar nada: la ficha, el PÁNICO, el atajo de
-volumen, el modo rescate y la baliza con tendencia de señal. Lo que aún **no** se puede
-dar por bueno son las medidas finas —la distancia de la sonda, el umbral de respiración
-y el del interfono—, que están calibradas contra señales sintéticas y les faltan tres
-pruebas físicas. Están detalladas, con la constante que hay que mover en cada caso, en
-`CONTINUAR.md`.
+Funciona y está instalado en tres móviles (Android 10, 11 y 15).
+
+**Comprobado en campo, con dos móviles de verdad:** la ficha, el PÁNICO, el atajo de
+volumen, el modo rescate, la baliza con tendencia de señal, y —desde esta semana— la
+malla acústica, que salta de un móvil a otro en 2,5–11,7 s y, cuando la vigilia
+nocturna ya está armada, en 120 ms. También la propia vigilia nocturna, que se arma tras
+media hora de quietud y se desarma si levantas el móvil.
+
+**Lo que no se puede dar por bueno todavía**, y hay que decirlo: el sismógrafo **nunca
+ha detectado un terremoto real** —cruzando el catálogo salen 10 coincidencias frente a
+las 8,4 del azar—; el filtro que debería distinguir un camión de un sismo está escrito
+a ojo y sin calibrar; y la sonda, la respiración y el interfono siguen medidos contra
+señales sintéticas. Cada caso, con la constante exacta que hay que mover, está en
+[`CONTINUAR.md`](CONTINUAR.md).
 
 ---
 
@@ -83,6 +99,24 @@ una propuesta cambia eso, tiene que cambiar también lo que el usuario lee.
 
 ---
 
+## Gracias
+
+A los **catálogos sísmicos públicos** que convierten una lectura del acelerómetro en un
+hecho: el [Servicio Geológico Colombiano](https://www.sgc.gov.co) y el
+[EMSC](https://www.seismicportal.eu). Sin su dato abierto esta app no podría confirmar
+nada.
+
+A los autores de las **cuatro tipografías** que lleva dentro —Barlow, JetBrains Mono,
+Montserrat y Saira Condensed—, que las publicaron con una licencia que permite esto.
+
+A quienes subieron a Pixabay los **63 sonidos** con los que se midieron los detectores.
+No viajan en el repositorio, pero la auditoría de audio existe gracias a ellos: la
+lista está en [`fx sounds/fuentes.md`](fx%20sounds/fuentes.md).
+
+Y a quien grabe el primer golpe sobre una tubería y lo mande. Eso es lo que más falta.
+
+---
+
 ## Licencia y autoría
 
 Copyright (C) 2026 Juan Andrés Torres Orozco
@@ -97,3 +131,13 @@ siquiera la garantía implícita de comerciabilidad o idoneidad para un fin conc
 La licencia es copyleft a propósito. En una app donde un fallo puede costar una
 vida, quien la modifique y la reparta tiene que publicar sus cambios: nadie debería
 poder cerrar esto y venderlo sin que se pueda auditar qué le hizo.
+
+### Lo que hay dentro y no es nuestro
+
+- **Las tipografías** (`app/src/main/res/font/`) son de sus autores y van bajo la SIL
+  Open Font License 1.1, no bajo la GPL. Los cuatro avisos de copyright y el texto
+  completo están en [`licencias/SIL-OFL-1.1.txt`](licencias/SIL-OFL-1.1.txt).
+- **Los sonidos de prueba** no se reparten aquí. Son de Pixabay, y su licencia deja
+  usarlos pero no volver a distribuirlos sueltos. En
+  [`fx sounds/fuentes.md`](fx%20sounds/fuentes.md) está la lista con el identificador
+  de cada uno para rehacer el banco igual.

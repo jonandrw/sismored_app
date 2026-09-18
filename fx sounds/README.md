@@ -37,13 +37,17 @@ no puede pasar nunca es que una voz levante la sirena.
 
 ## Cómo se mide
 
+Las carpetas llegan vacías. Los 63 audios con los que se sacaron las cifras de la
+auditoría son de Pixabay y su licencia no deja repartirlos sueltos: en
+[`fuentes.md`](fuentes.md) está la lista con el identificador de cada uno.
+
 ```bash
 ./convertir.sh          # deja en wav/ todo mono a 48 kHz, que es como graba el móvil
 python banco.py wav
 ```
 
-`wav/` es un derivado y no viaja en el repositorio (son 76 MB). `convertir.sh` solo
-rehace lo que falte, así que correrlo de más no cuesta nada.
+`wav/` es un derivado y tampoco viaja en el repositorio. `convertir.sh` solo rehace
+lo que falte, así que correrlo de más no cuesta nada.
 
 ## Cómo se aporta un sonido
 
