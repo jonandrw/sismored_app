@@ -137,16 +137,24 @@ dejaba la app sorda hasta 14 s sin avisar— y el `hace=` que daba 56 años.
 
 Técnico:
 
-- [ ] **No hay configuración de firma**: hoy solo se puede generar un APK de
-      depuración, que además **no se puede actualizar después** con uno de
-      release porque la firma no coincide. La clave la crea y la guarda el autor;
-      si se pierde, esa app no se puede volver a actualizar nunca.
-- [ ] La versión sigue en `0.1-fase1` (versionCode 1).
-- [ ] `minify` apagado; decidir R8.
+- [x] **Firma de release resuelta.** `keystore.properties` está fuera del
+      repositorio y quien no lo tenga compila igual, solo que sin firmar. La
+      clave tiene copia cifrada fuera de la máquina, y eso no es burocracia:
+      Android solo deja actualizar encima si la firma coincide, así que
+      perderla obligaría a todo el mundo a desinstalar —y a perder su ficha
+      médica— para poder poner una versión nueva.
+- [x] Versión `0.2-fase1` (versionCode 2), publicada el 17/09.
+- [x] R8 encendido, con reglas en `proguard-rules.pro` para lo que se
+      instancia por nombre. **El binario de release no se ha ejecutado nunca en
+      un móvil**: los dos de pruebas llevan la compilación de depuración, con
+      otra firma, y cambiarla borraría los registros de campo del Redmi.
+      Comprobado en su lugar sobre el APK: las clases del manifiesto conservan
+      su nombre, el resto aparecen renombradas en `mapping.txt` y las cadenas
+      críticas siguen dentro.
 
 De tienda:
 
-- [ ] La política de privacidad en una **URL pública**.
+- [x] La política de privacidad en una URL pública: <https://sismored.app/legal>.
 - [ ] Formulario de seguridad de datos.
 - [ ] **El permiso de accesibilidad es el mayor riesgo de rechazo.**
 - [ ] `targetSdk` está en 35; comprobar qué exige Play.
@@ -162,22 +170,26 @@ que alguien deje de creerse la alarma el día que sea de verdad.
 
 ## 7. El sitio web
 
-Vive en `SismoRed_Web_Landingpage`, **fuera de control de versiones**. El 17/09
-se le corrigieron once datos falsos contrastándolos contra el código —decía
-«cero permisos de red» con `INTERNET` en el manifiesto, v0.9.4 con versionName
-`0.1-fase1`, y seguía enseñando las «31 h» que la app ya había borrado por
-inventadas—.
+Vive en `SismoRed_Web_Landingpage` y está en <https://sismored.app>, servido
+por Cloudflare Pages. El 17/09 se le corrigieron once datos falsos
+contrastándolos contra el código —decía «cero permisos de red» con `INTERNET`
+en el manifiesto, v0.9.4 con versionName `0.1-fase1`, y seguía enseñando las
+«31 h» que la app ya había borrado por inventadas—.
 
-- [ ] **Auditar `legal.html`.** Es lo único que puede hacer daño publicado:
-      `PRIVACIDAD.md` afirmaba cosas falsas sobre el cifrado y sobre qué sale del
-      móvil, y no se ha comprobado si el legal arrastra los mismos errores.
-- [ ] **Ponerlo en control de versiones.**
-- [ ] Dominio, alojamiento y HTTPS. Sin HTTPS, Chrome marca la descarga del APK
-      como insegura.
-- [ ] Publicar un APK firmado en `descargas/`. El servidor ya calcula tamaño y
-      sha256 del fichero y los sirve en `/api/version.json`; lo único que falta
-      es el fichero.
+- [x] **`legal.html` auditado**: nueve correcciones el 17/09, contrastadas
+      contra el código.
+- [x] En control de versiones, con su propio repositorio.
+- [x] Dominio, alojamiento y HTTPS.
+- [x] APK firmado en `descargas/`, con tamaño y sha256 calculados del fichero
+      por `publicar.js` y servidos en `/api/version.json`.
 - [ ] Sección dedicada a la PWA, cuando la haya.
+
+> **Al desplegar**: la rama de producción del proyecto de Pages se llama
+> `sismored`, no `main`. Con cualquier otro nombre el despliegue sube pero
+> queda como vista previa y el dominio responde «Deployment Not Found». Y si
+> se toca el CSS o el JS hay que subir el `?v=` de los enlaces en las dos
+> páginas: la zona tiene cuatro horas de caché de navegador que no se puede
+> desactivar desde `_headers`.
 
 ---
 

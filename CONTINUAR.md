@@ -118,6 +118,20 @@ enteros durante una llamada de WhatsApp. Ahora se detecta y se anota.
 **Panel de sismos dentro de la app**, solo con lo que confirma un servicio
 sismológico —EMSC y SGC—, 7 días, agrupado por fecha.
 
+**Publicada la 0.2-fase1** en <https://sismored.app>, firmada con la misma
+clave que la 0.1 —comprobado comparando el certificado de los dos APK, porque
+si no coincidiera nadie podría actualizar sin desinstalar y perder su ficha—.
+La app avisa de que hay versión nueva sin necesidad de abrirla: la
+comprobación cuelga del pulso de 15 minutos del watchdog.
+
+**Fuera el envío de partes por internet.** Existía un interruptor, apagado de
+fábrica, que mandaba hora, motivo y saltos a un servidor. Se llegó a montar el
+receptor y funcionaba, pero la web promete con estas palabras que no hay
+servidor nuestro y que solo salen tres cosas del móvil, y eso está escrito en
+absoluto. Entre cambiar el texto y quitar la función, se quitó la función. Se
+pierde la única vía que había para saber si la app saltó en un terremoto real;
+es un precio conocido.
+
 ### Lo que estas pruebas dejan en evidencia
 
 - **El sismógrafo no ha detectado nunca un terremoto real.** Cruzando el catálogo
