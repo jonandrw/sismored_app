@@ -1383,7 +1383,7 @@ class MainActivity : AppCompatActivity() {
             else -> {
                 val restan = Opciones.VIGILIA_REPOSO_MIN_MS - quieto
                 (if (restan < 60_000L) getString(R.string.vigilia_esperando_seg, (restan / 1000L).toInt())
-                 else getString(R.string.vigilia_esperando, (restan / 60_000L + 1).toInt())) to R.color.dim
+                 else getString(R.string.vigilia_esperando, restan / 60_000L, (restan / 1000L) % 60)) to R.color.dim
             }
         }
         linea.text = txt

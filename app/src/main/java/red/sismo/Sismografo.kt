@@ -1063,8 +1063,13 @@ class Sismografo(
             }
             if (cicloTrabajo >= CICLO_FUERTE && sta >= fuerteMin) ultimaFuerte = System.currentTimeMillis()
             an = 0; ai = 0                       // el anillo se vacía tras disparar
-            Log.i("SismoRed", "sismografo %.2f m/s2 horizontal · STA/LTA %.1fx · ciclo %.2f (req %.2f) · P-wave %b · umbral real %.2f (calma %.3f)"
-                .format(sta, ratioStaLta, cicloTrabajo, cicloReq, hayOndaP, u, calmaMedida))
+            /* `sostenido` y `quietoAntes` van en el diagnóstico porque son las
+               dos que deciden la regla nocturna y las únicas que no se podían
+               ver desde fuera: con el resto en verde y sin alarma, no había
+               forma de saber si faltaba racha o faltaba calma previa. */
+            Log.i("SismoRed", "sismografo %.2f m/s2 horizontal · STA/LTA %.1fx · ciclo %.2f (req %.2f) · P-wave %b · umbral real %.2f (calma %.3f) · sostenido %d ms · quietoAntes %d s · mano %b"
+                .format(sta, ratioStaLta, cicloTrabajo, cicloReq, hayOndaP, u, calmaMedida,
+                        sostenidoMs, quietoAntesDeLaRacha / 1000, hayMano))
             alDisparar("sismógrafo %.2f m/s² (STA/LTA %.1fx) sobre %.2f · %d%% de dos segundos%s"
                 .format(sta, ratioStaLta, u, (cicloTrabajo * 100).toInt(), if (hayOndaP) " [Onda P previa]" else ""))
         }

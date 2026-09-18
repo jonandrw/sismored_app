@@ -772,7 +772,9 @@ Es la única forma de comprobar el tramo que no se puede ensayar de otra manera.
     <string name="vigilia_armada">Armada. Si el suelo se mueve, suena.</string>
     <string name="vigilia_pantalla">Pantalla encendida: %d s para rearmar</string>
     <string name="vigilia_esperando_seg">Esperando %d s de reposo</string>
-    <string name="vigilia_esperando">Esperando %d min de reposo</string>
+    <!-- Con los minutos enteros la cuenta atrás se quedaba quieta un minuto
+         seguido y no parecía una cuenta atrás. En mm:ss se ve correr. -->
+    <string name="vigilia_esperando">Esperando %1$d:%2$02d de reposo</string>
     <string name="vigilia_fuera">Empieza a la %d de la madrugada</string>
     <string name="hist_titulo">Sismos</string>
     <string name="fauth_titulo">Antes de rellenar la ficha</string>
