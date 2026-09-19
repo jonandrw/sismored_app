@@ -2707,9 +2707,25 @@ class ServicioSos : Service() {
         }
         rescateTarea = tarea
         reloj.post(tarea)
+        /* Y LA BALIZA DE LA MALLA SIGUE. Aquí no seguía: `rescate()` empieza
+           llamando a `parar()`, que hace `pararEmision()`, y nadie la volvía a
+           arrancar. O sea que en cuanto la alarma escalaba a rescate —a los
+           diez minutos, o antes si dejas de moverte— **la víctima desaparecía
+           del radar de la malla**, justo al entrar en el estado donde va a
+           pasar las horas. Quien buscara con el móvil dejaba de verla.
+
+           Va a mitad de ritmo que en alarma: una trama de 4 s cada 24 s en
+           vez de cada 12. Cuesta poca batería —que es lo que el modo rescate
+           está cuidando— y deja la ventana de escucha larga y limpia, sin
+           sirena, que es lo que necesita [MallaAcustica.OIDO] para que le
+           puedan contestar «te he oído». */
+        try {
+            malla?.relayMs = RESCATE_MS * 2
+            malla?.emitirEnBucle(maxOf(1, saltoEntrante))
+        } catch (_: Exception) {}
         try { emitirRadio(Baliza.RESCATE) } catch (_: Exception) {}
         try { fichaLan?.emitir(true) } catch (_: Exception) {}
-        anotar("modo rescate: pulso cada 12 s")
+        anotar("modo rescate: pulso cada 12 s y baliza de malla cada 24 s")
         actualizarNotificacion()
     }
 
