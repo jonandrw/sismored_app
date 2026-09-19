@@ -233,6 +233,13 @@ class ServicioSos : Service() {
          * guarda es un instante.
          */
         @Volatile var mallaActividadHasta = 0L; private set
+
+        /** Cuándo contestó alguien «te he oído». Ver [MallaAcustica.OIDO]. */
+        @Volatile var mallaOido = 0L; private set
+        /** Cuánto se sigue diciendo «te han oído» desde la última confirmación.
+         *  La baliza se repite cada 8 s, así que dos minutos de silencio
+         *  significan que el que contestaba ya no está. */
+        private const val OIDO_VALE_MS = 2 * 60_000L
         /** Lo que dura el aviso en la barra desde la última baliza. */
         private const val MALLA_AVISO_MS = 5 * 60_000L
         /** Balizas confirmadas por salto: es lo que dibuja el radar. */
@@ -792,10 +799,37 @@ class ServicioSos : Service() {
                    TIENEN que pasar la alerta al siguiente: un móvil que oye y no
                    reenvía es un agujero en la malla, y era justo lo que pasaba —
                    el que buscaba la anotaba y ahí se acababa el viaje. */
-                /* SIEMPRE se reenvía, decida lo que decida la cascada: un
-                   móvil que oye y no reenvía es un agujero en la malla. */
-                if (malla?.reenviar(hop) != true)
-                    anotar("no la reenvío: ya ha dado los $hop saltos o he emitido demasiado")
+                /* REENVÍO Y ACUSE VAN EN CICLOS ALTERNOS, y esto hubo que
+                   medirlo dos veces para verlo. Las dos cosas son tramas de
+                   4 s y la víctima solo escucha unos 8 s de cada ciclo, pero
+                   el reenvío sale nada más confirmar y se come la primera
+                   mitad: al acuse solo le quedaba el final de la ventana y la
+                   siguiente baliza de la víctima lo partía. Medido el 18 de
+                   septiembre de 2026, con el ciclo ya en 12 s: el Huawei
+                   acusó a las 19:07:04,2 y el Redmi volvió a emitir a las
+                   19:07:07,7 — cuatro segundos de acuse recortados a tres y
+                   medio, y la cadencia se pierde.
+
+                   No es un retardo mal elegido: es que no caben las dos. Así
+                   que una baliza se reenvía y la siguiente se contesta. El
+                   reenvío cada 24 s sigue propagando —la víctima emite
+                   mientras dure su alarma— y el acuse coge la ventana entera. */
+                cicloMalla++
+                if (cicloMalla % 2 == 0) {
+                    if (malla?.reenviar(hop) != true)
+                        anotar("no la reenvío: ya ha dado los $hop saltos o he emitido demasiado")
+                }
+
+                /* Y SIEMPRE se contesta «te he oído», salvo si este móvil es
+                   también una víctima. Ver [MallaAcustica.OIDO]: es el único
+                   mensaje que viaja hacia el que está debajo, y saber que
+                   alguien te ha recibido es probablemente lo más útil que se
+                   puede hacer por alguien atrapado cuando ya no queda nada.
+                   Dos víctimas contestándose la una a la otra no valdría de
+                   nada, y encima llenaría la banda.
+                   Con retardo aleatorio: si contestan cuatro móviles a la vez,
+                   chocan y no llega ninguno. */
+                if (!enAlarma && !enRescate && cicloMalla % 2 == 1) contestarOido()
 
                 if (buscando || repetidor) {
                     val quien = if (buscando) "estás buscando" else "has dicho que estás bien"
@@ -1135,6 +1169,10 @@ class ServicioSos : Service() {
                 mallaActividadHasta = System.currentTimeMillis() + MALLA_AVISO_MS
             mallaRx = it.rx; mallaTx = it.tx; mallaSalto = it.ultimoSalto
             mallaConfirmadas = it.confirmadas
+            if (it.oido > mallaOido) {
+                mallaOido = it.oido
+                try { actualizarNotificacion() } catch (_: Exception) {}
+            }
             mallaPorSalto = it.porSalto.copyOf()
             mallaNiveles = it.niveles.copyOf(); mallaSuelo = it.sueloDb
         }
@@ -1444,6 +1482,46 @@ class ServicioSos : Service() {
                 else -> 90_000L
             }
         } catch (_: Exception) { 45_000L }
+    }
+
+    /** Cuenta de balizas confirmadas, para alternar reenvío y acuse. */
+    private var cicloMalla = 0
+    private var oidoProgramado = 0L
+
+    /**
+     * Contestarle a la víctima «te he oído». Ver [MallaAcustica.OIDO].
+     *
+     * **Tiene que esperar su hueco en el ciclo.** El altavoz es uno solo y
+     * `emitirUna` devuelve false si ya está emitiendo: en la primera versión
+     * el acuse salía a 0,4–2,4 s de recibir la baliza, justo cuando estaba
+     * saliendo el reenvío, y no salía nunca ni uno. Medido el 18 de septiembre
+     * de 2026: en el registro solo aparecía `salto=2` —el reenvío— y ningún
+     * `salto=11`.
+     *
+     * La víctima repite cada 8 s y el reenvío ocupa los primeros ~6 con su
+     * propio jitter, así que el acuse va al final del ciclo. Y si aun así
+     * pilla el altavoz ocupado, lo reintenta: perder un acuse no importa,
+     * perderlos todos sí.
+     */
+    private fun contestarOido() {
+        val ahora = System.currentTimeMillis()
+        if (ahora - oidoProgramado < MallaAcustica.RELAY_MS) return   // ya hay uno en camino
+        oidoProgramado = ahora
+        var intentos = 0
+        val tarea = object : Runnable {
+            override fun run() {
+                if (enAlarma || enRescate) return        // ya no somos quien ayuda
+                val salio = try { malla?.emitirUna(MallaAcustica.CODIGO_OIDO) == true }
+                            catch (_: Exception) { false }
+                if (salio) anotar("le contesto al vecino: te he oído")
+                else if (++intentos < 3) reloj.postDelayed(this, 1200L)
+            }
+        }
+        /* En su ciclo no hay reenvío compitiendo, así que el acuse entra en
+           cuanto la víctima se calla. Se confirma ~3 s dentro de su trama de
+           4 s, luego 1,5 s más lo pone justo al principio de sus ocho
+           segundos de escucha, con sitio de sobra por detrás. */
+        reloj.postDelayed(tarea, 1500L + (Math.random() * 600).toLong())
     }
 
     /** El botón EMITIR ALERTA AHORA de la pantalla de malla. */
@@ -2982,6 +3060,10 @@ class ServicioSos : Service() {
                         mallaActividadHasta = System.currentTimeMillis() + MALLA_AVISO_MS
                     mallaRx = it.rx; mallaTx = it.tx; mallaSalto = it.ultimoSalto
                     mallaConfirmadas = it.confirmadas
+                    if (it.oido > mallaOido) {
+                        mallaOido = it.oido
+                        try { actualizarNotificacion() } catch (_: Exception) {}
+                    }
                     mallaPorSalto = it.porSalto.copyOf()
                     mallaNiveles = it.niveles.copyOf(); mallaSuelo = it.sueloDb
                     mallaEscuchando = it.escuchando
@@ -3302,7 +3384,12 @@ class ServicioSos : Service() {
 
         if (esAlarma) {
             val tit = if (enRescate) "SISMORED · MODO RESCATE" else "SISMORED · ALARMA ACTIVA"
-            val sub = if (enRescate) "Pulso de bajo consumo cada 12 s · linterna y baliza"
+            /* Y si alguien ha contestado, eso va POR DELANTE de todo lo demás.
+               Lo que necesita saber quien está debajo no es qué está haciendo
+               su móvil: es si alguien lo sabe. Ver [MallaAcustica.OIDO]. */
+            val sub = if (System.currentTimeMillis() - mallaOido < OIDO_VALE_MS)
+                          "TE HAN OÍDO · otro móvil ha recibido tu señal"
+                      else if (enRescate) "Pulso de bajo consumo cada 12 s · linterna y baliza"
                       else "Sirena y linterna en marcha · baliza emitiendo"
             rv.setTextViewText(R.id.notif_titulo, tit)
             rv.setTextViewText(R.id.notif_texto, sub)

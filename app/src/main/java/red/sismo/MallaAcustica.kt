@@ -137,8 +137,34 @@ class MallaAcustica(
         const val ALERTA_ROBUSTA = 14800.0
         const val CODIGO_ALERTA_ROBUSTA = 10
 
+        /**
+         * «Te he oído». Lo contesta quien recibe una baliza de socorro y **no**
+         * está pidiendo ayuda él mismo.
+         *
+         * Es el único mensaje de la malla que va hacia la víctima, y
+         * probablemente lo más útil que un móvil puede hacer por alguien
+         * atrapado cuando ya no queda nada más: la diferencia entre gritar al
+         * vacío y saber que alguien lo sabe.
+         *
+         * A 14,4 kHz, un paso por debajo de [ALERTA_ROBUSTA], siguiendo el
+         * mismo criterio con el que se bajaron el silencio y la llamada:
+         * cuanto más abajo, mejor responde el altavoz y mejor atraviesa. El
+         * precio es que a 14,4 kHz **hay oídos jóvenes que lo oyen**, y por eso
+         * no se emite salvo que haya una víctima de verdad pidiendo ayuda.
+         *
+         * No es un salto, así que nunca puede caer en el reparto de `porSalto`,
+         * que tiene cuatro huecos.
+         */
+        const val OIDO = 14400.0
+        const val CODIGO_OIDO = 11
+
+        /** Cada cuánto se anota «te han oído» en el registro. La baliza se
+         *  repite cada 8 s y cada repetición se contesta, así que sin esto el
+         *  registro de la víctima sería una sola línea repetida. */
+        const val OIDO_ANOTA_MS = 30_000L
+
         val TONOS = HOP_TONE + doubleArrayOf(
-            LLAMADA, SILENCIO, ALERTA, SILENCIO_ROBUSTO, LLAMADA_ROBUSTA, ALERTA_ROBUSTA
+            LLAMADA, SILENCIO, ALERTA, SILENCIO_ROBUSTO, LLAMADA_ROBUSTA, ALERTA_ROBUSTA, OIDO
         )
 
         /**
@@ -207,7 +233,23 @@ class MallaAcustica(
          * Con 6,0 s quedan 3,0 s de escucha, casi el doble de lo que hace falta.
          * Un relevo más lento que funciona vale más que uno rápido y sordo.
          */
-        const val RELAY_MS = 8000L
+        /* SUBIDO A 12 s PARA QUE A LA VÍCTIMA SE LE PUEDA CONTESTAR.
+
+           Con 8 s no cabía. La trama dura 4 s y mientras emite, la puerta
+           anti-eco deja sordo el micrófono propio, así que quedaban ~4,5 s de
+           escucha — y en ellos tienen que caber el reenvío del vecino Y el
+           acuse de [OIDO], que son otras dos tramas de 4 s. Medido el 18 de
+           septiembre de 2026: el Huawei contestó tres veces y el Redmi no oyó
+           ninguna, porque los dos acuses cayeron justo encima de una emisión
+           suya. Los dos móviles se enganchan al mismo ciclo y colisionan.
+
+           Con 12 s quedan 8 s de escucha, que es sitio para las dos. El precio
+           es que la baliza se repite menos, y el argumento para pagarlo ya
+           estaba escrito aquí arriba: un relevo más lento que funciona vale
+           más que uno rápido y sordo. Además la baliza dura mientras dure la
+           alarma, así que repetir cada 12 s en vez de cada 8 no pierde a nadie
+           — y gasta menos batería, que debajo de un escombro es tiempo. */
+        const val RELAY_MS = 12000L
 
         /* ---------- análisis ----------
            Ventana de 2048 muestras (42 ms a 48 kHz), que es la que sirve
@@ -824,6 +866,18 @@ class MallaAcustica(
     /** Silenciar la alarma local nunca detiene la propagación: solo calla este móvil. */
     @Volatile var silenciadoHasta = 0L
 
+    /**
+     * Cuándo fue la última vez que alguien contestó «te he oído». Ver [OIDO].
+     *
+     * **No se cuenta cuántos son, y es a propósito.** El protocolo no lleva
+     * identificador, así que dos confirmaciones pueden venir del mismo móvil:
+     * decir «te han oído dos personas» sería inventarse un dato. Lo que sí se
+     * puede afirmar es que alguien lo recibió, y esa es toda la diferencia que
+     * importa cuando estás debajo.
+     */
+    @Volatile var oido = 0L; private set
+    private var ultimoOido = 0L
+
     /** Para no llenar el registro: durante una trama el decodificador saca el
      *  salto una docena de veces, y el registro es la prueba de lo que pasó. */
     private var ultimoAvisoCandidato = 0L
@@ -887,6 +941,18 @@ class MallaAcustica(
                 val jitter = 500L + (Math.random() * 1500).toLong()
                 h.postDelayed({ emitirUna(CODIGO_ALERTA) }, jitter)
             }
+            return
+        }
+        /* «Te he oído». Va hacia la víctima y no se retransmite: no tiene
+           sentido propagar por cuatro saltos que alguien oyó algo aquí, y
+           reenviarlo llenaría la banda justo cuando hace falta libre. */
+        if (hop == CODIGO_OIDO) {
+            corrob.clear(); olvidarCadencia()
+            if (System.currentTimeMillis() - ultimoOido > OIDO_ANOTA_MS) {
+                ultimoOido = System.currentTimeMillis()
+                reg("TE HAN OÍDO · otro móvil ha recibido tu petición de ayuda")
+            }
+            oido = System.currentTimeMillis()
             return
         }
         if (hop == CODIGO_LLAMADA) {
