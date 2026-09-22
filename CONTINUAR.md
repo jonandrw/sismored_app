@@ -1,6 +1,6 @@
 # SismoRed Android — dónde retomar
 
-Estado al **17 de septiembre de 2026**. Todo lo descrito está **compilando e
+Estado al **22 de septiembre de 2026**. Todo lo descrito está **compilando e
 instalado limpio** en tres móviles —Huawei STK-LX3 (Android 10), Samsung A10s
 (Android 11) y Redmi 24094RAD4G (Android 15)— y ninguno da errores al arrancar.
 
@@ -84,6 +84,157 @@ tocado, y va a encontrar en media hora cosas que no se pueden imaginar sentado.
 Lo que ya se puede firmar, mientras tanto: la ficha a pantalla completa, el PÁNICO con
 sirena y atajo de volumen, el modo rescate, y la baliza con tendencia de señal. Eso
 funciona sin red, sin otro móvil y sin nada que calibrar.
+
+---
+
+## Del 18 al 22 de septiembre de 2026 — lo que dicen 11 días de uso real
+
+**Esta es la sección que hay que leer primero.** 20.057 eventos del Redmi
+(11→22 sep) y el registro de un Galaxy A21s de otro usuario. Son cifras
+medidas, no impresiones.
+
+### Las cifras que ordenan las prioridades
+
+| | 11 días |
+|---|---|
+| Preguntas «¿estás bien?» por el sismógrafo | **35** |
+| Alarmas de vigilia nocturna | 18 |
+| Entradas en modo rescate solas | 9 |
+| Terremotos reales detectados por el acelerómetro | **0** |
+| Detecciones del detector de sonido | **9.107** |
+| Alarmas disparadas por el detector de sonido | **0** |
+
+Dos conclusiones duras:
+
+1. **El detector de sonido produce 828 detecciones al día y no ha decidido nada
+   en 11 días.** No es un detector de sismos: es la herramienta de rescate
+   —respiración, golpes, voz bajo escombros—. Corriéndolo como vigilante de la
+   vida diaria solo genera ruido y filas en la base de datos.
+2. **Todas las alarmas vienen del sismógrafo o de la malla.** Los falsos
+   positivos hay que atacarlos ahí, no en el audio.
+
+Las 35 preguntas diurnas se reparten por hora así: **26 entre las 6 y la 1 del
+mediodía**. Eso no es sismicidad, es alguien levantándose y usando el móvil. La
+amplitud (0,6–0,7 m/s², STA/LTA 40–48x) no separa un portazo de un terremoto;
+**la duración sí**, y es lo único que ha separado algo en todo el proyecto.
+
+### Falsos positivos identificados y cerrados
+
+Los tres eran lo mismo: **el móvil midiéndose a sí mismo.**
+
+- **Vibración de llamada** (18 sep). Racha continua de 26 s → AUXILIO.
+- **Sirena propia** (18 sep). 0,67 m/s² durante 3,4 s leídos como «terremoto
+  confirmado» por el propio móvil que estaba sonando.
+- **Despertador** (20 sep, 06:20). Ocho segundos de vibración dentro de la
+  franja de vigilia → alarma completa sin preguntar. Medido el 22 con el
+  arreglo puesto: **5,00 m/s²**, o sea 35 veces el umbral de vigilia y 12 veces
+  más fuerte que zarandear la mesa a mano.
+
+La invariante que cierra los tres está en `ServicioSos.altavozPropio()`: **el
+acelerómetro calla siempre que suene el altavoz propio** —llamada, despertador
+o notificación ajena, sirena de alarma o rescate, y baliza o reenvío de la
+malla—. Y no basta con callar la decisión: `Sismografo.vibracionPropia` **rompe
+la racha**, porque vetar sin romperla solo aplaza el disparo al momento de colgar.
+
+### La calibración del detector nocturno, que es la que vale
+
+Reproducible entre dos móviles y entre días: **dispara siempre en la primera
+muestra pasados los 3.000 ms**, y el exceso es solo el paso de muestreo.
+
+| | paso | disparo | calma de fondo |
+|---|---|---|---|
+| Redmi 24094RAD4G | 356 ms | 3203–3209 ms | 0,003 |
+| Huawei STK-LX3 | 417 ms | 3335–3336 ms | 0,009 |
+
+Control negativo limpio: no dispara a 2827–2919 ms. **El Huawei es unas 3 veces
+más ruidoso** en reposo y cae en postura `ENCIMA` con facilidad.
+
+### El catálogo de sismos NO es el problema
+
+51 alertas en 6 días, sin un solo duplicado. 23 son un **enjambre real en
+Chaparral (Tolima)** a 155–167 km, M3,7–4,4, uno cada 12–95 minutos durante dos
+días. **Decisión del autor (22 sep): se queda como está.** Saber dónde tembló es
+útil aunque no se sienta; el problema es sentirlos, y eso lo resuelve el modo
+nocturno, no el radio del catálogo.
+
+Queda medido por si algún día se quiere tocar: con `radioAviso` actual pasan 51
+de 51; con `15·10^(0,38(M−2))` pasarían 10 de 51, conservando el M4,5 a 55 km
+que el autor sí sintió y descartando los 23 de Chaparral que no sintió.
+
+### El detector de grito no puede distinguir una sirena de una persona
+
+Medido con `banco.py` contra `fx sounds/`: **4 de 7 sirenas salen como GRITO**.
+Y no se arregla con un umbral — la modulación silábica de un grito infantil real
+es 0,11 y la de una sirena de policía 0,13; los rangos se solapan enteros, igual
+que el vibrato, la tonalidad y la frecuencia. Las características que mide no
+llevan la información que los separa.
+
+Por eso `gritoCerca` da `PERSONA_PROBABLE` y solo `golpesCerca` da `PERSONA`.
+**Ojo**: el registro del A21s trae `GOLPES RÍTMICOS · 92%` en una casa normal,
+así que los golpes tampoco están limpios, y `fx sounds/Golpes/` sigue vacía.
+
+### Cambios de comportamiento que conviene conocer
+
+- **Oír una baliza de socorro ya no convierte en víctima.** Antes el que oía
+  llamaba a `panico()` directo: en un salón con N móviles, una pulsación los
+  dejaba a todos gritando y emitiendo, lo que tapa a la víctima y corrompe el
+  radar de saltos. Ahora decide la cascada (`socorroVecino`) y lo máximo es
+  despertar a quien duerma (`AVISAR_VECINO`), nunca encender baliza propia.
+- **Acuse ultrasónico** (`CODIGO_OIDO`, 14.400 Hz): quien recibe una baliza y no
+  es víctima contesta «te he oído», y la víctima lo ve. **Solo funciona en modo
+  rescate**: con la sirena puesta, el propio estruendo satura el micrófono y la
+  cadencia sale 0/4.
+- **En modo rescate la víctima desaparecía de la malla.** `rescate()` llamaba a
+  `parar()` y nadie rearrancaba la baliza. Ahora sigue, cada 24 s.
+- **`RELAY_MS` de 8 a 12 s**, para que la víctima calle lo suficiente para que le
+  puedan contestar.
+- **El micrófono se cede**: solo a apps que lo piden, y a mano con el botón
+  «DEJAR DE ESCUCHAR» de la notificación (5 min) para las que se niegan antes de
+  pedirlo, como la grabadora de MIUI.
+- **La vigilia es configurable**: franja horaria y minutos de reposo. Los tres
+  segundos de suelo moviéndose NO se configuran.
+- **El interruptor del detector de sonido ya no existe**: no podía encender
+  —`ajustarEscucha` lo apagaba a los 500 ms— y un control que miente es peor que
+  no tenerlo. Queda el estado.
+- **`DetectorPanicoVoz` eliminado.** Su documentación prometía reconocer frases
+  («¡temblor!», «¡socorro!»); no reconocía ninguna, su lista `PATRONES` no la
+  usaba nadie y la «confianza» era el volumen por 2,5.
+- **`AlertaGoogle` concedido por fin** en los dos móviles de prueba. Llevaba
+  escrito desde agosto sin haber corrido nunca: le faltaba el permiso de acceso
+  a notificaciones, que hay que dar a mano.
+
+### Decisión abierta, y es la que más decide
+
+**Qué hacer con las 35 preguntas diurnas.** Tres salidas, sin implementar:
+
+1. **Exigir duración y no amplitud** también de día, como en la vigilia. Es lo
+   coherente con lo único que ha demostrado separar. Se perdería un terremoto
+   corto y brusco.
+2. **Que «nadie contesta» no escale sola** a modo rescate sin una segunda señal.
+   Hoy el silencio se lee como inconsciencia, cuando la causa más probable es que
+   no haya nadie cerca del móvil — que es justo por lo que estaba quieto.
+3. Subir el umbral diurno y aceptar perder sensibilidad.
+
+Y una propuesta pendiente de decidir: **que el detector de sonido solo corra en
+emergencia, rescate o búsqueda**, no durante la vigilia. Se perderían
+`motorCerca` (sin calibrar) y 4 estruendos en 11 días.
+
+### Trampas al probar (ahorran tandas enteras)
+
+Cuatro cosas silencian la vigilia sin decirlo: postura `ENCIMA`, `quietoAntes`
+por debajo del reposo exigido —**no se puede sacudir dos veces seguidas**—,
+haber pulsado ESTOY BIEN en los últimos 5 minutos, y el modo `repetidor`.
+
+**Nunca lanzar la app con `monkey`**: llama a `thawRotation()` y le enciende al
+usuario la rotación automática. Usar `am start -n red.sismo/.MainActivity`.
+
+Modo exprés de vigilia (solo en compilaciones de depuración), reposo 10 s y
+franja 0–24 h:
+
+```bash
+adb shell am start -n red.sismo/.MainActivity --es probar vigilia-express
+adb shell am start -n red.sismo/.MainActivity --es probar vigilia-normal
+```
 
 ---
 
