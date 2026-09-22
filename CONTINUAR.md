@@ -203,9 +203,9 @@ así que los golpes tampoco están limpios, y `fx sounds/Golpes/` sigue vacía.
   escrito desde agosto sin haber corrido nunca: le faltaba el permiso de acceso
   a notificaciones, que hay que dar a mano.
 
-### Decisión abierta, y es la que más decide
+### Decisión abierta 1 · las 35 preguntas diurnas, y es la que más decide
 
-**Qué hacer con las 35 preguntas diurnas.** Tres salidas, sin implementar:
+Tres salidas, sin implementar:
 
 1. **Exigir duración y no amplitud** también de día, como en la vigilia. Es lo
    coherente con lo único que ha demostrado separar. Se perdería un terremoto
@@ -215,9 +215,34 @@ así que los golpes tampoco están limpios, y `fx sounds/Golpes/` sigue vacía.
    no haya nadie cerca del móvil — que es justo por lo que estaba quieto.
 3. Subir el umbral diurno y aceptar perder sensibilidad.
 
-Y una propuesta pendiente de decidir: **que el detector de sonido solo corra en
-emergencia, rescate o búsqueda**, no durante la vigilia. Se perderían
-`motorCerca` (sin calibrar) y 4 estruendos en 11 días.
+### Decisión abierta 2 · el detector de sonido durante la vigilia
+
+**Propuesta, medida pero NO aplicada (decisión del autor: la deja abierta).**
+
+Que `Escucha` solo corra en emergencia, rescate o búsqueda, y no durante la
+vigilia nocturna. Argumento: 9.107 detecciones en 11 días y cero decisiones.
+
+Lo que se perdería, y es el precio real:
+
+- **`motorCerca`**, el veto de camión de la vigilia nocturna. Nunca calibrado:
+  `MOTOR_DB`, `MOTOR_GRAVE` y `MOTOR_PLANITUD` siguen escritos a ojo.
+- **`estruendo`**: 4 detecciones en 11 días.
+
+**Lo que NO se pierde, y conviene tenerlo claro antes de descartar la idea: la
+malla.** `MallaAcustica` y `Escucha` son dos oyentes independientes sobre el
+mismo micrófono —`USA_MALLA` y `USA_FORENSE`—, así que apagar los
+clasificadores no toca la propagación. Está comprobado en campo: **todas las
+pruebas de malla del 18 y el 22 de septiembre** —el salto real en el edificio
+atravesando plantas, el pánico entre los dos móviles, el reenvío y el acuse
+ultrasónico— **se hicieron con `Escucha` apagado**, porque era de día y no
+había vigilia armada. El registro del micrófono lo confirma:
+
+```
+microfono: solo la malla, leo 73728 muestras por siesta de 450 ms
+microfono: hay prisa (usuarios=3), leo de 1024 en 1024
+```
+
+`usuarios=1` es la malla sola; `usuarios=3` es malla + forense.
 
 ### Trampas al probar (ahorran tandas enteras)
 
