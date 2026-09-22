@@ -38,7 +38,10 @@ class Opciones(ctx: Context) {
     /* El estático se sincroniza al construir: las constantes de la vigilia lo
        leen y no tienen Context con el que mirar el disco. Lo construyen tanto
        el servicio como la pantalla, así que basta con esto. */
-    init { pruebas = pruebasVigilia }
+    init {
+        pruebas = pruebasVigilia
+        desdeH = vigiliaDesdeH; hastaH = vigiliaHastaH; reposoMin = vigiliaReposoMin
+    }
 
     /** Las cinco casillas de la vista Respuesta. Todas encendidas de fábrica:
      *  quien no ha tocado nada tiene que tener la respuesta completa. */
@@ -134,6 +137,36 @@ class Opciones(ctx: Context) {
      */
     var vigiliaNocturna: Boolean
         get() = leer("op_vigilia_nocturna", false); set(v) = poner("op_vigilia_nocturna", v)
+
+    /**
+     * La franja y el reposo, elegidos por quien usa el móvil.
+     *
+     * **Los valores de fábrica salen de medir un solo horario: el mío.** De 1 a
+     * 7 y media hora de reposo separan un terremoto de su dueño para alguien
+     * que duerme de noche y no toca el móvil. Para quien trabaja de noche, para
+     * quien se levanta a las cinco o para quien duerme con el teléfono en la
+     * mano, ese horario no describe nada y la vigilia no se arma nunca — o se
+     * arma cuando no debe.
+     *
+     * Se guardan aparte de las constantes porque las constantes siguen siendo
+     * lo que se midió: ver [VIGILIA_SOSTENIDO_MS], que es lo que de verdad
+     * separa, y que NO se toca desde aquí. Lo configurable es cuándo mirar, no
+     * qué se considera un terremoto.
+     */
+    var vigiliaDesdeH: Int
+        get() = p.getInt("op_vigilia_desde", 1).coerceIn(0, 23)
+        set(v) = p.edit().putInt("op_vigilia_desde", v.coerceIn(0, 23)).apply()
+
+    var vigiliaHastaH: Int
+        get() = p.getInt("op_vigilia_hasta", 7).coerceIn(0, 24)
+        set(v) = p.edit().putInt("op_vigilia_hasta", v.coerceIn(0, 24)).apply()
+
+    /** Minutos de quietud antes de armarse. Mínimo cinco: por debajo de eso
+     *  deja de separar un terremoto de alguien que acaba de soltar el móvil,
+     *  que es justo lo que hace fiable a la vigilia. */
+    var vigiliaReposoMin: Int
+        get() = p.getInt("op_vigilia_reposo_min", 30).coerceIn(5, 120)
+        set(v) = p.edit().putInt("op_vigilia_reposo_min", v.coerceIn(5, 120)).apply()
 
     /**
      * Consultar el catálogo público de sismos del EMSC como segunda opinión.
@@ -354,7 +387,7 @@ class Opciones(ctx: Context) {
          * con el móvil a mano y lo toca cada rato, esto no se va a armar nunca
          * y es mejor que lo sepa antes que después.
          */
-        val VIGILIA_REPOSO_MIN_MS: Long get() = if (pruebas) 10_000L else 30 * 60_000L
+        val VIGILIA_REPOSO_MIN_MS: Long get() = if (pruebas) 10_000L else reposoMin * 60_000L
 
         /**
          * Cuánto hay que aguantar si además se oye un motor.
@@ -373,8 +406,15 @@ class Opciones(ctx: Context) {
         const val VIGILIA_SOSTENIDO_MOTOR_MS = 8000L
 
         /** La franja, en hora local. De 01:00 a 06:59; con [pruebas], el día entero. */
-        val VIGILIA_DESDE_H: Int get() = if (pruebas) 0 else 1
-        val VIGILIA_HASTA_H: Int get() = if (pruebas) 24 else 7
+        val VIGILIA_DESDE_H: Int get() = if (pruebas) 0 else desdeH
+        val VIGILIA_HASTA_H: Int get() = if (pruebas) 24 else hastaH
+
+        /* Lo que ha elegido quien usa el móvil, con los valores de fábrica de
+           partida. Estáticos y sincronizados al construir `Opciones`, igual que
+           [pruebas], porque aquí no hay Context con el que mirar el disco. */
+        @Volatile @JvmStatic var desdeH = 1; internal set
+        @Volatile @JvmStatic var hastaH = 7; internal set
+        @Volatile @JvmStatic var reposoMin = 30; internal set
 
         /**
          * Modo de pruebas de la vigilia nocturna.

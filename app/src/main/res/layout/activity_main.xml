@@ -1093,18 +1093,19 @@
                                 android:textStyle="bold" />
                         </LinearLayout>
 
-<!-- Encender y apagar la escucha. Existia la accion
-                             ACCION_ESCUCHA_CONMUTAR y no habia nada que la llamara:
-                             el microfono se quedaba como lo hubiera dejado el
-                             servicio y no habia forma de apagarlo desde la app. -->
+<!-- ESTADO, NO INTERRUPTOR. Lo fue, y no podia cumplir: encender
+                             ponia `escuchaApagadaAMano = false` y arrancaba, pero medio
+                             segundo despues `ajustarEscucha` veia que no habia vigilia ni
+                             emergencia y lo apagaba otra vez. Apagar funcionaba; encender
+                             duraba 500 ms. Desde que los detectores los decide el contexto
+                             —vigilia, emergencia o busqueda— aqui no hay nada que pulsar, y
+                             un control que miente es peor que no tenerlo. Lo que si vale es
+                             saber si el microfono esta escuchando, y eso se queda. -->
                         <LinearLayout
                             android:id="@+id/fila_oir"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="12dp"
-                            android:clickable="true"
-                            android:focusable="true"
-                            android:background="?attr/selectableItemBackground"
                             android:gravity="center_vertical"
                             android:minHeight="52dp"
                             android:orientation="horizontal">
@@ -1134,10 +1135,6 @@
                                     android:textSize="13sp" />
                             </LinearLayout>
 
-                            <red.sismo.VistaInterruptor
-                                android:id="@+id/sw_oir"
-                                android:layout_width="52dp"
-                                android:layout_height="30dp" />
                         </LinearLayout>
 
                         <red.sismo.VistaOnda
@@ -3502,6 +3499,216 @@
                                     android:textSize="13sp" />
                             </LinearLayout>
                             <include layout="@layout/sw_tactico" />
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="#161C21" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:paddingStart="16dp"
+                            android:paddingEnd="16dp"
+                            android:paddingTop="13dp"
+                            android:paddingBottom="13dp">
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="@font/barlow"
+                                    android:text="@string/vig_desde"
+                                    android:textColor="@color/tx"
+                                    android:textSize="15sp" />
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="2dp"
+                                    android:layout_marginEnd="12dp"
+                                    android:fontFamily="@font/barlow"
+                                    android:text="@string/vig_desde_sub"
+                                    android:textColor="#7C858D"
+                                    android:textSize="12sp" />
+                            </LinearLayout>
+                            <TextView
+                                android:id="@+id/vig_desde_menos"
+                                android:layout_width="40dp"
+                                android:layout_height="40dp"
+                                android:background="?attr/selectableItemBackground"
+                                android:clickable="true"
+                                android:focusable="true"
+                                android:fontFamily="@font/mono"
+                                android:gravity="center"
+                                android:text="@string/menos"
+                                android:textColor="@color/tx"
+                                android:textSize="20sp" />
+                            <TextView
+                                android:id="@+id/vig_desde_val"
+                                android:layout_width="64dp"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="@font/mono"
+                                android:gravity="center"
+                                android:textColor="@color/gr"
+                                android:textSize="16sp"
+                                android:textStyle="bold" />
+                            <TextView
+                                android:id="@+id/vig_desde_mas"
+                                android:layout_width="40dp"
+                                android:layout_height="40dp"
+                                android:background="?attr/selectableItemBackground"
+                                android:clickable="true"
+                                android:focusable="true"
+                                android:fontFamily="@font/mono"
+                                android:gravity="center"
+                                android:text="@string/mas_signo"
+                                android:textColor="@color/tx"
+                                android:textSize="20sp" />
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="#161C21" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:paddingStart="16dp"
+                            android:paddingEnd="16dp"
+                            android:paddingTop="13dp"
+                            android:paddingBottom="13dp">
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="@font/barlow"
+                                    android:text="@string/vig_hasta"
+                                    android:textColor="@color/tx"
+                                    android:textSize="15sp" />
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="2dp"
+                                    android:layout_marginEnd="12dp"
+                                    android:fontFamily="@font/barlow"
+                                    android:text="@string/vig_hasta_sub"
+                                    android:textColor="#7C858D"
+                                    android:textSize="12sp" />
+                            </LinearLayout>
+                            <TextView
+                                android:id="@+id/vig_hasta_menos"
+                                android:layout_width="40dp"
+                                android:layout_height="40dp"
+                                android:background="?attr/selectableItemBackground"
+                                android:clickable="true"
+                                android:focusable="true"
+                                android:fontFamily="@font/mono"
+                                android:gravity="center"
+                                android:text="@string/menos"
+                                android:textColor="@color/tx"
+                                android:textSize="20sp" />
+                            <TextView
+                                android:id="@+id/vig_hasta_val"
+                                android:layout_width="64dp"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="@font/mono"
+                                android:gravity="center"
+                                android:textColor="@color/gr"
+                                android:textSize="16sp"
+                                android:textStyle="bold" />
+                            <TextView
+                                android:id="@+id/vig_hasta_mas"
+                                android:layout_width="40dp"
+                                android:layout_height="40dp"
+                                android:background="?attr/selectableItemBackground"
+                                android:clickable="true"
+                                android:focusable="true"
+                                android:fontFamily="@font/mono"
+                                android:gravity="center"
+                                android:text="@string/mas_signo"
+                                android:textColor="@color/tx"
+                                android:textSize="20sp" />
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="#161C21" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:paddingStart="16dp"
+                            android:paddingEnd="16dp"
+                            android:paddingTop="13dp"
+                            android:paddingBottom="13dp">
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="@font/barlow"
+                                    android:text="@string/vig_reposo"
+                                    android:textColor="@color/tx"
+                                    android:textSize="15sp" />
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="2dp"
+                                    android:layout_marginEnd="12dp"
+                                    android:fontFamily="@font/barlow"
+                                    android:text="@string/vig_reposo_sub"
+                                    android:textColor="#7C858D"
+                                    android:textSize="12sp" />
+                            </LinearLayout>
+                            <TextView
+                                android:id="@+id/vig_reposo_menos"
+                                android:layout_width="40dp"
+                                android:layout_height="40dp"
+                                android:background="?attr/selectableItemBackground"
+                                android:clickable="true"
+                                android:focusable="true"
+                                android:fontFamily="@font/mono"
+                                android:gravity="center"
+                                android:text="@string/menos"
+                                android:textColor="@color/tx"
+                                android:textSize="20sp" />
+                            <TextView
+                                android:id="@+id/vig_reposo_val"
+                                android:layout_width="64dp"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="@font/mono"
+                                android:gravity="center"
+                                android:textColor="@color/gr"
+                                android:textSize="16sp"
+                                android:textStyle="bold" />
+                            <TextView
+                                android:id="@+id/vig_reposo_mas"
+                                android:layout_width="40dp"
+                                android:layout_height="40dp"
+                                android:background="?attr/selectableItemBackground"
+                                android:clickable="true"
+                                android:focusable="true"
+                                android:fontFamily="@font/mono"
+                                android:gravity="center"
+                                android:text="@string/mas_signo"
+                                android:textColor="@color/tx"
+                                android:textSize="20sp" />
                         </LinearLayout>
 
                         <View

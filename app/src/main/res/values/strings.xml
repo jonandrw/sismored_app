@@ -172,6 +172,18 @@
     <string name="sw_auto">Detector automático</string>
     <string name="sw_sirena">Sirena</string>
     <string name="menos">−</string>
+    <string name="mas_signo">+</string>
+
+    <!-- La vigilia, configurable. Los valores de fábrica salen de medir un solo
+         horario, y quien trabaja de noche o se levanta a las cinco necesita el
+         suyo. Lo que NO se configura son los tres segundos de suelo moviéndose:
+         eso es lo que se midió y lo que separa un terremoto de su dueño. -->
+    <string name="vig_desde">Empieza a las</string>
+    <string name="vig_desde_sub">Hora a la que el oído fino se pone en marcha</string>
+    <string name="vig_hasta">Termina a las</string>
+    <string name="vig_hasta_sub">Hora a la que vuelve al umbral normal</string>
+    <string name="vig_reposo">Reposo previo</string>
+    <string name="vig_reposo_sub">Minutos sin que nadie toque el móvil antes de armarse. Menos de esto y deja de distinguir un terremoto de alguien que acaba de soltarlo.</string>
     <string name="mas">+</string>
 
     <!-- ===== sonda ===== -->

@@ -1238,26 +1238,63 @@ class MainActivity : AppCompatActivity() {
             anotar(if (ServicioSos.armado) "vigilancia desarmada" else "vigilancia armada")
             pintar()
         }
+        montarAjustesVigilia()
         findViewById<View>(R.id.fila_armado)?.setOnClickListener(conmutarArmado)
         findViewById<VistaInterruptor>(R.id.sw_armado)?.setOnCheckedChangeListener {
             arrancarServicio(ServicioSos.ACCION_ARMAR)
             pintar()
         }
 
-        /* Encender y apagar el detector de sonido. La accion existia y no la
-           llamaba nadie: el microfono se quedaba como lo hubiera dejado el
-           servicio y no habia forma de apagarlo desde la app. */
-        val conmutarOir = View.OnClickListener {
-            arrancarServicio(ServicioSos.ACCION_ESCUCHA_CONMUTAR)
-            anotar(if (ServicioSos.oyeEscuchando) "detector de sonido apagado"
-                   else "detector de sonido encendido")
-            pintar()
+        /* EL DETECTOR DE SONIDO YA NO SE PULSA, y no es una simplificación:
+           es que no podía cumplir. Encender ponía `escuchaApagadaAMano = false`
+           y arrancaba, pero medio segundo después `ajustarEscucha` veía que no
+           había vigilia armada ni emergencia y lo volvía a apagar. Apagar
+           funcionaba; encender duraba 500 ms.
+
+           Desde que los detectores los decide el contexto —vigilia nocturna,
+           emergencia o búsqueda— aquí no hay nada que decidir. Se queda el
+           estado, que sí es información: saber si el micrófono está escuchando
+           es justo lo que no se puede adivinar desde fuera. */
+    }
+
+    /**
+     * La franja y el reposo de la vigilia, a gusto de quien usa el móvil.
+     *
+     * De fábrica son de 1 a 7 y media hora, que es lo que se midió — pero se
+     * midió **un solo horario**. Quien trabaja de noche, quien se levanta a
+     * las cinco o quien duerme con el teléfono en la mano tiene otro, y con el
+     * de fábrica la vigilia no se le arma nunca o se le arma cuando no debe.
+     *
+     * Lo que NO se toca desde aquí son los tres segundos de suelo moviéndose:
+     * eso es lo medido y es lo que separa un terremoto de su dueño. Aquí se
+     * elige **cuándo mirar**, no qué cuenta como terremoto.
+     */
+    private fun montarAjustesVigilia() {
+        fun paso(id: Int, delta: Int) = findViewById<View>(id)?.setOnClickListener {
+            when (id) {
+                R.id.vig_desde_menos, R.id.vig_desde_mas ->
+                    op.vigiliaDesdeH = (op.vigiliaDesdeH + delta + 24) % 24
+                R.id.vig_hasta_menos, R.id.vig_hasta_mas ->
+                    op.vigiliaHastaH = (op.vigiliaHastaH + delta + 25) % 25
+                else -> op.vigiliaReposoMin = op.vigiliaReposoMin + delta * 5
+            }
+            /* Los estáticos que leen las constantes se sincronizan al construir
+               `Opciones`, así que hay que reconstruirlo para que el servicio vea
+               el cambio en caliente. Ver [Opciones.desdeH]. */
+            op = Opciones(this)
+            arrancarServicio(ServicioSos.ACCION_OPCIONES)
+            pintarAjustesVigilia()
         }
-        findViewById<View>(R.id.fila_oir)?.setOnClickListener(conmutarOir)
-        findViewById<VistaInterruptor>(R.id.sw_oir)?.setOnCheckedChangeListener {
-            arrancarServicio(ServicioSos.ACCION_ESCUCHA_CONMUTAR)
-            pintar()
-        }
+        paso(R.id.vig_desde_menos, -1); paso(R.id.vig_desde_mas, +1)
+        paso(R.id.vig_hasta_menos, -1); paso(R.id.vig_hasta_mas, +1)
+        paso(R.id.vig_reposo_menos, -1); paso(R.id.vig_reposo_mas, +1)
+        pintarAjustesVigilia()
+    }
+
+    private fun pintarAjustesVigilia() {
+        findViewById<TextView>(R.id.vig_desde_val)?.text = "%02d:00".format(op.vigiliaDesdeH)
+        findViewById<TextView>(R.id.vig_hasta_val)?.text = "%02d:00".format(op.vigiliaHastaH)
+        findViewById<TextView>(R.id.vig_reposo_val)?.text = "${op.vigiliaReposoMin} min"
     }
 
     private fun montarInterfono() {
@@ -2499,10 +2536,6 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<TextView>(R.id.oye_nivel)?.text =
             if (oyendo) String.format(Locale.US, "%.0f dBFS", ServicioSos.oyeNivelDb) else "—"
-        findViewById<VistaInterruptor>(R.id.sw_oir)?.let {
-            it.colorActivo = getColor(R.color.gr)
-            if (it.isChecked != oyendo) it.setCheckedSilently(oyendo)
-        }
         findViewById<VistaOnda>(R.id.oye_onda)?.let {
             it.fuente { ServicioSos.oyeOnda }
             it.pintar(ServicioSos.oyeOnda, oyendo)

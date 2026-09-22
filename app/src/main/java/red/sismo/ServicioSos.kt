@@ -1366,7 +1366,48 @@ class ServicioSos : Service() {
      * protegía nadie.
      */
     private fun altavozPropio(): Boolean =
-        enLlamada() || enAlarma || enRescate || malla?.emitiendoAhora == true
+        enLlamada() || sonandoAlarmaAjena() || enAlarma || enRescate ||
+        malla?.emitiendoAhora == true
+
+    /**
+     * Está sonando una alarma o un timbre que NO es nuestro: el despertador,
+     * un temporizador, una notificación con tono.
+     *
+     * **Esto es lo que el arreglo de la llamada no tapaba, y es el falso
+     * positivo más extendido que tiene la app.** Un despertador no cambia el
+     * modo de audio —suena por `STREAM_ALARM` con el modo en `NORMAL`— así que
+     * ni [enLlamada] ni `isMusicActive` lo ven. Y vibra igual que una llamada.
+     *
+     * Medido en el Redmi el 20 de septiembre de 2026 a las 06:20, dentro de la
+     * franja de vigilia:
+     *
+     *     06:20:01 → 06:20:09  ocho segundos de 0,02 a 0,34 m/s² sin parar
+     *     06:20:07  VOZ HUMANA CERCA 82%   (el tono del despertador)
+     *     06:20:09  AUXILIO · «el suelo lleva tres segundos moviéndose»
+     *     06:20:09  nadie ha reaccionado: se enciende todo sin esperar
+     *
+     * Le pasa a cualquiera que ponga despertador, todas las mañanas, y dispara
+     * la alarma entera en vez de preguntar.
+     *
+     * No hace falta saber de quién es el sonido: basta saber que no es
+     * nuestro, y eso se sabe porque cuando lo es estamos en [enAlarma] o
+     * [enRescate], que ya se miran aparte.
+     */
+    private fun sonandoAlarmaAjena(): Boolean {
+        if (enAlarma || enRescate) return false          // el que suena somos nosotros
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false
+        return try {
+            val am = getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return false
+            am.activePlaybackConfigurations.any {
+                when (it.audioAttributes.usage) {
+                    android.media.AudioAttributes.USAGE_ALARM,
+                    android.media.AudioAttributes.USAGE_NOTIFICATION_RINGTONE,
+                    android.media.AudioAttributes.USAGE_NOTIFICATION -> true
+                    else -> false
+                }
+            }
+        } catch (_: Exception) { false }
+    }
 
     private fun enLlamada(): Boolean = try {
         when ((getSystemService(Context.AUDIO_SERVICE) as? AudioManager)?.mode) {
