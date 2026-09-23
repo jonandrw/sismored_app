@@ -643,6 +643,7 @@ class ServicioSos : Service() {
        por qué se preguntaba. */
     private var sucesoSacudida = false
     private var sucesoFuerte = false
+    private var sucesoSostenida = false
 
     /** Cual de los dos terminos puso `sacudidaFuerte`. Solo para el registro.
      *  Se evaluan los dos SIEMPRE: con `||` el segundo no se calcularia cuando
@@ -1717,6 +1718,7 @@ class ServicioSos : Service() {
         if (sucesoDesde > 0L) {
             if (temblando) sucesoSacudida = true
             if (System.currentTimeMillis() - sismo.ultimaFuerte < 60_000L) sucesoFuerte = true
+            if (sismo.sostenidoMs >= Opciones.VIGILIA_SOSTENIDO_MS) sucesoSostenida = true
             /* En g, que es como lo dice la maqueta y como se entiende: el motor
                mide en m/s2. Se queda el pico del suceso, no el de ahora. */
             val gAhora = sismo.sacudida / 9.81
@@ -1731,6 +1733,8 @@ class ServicioSos : Service() {
             /* Y si fue lo bastante grande como para no confundirse con una mano.
                Se acumula igual que el resto de la evidencia del suceso. */
             sacudidaFuerte = fuerteAhora(),
+            sacudidaSostenida = sucesoSostenida ||
+                sismo.sostenidoMs >= Opciones.VIGILIA_SOSTENIDO_MS,
             ratioStaLta = sismo.ratioStaLta,
             ondaP = sismo.hayOndaP,
             estruendo = sucesoEstruendo || estruendoAhora,
@@ -1875,6 +1879,7 @@ class ServicioSos : Service() {
                único trabajo es que los números se puedan creer. */
             "hace=${if (sismo.ultimaFuerte == 0L) "nunca"
                     else "${(System.currentTimeMillis() - sismo.ultimaFuerte) / 1000}s"}) " +
+            "sostenida=${pr.sacudidaSostenida} " +
             "estruendo=${pr.estruendo} malla=${pr.corroborada} alerta=${pr.alertaExterna} " +
             /* Para poder ver la bandera sin tener que fingir un terremoto: es
                la que decide si la baliza de rescate se escala o se calla. */
@@ -2565,7 +2570,8 @@ class ServicioSos : Service() {
         pararRampa()
         ultimaSacudidaG = 0.0
         sucesoDesde = 0L
-        sucesoSacudida = false; sucesoFuerte = false; sucesoEstruendo = false; sucesoCorroborada = false
+        sucesoSacudida = false; sucesoFuerte = false; sucesoSostenida = false
+        sucesoEstruendo = false; sucesoCorroborada = false
         sucesoRegimen = Postura.Regimen.DESCONOCIDO
         pasosAlSuceso = -1L
         preguntaVencida = false

@@ -149,10 +149,14 @@ object Cascada {
          * separe; es el límite del acelerómetro de un teléfono, no un ajuste mal
          * puesto. Ver `Sismografo.CICLO_FUERTE`.
          *
-         * De ahí sale la regla de abajo, que es la única honesta: por encima de
-         * ese nivel el móvil va solo, y por debajo pide una segunda opinión.
+         * Por eso sola no basta: tiene que durar, o venir con una opinión de
+         * fuera. Ver [sismoConfirmado].
          */
         val sacudidaFuerte: Boolean = false,
+        /** El suelo se movió sin parar al menos `Opciones.VIGILIA_SOSTENIDO_MS`,
+         *  a cualquier hora. Lo único de este móvil que separa un terremoto de
+         *  un golpe en la mesa: un golpe no dura tres segundos. */
+        val sacudidaSostenida: Boolean = false,
         /** Frente de onda P primaria vertical detectado previamente (AUD-05). */
         val ondaP: Boolean = false,
         /** El micrófono ha oído un estruendo. */
@@ -280,6 +284,28 @@ object Cascada {
         override fun toString() = "$accion/$quien · $motivo"
     }
 
+    /**
+     * ¿Hubo un sismo de verdad? Una fuente de fuera —otro móvil, la alerta
+     * de Google, un catálogo oficial— o este móvil quieto en una superficie
+     * con el suelo moviéndose fuerte y tres segundos seguidos.
+     *
+     * **Es lo único que abre la pregunta y lo único que deja escalar el
+     * silencio.** Del 11 al 22 de septiembre de 2026 el Redmi preguntó 35
+     * veces de día sin un solo terremoto real, y entró 9 veces solo en modo
+     * rescate —una, con su dueño trabajando—. El silencio se leía como inconsciencia, cuando lo
+     * más probable es que no hubiera nadie cerca del móvil. De día quien está
+     * consciente siente el terremoto; lo que no puede hacer es confirmarlo
+     * si queda inconsciente, y eso es lo que decide esta función.
+     *
+     * Lo que se pierde, y es una decisión del autor: un terremoto corto y
+     * brusco, sin nadie más con la app cerca y sin alerta de fuera, ya no
+     * pregunta.
+     */
+    private fun sismoConfirmado(p: Pruebas): Boolean =
+        p.corroborada || p.alertaExterna || p.alertaCatalogo || p.sostenidaNocturna ||
+        p.socorroVecino > 0 ||
+        (p.sacudidaFuerte && p.sacudidaSostenida && p.regimen == Regimen.EN_REPOSO)
+
     fun decidir(p: Pruebas): Decision {
         /* ---- 1. Sin suceso, no hay cascada ----
            Esto solo es una puerta, y arregla los dos falsos que hoy pueden
@@ -366,28 +392,20 @@ object Cascada {
            segunda opinión tiene que venir de otro aparato. */
         val opinionAjena = p.corroborada || p.alertaExterna
 
-        /* Y una sacudida fuerte SOLA sigue siendo creíble —si no, un terremoto
-           de verdad sin ningún vecino con la app no dispararía nada— pero de
-           aquí sale ya solo la pregunta silenciosa, nunca la sirena. Eso se
-           decide más abajo. */
+        /* Una sacudida fuerte SOLA ya no basta: también tiene que durar, y
+           con el móvil en reposo. Ver [sismoConfirmado]. */
         /* Y si YA se pregunto, el terremoto no esta en duda: la puerta sirve
            para decidir si se ABRE un suceso, no para volver a juzgarlo cuando ya
            esta abierto. Sin esto, el derrumbe con el movil despedido y la voz
            junto al movil se caian aqui —lo caza el autotest— y era peor que el
            fallo que se venia a arreglar: perder a alguien que se oye debajo del
            escombro. */
-        val creible = when {
-            p.preguntado || p.contestado -> true
-            p.sacudidaFuerte -> true
-            /* La onda P NO cuenta como segunda opinión. Sale del mismo
-               acelerómetro que la sacudida, solo que de otra banda: dos lecturas
-               del mismo sensor no son dos testigos. Medido el 8 de septiembre de
-               2026 en un Huawei STK-LX3 quieto sobre una mesa — 0,34 m/s², ciclo
-               del 7 %, «P-wave true»— la app preguntó «¿estás bien?» sin que
-               hubiera pasado nada. Se queda como dato en el registro, no como
-               prueba en la decisión. */
-            else -> opinionAjena
-        }
+        /* La onda P NO cuenta. Sale del mismo acelerómetro que la sacudida,
+           solo que de otra banda: dos lecturas del mismo sensor no son dos
+           testigos. Medido el 8 de septiembre de 2026 en un Huawei STK-LX3
+           quieto sobre una mesa — 0,34 m/s², ciclo del 7 %, «P-wave true»— la
+           app preguntó «¿estás bien?» sin que hubiera pasado nada. */
+        val creible = p.preguntado || p.contestado || sismoConfirmado(p)
         /* El aviso discreto es la respuesta a «ha temblado cerca y aquí casi no
            se ha notado», y eso solo lo puede decir un catálogo oficial.
            Antes lo decidía el propio acelerómetro con STA/LTA >= 10x, y el 16 de
@@ -532,7 +550,10 @@ object Cascada {
 
         /* ---- 5. Nadie ha contestado ----
            A partir de aquí se enciende la baliza, y el rótulo importa tanto como
-           la acción. */
+           la acción. Pero solo si hubo un sismo de verdad: sin eso, que nadie
+           conteste quiere decir que no hay nadie cerca. Ver [sismoConfirmado]. */
+        if (!sismoConfirmado(p)) return Decision(Accion.NADA, Quien.NADIE,
+            "nadie ha contestado y nada confirma un sismo: se cierra en silencio")
         if (p.golpesCerca) return Decision(Accion.AUXILIO, Quien.PERSONA,
             "no contesta y se oye a alguien golpeando junto al móvil")
         /* Mismo AUXILIO, pero sin prometer que hay alguien: el clasificador
@@ -596,13 +617,19 @@ object Cascada {
             Triple("sacudida floja con alerta de Google", Accion.AVISAR,
                 Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, alertaExterna = true,
                     msDesdeInteraccion = 6 * 3600_000L)),
-            /* Antes esto era AVISAR: sirena con un solo sensor, y el propio
-               comentario de `sacudidaFuerte` dice que a ese nivel un empujon en
-               la mesa da el mismo numero. Sigue siendo creible —se pregunta—
-               pero en silencio. */
-            Triple("sacudida FUERTE, va sola, sin nadie que la confirme", Accion.PREGUNTAR,
+            /* Fue AVISAR, luego PREGUNTAR, y ahora nada: a ese nivel un empujón
+               en la mesa da el mismo número, y de ahí salían las 35 preguntas
+               diurnas. Tiene que durar. Ver [sismoConfirmado]. */
+            Triple("sacudida FUERTE, va sola, sin nadie que la confirme", Accion.NADA,
                 Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true,
                     msDesdeInteraccion = 6 * 3600_000L)),
+            Triple("sacudida FUERTE y tres segundos seguidos, en la mesa", Accion.PREGUNTAR,
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true,
+                    sacudidaSostenida = true, msDesdeInteraccion = 6 * 3600_000L)),
+            /* Y durar no basta con el móvil encima: andar también dura. */
+            Triple("sacudida FUERTE y sostenida con el móvil encima", Accion.NADA,
+                Pruebas(regimen = Regimen.ENCIMA, sacudida = true, sacudidaFuerte = true,
+                    sacudidaSostenida = true)),
             Triple("sacudida FUERTE y la malla lo confirma: ahi si suena", Accion.AVISAR,
                 Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true,
                     corroborada = true, msDesdeInteraccion = 6 * 3600_000L)),
@@ -616,7 +643,7 @@ object Cascada {
                silencio. La sirena pide una opinion de fuera del telefono, porque
                a este nivel un empujon en la mesa da el mismo numero. */
             Triple("dormida en un 5º, sacudida fuerte y nadie que la confirme", Accion.PREGUNTAR,
-                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true,
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true, sacudidaSostenida = true,
                     msDesdeInteraccion = 6 * 3600_000L)),
             Triple("dormida en un 5º y la malla lo confirma", Accion.AVISAR,
                 Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true,
@@ -625,12 +652,12 @@ object Cascada {
                delante mirándolo, y la sirena saltando a la vez que la pregunta.
                «En reposo» y «dormida» no son lo mismo. */
             Triple("terremoto con el móvil en la mesa y tú delante", Accion.PREGUNTAR,
-                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true,
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true, sacudidaSostenida = true,
                     msDesdeInteraccion = 30_000L)),
             /* Y sin dato de interacción se avisa igual: no saber no puede
                costarle la sirena a quien duerme. */
             Triple("terremoto sin saber cuándo lo tocó", Accion.PREGUNTAR,
-                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true)),
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true, sacudidaSostenida = true)),
             /* Este caso y el del bolsillo son EL MISMO dato: encima, sacudida y
                ruido. No hay forma de separarlos, asi que hay que elegir cual se
                pierde. Se pierde este: con el movil encima la persona esta
@@ -655,10 +682,10 @@ object Cascada {
             /* Y el mismo silencio con alguien delante NO despierta a nadie: si
                tocaste el movil hace un minuto, estas ahi. */
             Triple("no contesto pero acaba de usar el móvil", Accion.BALIZA,
-                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true,
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true, sacudidaSostenida = true,
                     preguntado = true, quietoMs = 300_000L, msDesdeInteraccion = 60_000L)),
             Triple("dormida, no contesta y no anda", Accion.DESPERTAR,
-                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true,
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true, sacudidaSostenida = true,
                     preguntado = true, pasosDespues = 0, quietoMs = 300_000L)),
             /* El tirón del cable del 17-09: disparo con el móvil aún clasificado
                en reposo, nadie contestó porque no había a quién preguntar, y a
@@ -668,26 +695,33 @@ object Cascada {
                 Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true,
                     preguntado = true, quietoMs = 300_000L, manoDespues = true)),
             Triple("derrumbe y el móvil sale despedido", Accion.BALIZA,
-                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, estruendo = true,
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true, sacudidaSostenida = true, estruendo = true,
                     caidaImpacto = true, preguntado = true, quietoMs = 300_000L)),
             Triple("derrumbe y se la oye golpear junto al móvil", Accion.AUXILIO,
-                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, estruendo = true,
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true, sacudidaSostenida = true, estruendo = true,
                     preguntado = true, golpesCerca = true)),
             /* Un grito enciende la baliza igual, pero el rótulo baja: cuatro
                de siete sirenas de la biblioteca se leen como GRITO. */
             Triple("derrumbe y un grito que podría ser una sirena", Accion.AUXILIO,
-                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, estruendo = true,
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true, sacudidaSostenida = true, estruendo = true,
                     preguntado = true, gritoCerca = true)),
             /* El caso de campo que falló: se preguntó, nadie contestó, y salió
                NADA. La cascada decidía bien; lo que se había perdido era la
                prueba —`temblando` dura un minuto y la pregunta también—. Aquí
-               queda escrito el invariante: preguntado y sin respuesta, con lo que
-               se vio, es BALIZA. Da igual que el móvil lo llevara encima. */
+               queda escrito el invariante: preguntado y sin respuesta, con un
+               sismo confirmado, es BALIZA. Da igual que el móvil lo llevara encima. */
             Triple("preguntó, nadie contestó, lo llevaba encima", Accion.BALIZA,
                 Pruebas(regimen = Regimen.ENCIMA, sacudida = true, estruendo = true,
-                    preguntado = true, pasosDespues = 0, quietoMs = 90_000L)),
-            Triple("sin contador de pasos y sin contestar", Accion.DESPERTAR,
+                    corroborada = true, preguntado = true, pasosDespues = 0, quietoMs = 90_000L)),
+            /* Y el invariante de al lado: sin sismo confirmado, el silencio no
+               escala. Es el modo rescate que se encendió solo con su dueño
+               trabajando: el móvil estaba quieto porque no había nadie cerca. */
+            Triple("preguntó por un golpe sin confirmar y nadie contestó", Accion.NADA,
                 Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true,
+                    preguntado = true, pasosDespues = 0, quietoMs = 300_000L,
+                    msDesdeInteraccion = 3600_000L)),
+            Triple("sin contador de pasos y sin contestar", Accion.DESPERTAR,
+                Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, sacudidaFuerte = true, sacudidaSostenida = true,
                     preguntado = true, pasosDespues = -1, quietoMs = 300_000L)),
 
             /* ---- la alerta de Google, que se SUMA y no sustituye ----
@@ -761,10 +795,10 @@ object Cascada {
         /* Dos comprobaciones sobre el rótulo, que es lo que lee el rescatista.
            Confundirlos manda a cavar donde solo hay un teléfono. */
         val despedido = decidir(Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, estruendo = true,
-            caidaImpacto = true, preguntado = true, quietoMs = 300_000L))
+            corroborada = true, caidaImpacto = true, preguntado = true, quietoMs = 300_000L))
         if (despedido.quien != Quien.MOVIL) { todo = false; partes.add("rótulo del móvil despedido FALLÓ") }
         val normal = decidir(Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true,
-            preguntado = true, quietoMs = 300_000L))
+            corroborada = true, preguntado = true, quietoMs = 300_000L))
         if (normal.quien != Quien.PERSONA_PROBABLE) { todo = false; partes.add("rótulo sin respuesta FALLÓ") }
 
         val txt = partes.joinToString(" | ")
