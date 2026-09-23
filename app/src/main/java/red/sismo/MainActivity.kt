@@ -2173,6 +2173,7 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<View>(R.id.btn_fsi_android)?.setOnClickListener { abrirPermisoPantallaCompleta() }
         findViewById<View>(R.id.btn_fsi_miui)?.setOnClickListener { abrirPermisosDelFabricante() }
+        findViewById<View>(R.id.btn_autoarranque)?.setOnClickListener { abrirInicioAutomatico() }
 
         findViewById<View>(R.id.btn_perfil_tranquilo)?.setOnClickListener {
             cambiarPerfilEntorno(Opciones.PerfilEntorno.TRANQUILO)
@@ -3483,6 +3484,8 @@ class MainActivity : AppCompatActivity() {
             if (intentPantallaCompleta() != null && !pantallaCompletaOk) View.VISIBLE else View.GONE
         findViewById<View>(R.id.btn_fsi_miui)?.visibility =
             if (hayFabricante) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.aviso_autoarranque)?.visibility =
+            if (inicioAutomaticoDenegado() == true) View.VISIBLE else View.GONE
 
         val faltan = listOf(micOk, bleOk, camOk, ubiOk).count { !it }
         findViewById<View>(R.id.banner_falta_permiso)?.visibility =
@@ -3616,6 +3619,27 @@ class MainActivity : AppCompatActivity() {
                 .getRunningServices(Int.MAX_VALUE)
                 .any { it.service.className == ServicioSos::class.java.name }
         } catch (_: Exception) { true }
+    }
+
+    /**
+     * ¿Tiene MIUI/HyperOS denegado el «Inicio automático»? null si no se sabe.
+     *
+     * Denegado, al limpiar recientes el sistema mata el servicio y bloquea
+     * tanto su relanzamiento como la alarma del vigilante: medido en el Redmi
+     * el 22 de septiembre de 2026, con la exención de batería concedida. No es
+     * API pública —es la operación 10008 de MIUI, la que `appops` enseña como
+     * `MIUIOP(10008)`—, así que solo se pregunta en Xiaomi y cualquier fallo
+     * es «no se sabe», nunca «está bien».
+     */
+    private fun inicioAutomaticoDenegado(): Boolean? {
+        if (!Build.MANUFACTURER.equals("Xiaomi", ignoreCase = true)) return null
+        return try {
+            val ao = getSystemService(android.app.AppOpsManager::class.java) ?: return null
+            val modo = android.app.AppOpsManager::class.java.getMethod("checkOpNoThrow",
+                Int::class.javaPrimitiveType, Int::class.javaPrimitiveType, String::class.java)
+                .invoke(ao, 10008, applicationInfo.uid, packageName) as Int
+            modo != android.app.AppOpsManager.MODE_ALLOWED
+        } catch (_: Exception) { null }
     }
 
     /** El ajuste de «inicio automático» de MIUI/HyperOS, y si no existe, la

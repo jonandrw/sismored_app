@@ -352,6 +352,9 @@ Deténla con el botón DETENER o pulsando una vez el volumen. Y comunícalo en e
     <string name="diario_importante">Lo importante · %1$d</string>
     <string name="diario_todo">Todo · %1$d</string>
     <string name="diario_vacio">&gt; nada en siete días</string>
+    <string name="auto_titulo">Si cierras la app, deja de vigilar</string>
+    <string name="auto_texto">El «Inicio automático» está desactivado. Sin él, al limpiar las apps recientes el sistema para SismoRed y no deja que vuelva sola.</string>
+    <string name="auto_btn">ACTIVAR INICIO AUTOMÁTICO</string>
     <string name="vecino_largo">Otro móvil con SismoRed ha detectado movimiento peligroso cerca de ti y está pidiendo ayuda. Este móvil no ha notado nada: el aviso viene de fuera.\n\nAbre la app y usa BUSCAR para acercarte a la señal. Si aquí también hay daños, usa el botón de pánico.</string>
 
     <string name="lbl_autor">Autor</string>
