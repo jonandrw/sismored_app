@@ -70,9 +70,12 @@ solo se ha comprobado la consola):
    de fuera, o fuerte + 3 s seguidos en reposo— decide si se pregunta y si el
    silencio escala; sin ello se cierra en silencio. Falta verla en campo: un
    golpe en la mesa de día no debe preguntar.
-5. Siguiente: aviso del «Inicio automático» de HyperOS (`appops` 10008), publicar
-   la 0.3 (`versionCode`, `api/version.json`, APK) y que la web avise de la
-   versión nueva.
+5. **0.3 publicada el 22 sep** (etiqueta `v0.3`, versionCode 3): GitHub Release
+   con el APK —lo que leen las 0.1— y sismored.app (`api/version.json` + aviso en
+   la portada) —lo que leen las 0.2 desde el vigilante—. Misma firma que la 0.2.
+   Las compilaciones de depuración ya no enseñan el aviso de versión.
+6. Pendiente de campo: arrastrar el riel del Registro, el golpe en la mesa de día
+   que no debe preguntar, el despertador de las 6:20 y la llamada de 3 minutos.
 
 ---
 
