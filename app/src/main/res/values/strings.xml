@@ -673,7 +673,7 @@ Es la única forma de comprobar el tramo que no se puede ensayar de otra manera.
     <string name="det_sonido">DETECTOR DE SONIDO</string>
     <string name="det_oir">Escuchar el entorno</string>
     <string name="det_oir_sub">Derrumbes, gritos, voz y golpes</string>
-    <string name="det_sin_micro">SIN MICRÓFONO</string>
+    <string name="det_sin_micro">SOLO EN ALARMA O RESCATE</string>
     <string name="det_escuchando">ESCUCHANDO</string>
     <string name="det_nunca">nunca</string>
 

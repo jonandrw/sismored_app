@@ -56,7 +56,6 @@ class ServicioSos : Service() {
         /** EMITIR ALERTA AHORA: manda el tono de alerta a los móviles que oigan. */
         const val ACCION_MALLA_ALERTA = "red.sismo.MALLA_ALERTA"
         /** ESCUCHAR ENTORNO: los cinco detectores, aparte de la malla. */
-        const val ACCION_ESCUCHA_CONMUTAR = "red.sismo.ESCUCHA_CONMUTAR"
         /** Emisión interna para que la pantalla pinte lo que va pasando en la malla. */
         const val ACCION_REGISTRO = "red.sismo.REGISTRO"
         /** Emisión interna: la pantalla tiene que dar un destello blanco. */
@@ -1001,7 +1000,6 @@ class ServicioSos : Service() {
             ACCION_OPCIONES -> aplicarOpciones()
             ACCION_MALLA_CONMUTAR -> conmutarMalla()
             ACCION_MALLA_ALERTA -> emitirAlertaMalla()
-            ACCION_ESCUCHA_CONMUTAR -> conmutarEscucha()
             ACCION_MARCAR -> marcar()
             ACCION_LLAMAR -> llamar()
             /* El progreso va solo a la pantalla y el resultado también al
@@ -1234,7 +1232,6 @@ class ServicioSos : Service() {
     /** Si el usuario las apaga a mano, no pueden volver solas en el siguiente
      *  `onStartCommand` — que llega con cada botón que se pulsa. */
     private var mallaApagadaAMano = false
-    private var escuchaApagadaAMano = false
 
     /** Hemos soltado el micrófono porque otra app lo quería. */
     private var micCedido = false
@@ -1298,42 +1295,27 @@ class ServicioSos : Service() {
 
     /* La escucha forense y la malla comparten micrófono pero no interruptor:
        `Microfono` cuenta usuarios, así que se puede apagar una sin dejar sorda a
-       la otra. Y hacen falta por separado — alguien puede querer la malla toda
-       la noche y los cinco detectores solo mientras esté atrapado. */
+       la otra. La malla escucha siempre; los cinco detectores, solo mientras
+       haya alguien que pueda estar atrapado. */
     /**
      * Decide si los detectores de audio deben estar corriendo, y lo aplica.
      *
      * La malla NO pasa por aquí: se queda escuchando siempre. Trabaja en
      * 16-18 kHz, donde ni la música ni una voz tienen energía, y apagarla
-     * dejaría a este móvil sordo a la alerta del de al lado. Lo que se apaga
-     * son los detectores caros —estruendo, grito, voz, tono—, que son los que
-     * se comen la CPU y los que de día no sirven para nada.
+     * dejaría a este móvil sordo a la alerta del de al lado.
      *
-     * Medido: el micrófono abierto y su procesado fueron el 53 % del consumo
-     * de aplicaciones en un día, con los sensores de movimiento en 0,03.
-     *
-     * Las cuatro reglas, en orden de mando:
-     *
-     *  1. **Alarma o rescate: encendidos siempre.** Aunque sea mediodía y
-     *     aunque suene música. Es cuando hay que oír golpes bajo el escombro,
-     *     y quedarse sordo ahí sería el único fallo que no se puede permitir.
-     *  2. **Apagados a mano: apagados.** La decisión del usuario manda.
-     *  3. **Con audio sonando: apagados.** Con música o un vídeo, lo único que
-     *     producen son falsos — una noche dieron 26 gritos de auxilio, todos
-     *     de la música.
-     *  4. **Si no, solo con la vigilia armada.** De día, en reposo, el oído
-     *     no aporta nada que el acelerómetro no tenga.
+     * **Los detectores —estruendo, grito, voz, tono— solo en alarma o
+     * rescate**, que es cuando hay que oír golpes y voces bajo el escombro.
+     * Fuera de ahí no aportan nada y cuestan mucho. Del 11 al 22 de septiembre
+     * de 2026, con ellos encendidos en la vigilia nocturna: 9.107 detecciones y
+     * ninguna alarma útil; un timbre de llamada leído como grito de auxilio
+     * llegó a avisar a los vecinos. La cascada ya no los usa como segunda
+     * opinión, y la vigilia la decide el acelerómetro. Y en consumo, el
+     * micrófono con su procesado fue el 53 % del de la app en un día.
      */
     private fun ajustarEscucha() {
         val e = escucha ?: return
-        val emergencia = enAlarma || enRescate
-        val debe = when {
-            emergencia -> true
-            micCedido -> false                 // se lo hemos dejado a otra app
-            escuchaApagadaAMano -> false
-            sonandoAudio() -> false
-            else -> vigiliaArmadaAqui
-        }
+        val debe = enAlarma || enRescate
         if (debe == e.escuchando) return
         if (debe) arrancarEscucha() else {
             e.parar()
@@ -1341,18 +1323,8 @@ class ServicioSos : Service() {
         }
     }
 
-    /** ¿Está el móvil reproduciendo algo? Música, un vídeo. O sonando el teléfono. */
-    private fun sonandoAudio(): Boolean = try {
-        val am = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-        am?.isMusicActive == true || enLlamada()
-    } catch (_: Exception) { false }
-
     /**
      * El teléfono está sonando, o hay una llamada en curso.
-     *
-     * **Esto lo decía el comentario de [sonandoAudio] y el código no lo hacía**:
-     * `isMusicActive` mira el canal de música y un timbre va por el de llamada,
-     * así que una llamada entrante pasaba entera por debajo de la puerta.
      *
      * Lo que cuesta se midió el 18 de septiembre de 2026 a las 13:51, con la
      * vigilia armada y los dos móviles en la mesa:
@@ -1468,21 +1440,6 @@ class ServicioSos : Service() {
             }
             oyeEscuchando = true
             oyeDesde = System.currentTimeMillis()
-        }
-    }
-
-    private fun conmutarEscucha() {
-        val e = escucha ?: return
-        if (e.escuchando) {
-            escuchaApagadaAMano = true
-            e.parar()
-            oyeEscuchando = false
-            oyeDesde = 0
-            anotar("escucha del entorno apagada a mano")
-        } else {
-            escuchaApagadaAMano = false
-            arrancarEscucha()
-            anotar(if (e.escuchando) "escucha del entorno activa" else "sin micrófono para escuchar el entorno")
         }
     }
 
@@ -2748,6 +2705,12 @@ class ServicioSos : Service() {
      * justo encima. Luego vuelve al ritmo del modo en que esté. Y se vibra y
      * se destella aunque la alarma esté silenciada — si quien está debajo está
      * consciente, tiene que saber que le han oído.
+     *
+     * **Contesta también quien no es víctima**, y es a propósito: es el caso
+     * del enterrado cuyo móvil nunca llegó a disparar, y que solo aparece si
+     * quien busca pasa por encima y llama. Pero solo esos tres minutos. Antes
+     * se quedaba emitiendo hasta DETENER, y el móvil de quien estaba al lado
+     * del que busca se convertía en una baliza falsa.
      */
     private fun respuestaReforzada() {
         anotar("TE ESTÁN BUSCANDO · alguien ha llamado desde arriba")
@@ -2758,7 +2721,13 @@ class ServicioSos : Service() {
             malla?.emitirEnBucle(miSalto(), RESPUESTA_MS)
             finRespuesta?.let { reloj.removeCallbacks(it) }
             val fin = Runnable {
-                try { malla?.emitirEnBucle(miSalto(), periodoBaliza()) } catch (_: Exception) {}
+                try {
+                    if (enAlarma || enRescate) malla?.emitirEnBucle(miSalto(), periodoBaliza())
+                    else {
+                        malla?.pararEmision()
+                        anotar("tres minutos contestando a quien busca: me callo hasta que vuelva a llamar")
+                    }
+                } catch (_: Exception) {}
             }
             finRespuesta = fin
             reloj.postDelayed(fin, RESPUESTA_DURA_MS)
@@ -3357,7 +3326,8 @@ class ServicioSos : Service() {
                             Opciones.VIGILIA_REPOSO_MIN_MS
                     quietoParaVigilia = sismo.quietoDesdeHace()
                     pantallaHace = postura?.interaccionHace() ?: Long.MAX_VALUE
-                    val m = escucha?.motorCerca == true
+                    // con la escucha parada, `motorCerca` se queda con su último valor
+                    val m = escucha?.let { it.escuchando && it.motorCerca } == true
                     if (m && !motorSonando) motorDesde = System.currentTimeMillis()
                     if (!m) motorDesde = 0L
                     motorSonando = m
