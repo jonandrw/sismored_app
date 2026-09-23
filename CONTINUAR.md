@@ -58,8 +58,12 @@ solo se ha comprobado la consola):
    grabe (salvo en emergencia). Una transcripción en directo deja la malla
    sorda toda la noche; la alternativa es recuperarlo dentro de la franja de
    vigilia a costa de estorbar a esa app.
-2. **Decisión del autor:** un móvil que oye la LLAMADA de quien busca empieza a
-   emitir baliza aunque no sea víctima, y no para hasta DETENER.
+2. **Decidido y aplicado (`4003f8d`):** los detectores de sonido solo en alarma
+   o rescate (cierra la decisión abierta 2). Precio asumido: se pierde el veto
+   de motor de la vigilia (`motorCerca`, nunca calibrado); si un camión dispara
+   de noche, la vía es distinguirlo por la frecuencia en el acelerómetro, no
+   volver a encender el micrófono. Y quien oye la LLAMADA sin ser víctima
+   contesta solo 3 minutos.
 3. Estructura (revisor de calidad), por partes: `Vigilia.kt`, estado de la
    notificación, rol ante una baliza, una sola puerta `movimientoAjeno`.
 4. Decisiones abiertas 1 y 2 de la sección siguiente, sin tocar.
