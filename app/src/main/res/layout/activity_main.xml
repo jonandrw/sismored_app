@@ -262,6 +262,62 @@
                         android:text="@string/detener"
                         android:visibility="gone" />
 
+                    <!-- Versión nueva. Debajo del pánico y nunca encima: nada puede
+                         empujar ese botón. Lo rellena Actualizacion.pendiente. -->
+                    <LinearLayout
+                        android:id="@+id/aviso_version"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:background="@drawable/tarjeta"
+                        android:orientation="vertical"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp"
+                        android:paddingTop="14dp"
+                        android:paddingBottom="14dp"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:id="@+id/aviso_version_tit"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/saira"
+                            android:letterSpacing="0.03"
+                            android:textAllCaps="true"
+                            android:textColor="@color/gr"
+                            android:textSize="17sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/aviso_version_notas"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:ellipsize="end"
+                            android:fontFamily="@font/barlow"
+                            android:lineSpacingMultiplier="1.3"
+                            android:maxLines="3"
+                            android:textColor="@color/lectura"
+                            android:textSize="13sp" />
+
+                        <TextView
+                            android:id="@+id/btn_aviso_version"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:background="@drawable/btn_outline"
+                            android:fontFamily="@font/mono"
+                            android:gravity="center"
+                            android:letterSpacing="0.08"
+                            android:minHeight="48dp"
+                            android:paddingTop="13dp"
+                            android:paddingBottom="13dp"
+                            android:text="@string/version_descargar"
+                            android:textColor="@color/gr"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
                     <!-- Fila de Accesos Rápidos: Modo rescate y Ficha médica -->
                     <LinearLayout
                         android:layout_width="match_parent"

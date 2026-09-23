@@ -19,8 +19,8 @@ import kotlin.concurrent.thread
 /**
  * Avisa de que hay una versión nueva. Nada más.
  *
- * No descarga ni instala: enseña una notificación y, al tocarla, abre la
- * descarga en el navegador. Instalar un APK a espaldas de nadie es justo lo que
+ * No descarga ni instala: enseña una notificación y un aviso en Inicio, y al
+ * tocarlos abre la descarga en el navegador. Instalar un APK a espaldas de nadie es justo lo que
  * esta app no puede permitirse hacer.
  *
  * Pregunta a dos sitios, en este orden:
@@ -51,7 +51,37 @@ object Actualizacion {
     private const val TAG = "SismoRed"
 
     /** Lo que se le enseña a quien lo tiene instalado. */
-    private data class Version(val nombre: String, val codigo: Int, val url: String)
+    data class Version(val nombre: String, val codigo: Int, val url: String, val notas: String = "")
+
+    /**
+     * La versión nueva que se encontró y aún no está instalada, o null.
+     *
+     * La lee Inicio para enseñar el aviso dentro de la app: la notificación
+     * se quita con un dedo y no vuelve hasta el día siguiente.
+     */
+    fun pendiente(ctx: Context): Version? {
+        val p = ctx.getSharedPreferences("sismored", Context.MODE_PRIVATE)
+        val v = Version(
+            p.getString("nueva_nombre", "") ?: "", p.getInt("nueva_codigo", 0),
+            p.getString("nueva_url", "") ?: "", p.getString("nueva_notas", "") ?: ""
+        )
+        if (v.url.isBlank() || !esNueva(ctx, v)) return null
+        return v
+    }
+
+    private fun esNueva(ctx: Context, v: Version): Boolean {
+        val mia = try {
+            ctx.packageManager.getPackageInfo(ctx.packageName, 0).let { pi ->
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) pi.longVersionCode.toInt()
+                else @Suppress("DEPRECATION") pi.versionCode
+            }
+        } catch (_: Exception) { return false }
+        /* Con `codigo` a 0 el origen no sabía el versionCode —GitHub solo da
+           la etiqueta—, así que se compara el nombre. Peor, pero es lo que
+           hay, y como mucho avisa de una versión que ya tienes. */
+        return if (v.codigo > 0) v.codigo > mia
+               else v.nombre.isNotBlank() && v.nombre != nombreInstalado(ctx)
+    }
 
     /**
      * Mira si hay algo más nuevo, como mucho una vez al día.
@@ -62,7 +92,11 @@ object Actualizacion {
      * una app de emergencia. Los dos pasan por la misma puerta de 24 h, así que
      * los pulsos de más no cuestan nada.
      */
-    fun comprobar(ctx: Context) {
+    fun comprobar(ctx: Context, alEncontrar: (() -> Unit)? = null) {
+        /* En Play actualiza la tienda, y sus normas no dejan que una app se
+           actualice por otra vía: mandar a descargar un APK desde aquí es
+           motivo de retirada. */
+        if (BuildConfig.FLAVOR == "play") return
         val p = ctx.getSharedPreferences("sismored", Context.MODE_PRIVATE)
         val ahora = System.currentTimeMillis()
         if (ahora - p.getLong("ultimaComprobacionUpdate", 0L) < CADA_MS) return
@@ -82,19 +116,13 @@ object Actualizacion {
                 Log.d(TAG, "actualizacion: GitHub no contesta (${e.message})"); null
             } ?: return@thread
 
-            val mia = try {
-                ctx.packageManager.getPackageInfo(ctx.packageName, 0).let { pi ->
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) pi.longVersionCode.toInt()
-                    else @Suppress("DEPRECATION") pi.versionCode
-                }
-            } catch (_: Exception) { return@thread }
-
-            /* Con `codigo` a 0 el origen no sabía el versionCode —GitHub solo da
-               la etiqueta—, así que se compara el nombre. Peor, pero es lo que
-               hay, y como mucho avisa de una versión que ya tienes. */
-            val hayNueva = if (v.codigo > 0) v.codigo > mia
-                           else v.nombre.isNotBlank() && v.nombre != nombreInstalado(ctx)
-            if (hayNueva) avisar(ctx, v)
+            if (!esNueva(ctx, v)) return@thread
+            p.edit()
+                .putString("nueva_nombre", v.nombre).putInt("nueva_codigo", v.codigo)
+                .putString("nueva_url", v.url).putString("nueva_notas", v.notas)
+                .apply()
+            avisar(ctx, v)
+            alEncontrar?.invoke()
         }
     }
 
@@ -116,7 +144,8 @@ object Actualizacion {
         return Version(
             o.optString("versionName", ""),
             o.optInt("versionCode", 0),
-            if (url.startsWith("http")) url else SITIO + url
+            if (url.startsWith("http")) url else SITIO + url,
+            o.optString("notas", "")
         )
     }
 
@@ -134,7 +163,7 @@ object Actualizacion {
                 url = a.optString("browser_download_url", url); break
             }
         }
-        return Version(etiqueta, 0, url)
+        return Version(etiqueta, 0, url, o.optString("body", ""))
     }
 
     private fun leer(url: String): String {

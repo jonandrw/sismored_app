@@ -156,7 +156,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         op = Opciones(this)
-        Actualizacion.comprobar(this)
+        Actualizacion.comprobar(this) { runOnUiThread { mirarVersion() } }
+        montarAvisoVersion()
         if (Altavoz.audio == null) {
             Altavoz.audio = getSystemService(android.content.Context.AUDIO_SERVICE) as? android.media.AudioManager
         }
@@ -285,6 +286,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        mirarVersion()
         ContextCompat.registerReceiver(
             this, receptor, IntentFilter(ServicioSos.ACCION_REGISTRO),
             ContextCompat.RECEIVER_NOT_EXPORTED
@@ -1395,8 +1397,41 @@ class MainActivity : AppCompatActivity() {
         pintarVigilia()
     }
 
-    /** Se repinta con el tic de medio segundo: un contador que no baja
-     *  no es un contador, y este dice cuánto falta para estar armada. */
+    /* ---------- versión nueva ---------- */
+
+    /** Se lee al volver a la app y cuando la comprobación encuentra algo, no
+     *  en cada tic: mirar la versión instalada es una llamada al sistema. */
+    private var versionPendiente: Actualizacion.Version? = null
+
+    private fun mirarVersion() {
+        versionPendiente = try { Actualizacion.pendiente(this) } catch (_: Exception) { null }
+        pintarAvisoVersion()
+    }
+
+    private fun montarAvisoVersion() {
+        findViewById<View>(R.id.btn_aviso_version)?.setOnClickListener {
+            val v = versionPendiente ?: return@setOnClickListener
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(v.url)))
+            } catch (_: Exception) {}
+        }
+    }
+
+    /** En alarma o rescate se esconde: ahí sobra todo lo que no sea pedir ayuda. */
+    private fun pintarAvisoVersion() {
+        val caja = findViewById<View>(R.id.aviso_version) ?: return
+        val v = versionPendiente
+        if (v == null || ServicioSos.enAlarma || ServicioSos.enRescate) {
+            caja.visibility = View.GONE; return
+        }
+        caja.visibility = View.VISIBLE
+        findViewById<TextView>(R.id.aviso_version_tit)?.text = getString(R.string.version_nueva, v.nombre)
+        findViewById<TextView>(R.id.aviso_version_notas)?.let {
+            it.text = v.notas
+            it.visibility = if (v.notas.isBlank()) View.GONE else View.VISIBLE
+        }
+    }
+
     /** Se repinta con el tic de medio segundo: un contador que no baja
      *  no es un contador, y este dice cuánto falta para estar armada. */
     private fun pintarVigilia() {
@@ -2281,6 +2316,7 @@ class MainActivity : AppCompatActivity() {
         if (enBienvenida) pintarBienvenida()
         val alarma = ServicioSos.enAlarma
         val rescate = ServicioSos.enRescate
+        pintarAvisoVersion()
 
         /* «Mantener activa»: en la web era un wake lock de pantalla; aquí es la
            pantalla de esta actividad, que es lo único que un servicio no puede
