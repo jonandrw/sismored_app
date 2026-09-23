@@ -1408,7 +1408,7 @@ class MainActivity : AppCompatActivity() {
         val icono = findViewById<android.widget.ImageView>(R.id.vig_icono)
 
         val h = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
-        val enVentana = h >= Opciones.VIGILIA_DESDE_H && h < Opciones.VIGILIA_HASTA_H
+        val enVentana = Opciones.enFranjaVigilia(h)
         val quieto = ServicioSos.quietoParaVigilia
         val pantallaHace = ServicioSos.pantallaHace
 

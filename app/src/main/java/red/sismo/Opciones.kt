@@ -409,6 +409,13 @@ class Opciones(ctx: Context) {
         val VIGILIA_DESDE_H: Int get() = if (pruebas) 0 else desdeH
         val VIGILIA_HASTA_H: Int get() = if (pruebas) 24 else hastaH
 
+        /** ¿Cae la hora [h] dentro de la franja? Una franja de 22 a 6 cruza la
+         *  medianoche, que es justo el caso del turno de noche. */
+        fun enFranjaVigilia(h: Int): Boolean {
+            val d = VIGILIA_DESDE_H; val a = VIGILIA_HASTA_H
+            return if (d <= a) h in d until a else h >= d || h < a
+        }
+
         /* Lo que ha elegido quien usa el móvil, con los valores de fábrica de
            partida. Estáticos y sincronizados al construir `Opciones`, igual que
            [pruebas], porque aquí no hay Context con el que mirar el disco. */

@@ -6,7 +6,7 @@
     <string name="detener">DETENER</string>
     <string name="bateria">PERMITIR QUE SIGA ACTIVA SIN BATERÍA</string>
     <string name="teclas">ACTIVAR EL ATAJO DE VOLUMEN</string>
-    <string name="desc_teclas">Pide ayuda con tres pulsaciones de volumen, aunque la pantalla esté bloqueada. No lee la pantalla ni otras apps: solo esas teclas.</string>
+    <string name="desc_teclas">Pide ayuda con tres pulsaciones de subir volumen, aunque la pantalla esté bloqueada. No lee la pantalla ni otras apps: solo esas teclas.</string>
     <string name="malla_apagada">MALLA APAGADA · falta el micrófono</string>
     <string name="panico_sub">ACTIVAR ALERTA EN TODA LA RED</string>
     <string name="diagnostico">Diagnóstico</string>
@@ -306,7 +306,7 @@
     <string name="ac_rot_permisos">POR QUÉ CADA PERMISO</string>
     <string name="ac_permisos"><b>Micrófono.</b> Para oír los avisos de otros móviles, reconocer un derrumbe o golpes, y confirmar expresiones de auxilio durante un sismo. No graba en disco ni transmite voz.
 
-<b>Accesibilidad.</b> Solo para enterarse de que pulsas el botón de volumen tres veces con la pantalla bloqueada. Es el único mecanismo de Android que recibe esas teclas con la pantalla apagada. SismoRed <i>no</i> lee el contenido de la pantalla, ni lo que escribes, ni la actividad de otras aplicaciones.
+<b>Accesibilidad.</b> Solo para enterarse de que pulsas el botón de subir volumen tres veces con la pantalla bloqueada. Es el único mecanismo de Android que recibe esas teclas con la pantalla apagada. SismoRed <i>no</i> lee el contenido de la pantalla, ni lo que escribes, ni la actividad de otras aplicaciones.
 
 <b>Bluetooth.</b> Para emitir la baliza que permite encontrarte y para buscarla cuando eres tú quien busca.
 
@@ -411,7 +411,7 @@ Deténla con el botón DETENER o pulsando una vez el volumen. Y comunícalo en e
     <string name="ob_pasos">Contador de pasos</string>
     <string name="ob_pasos_para">Para saber si sigues andando después de un terremoto, que es la señal de que estás bien. Se lee dentro del móvil y no sale de aquí.</string>
     <string name="ob_teclas">Atajo de volumen</string>
-    <string name="ob_teclas_para">Para pedir ayuda pulsando tres veces el botón de volumen, sin mirar la pantalla.</string>
+    <string name="ob_teclas_para">Para pedir ayuda pulsando tres veces el botón de subir volumen, sin mirar la pantalla.</string>
     <string name="paso1_t">Ficha rellena y volumen alto</string>
     <string name="paso1">Hazlo ahora: el volumen al máximo es lo que se oye desde fuera.</string>
     <string name="paso2_t">Deja la vigilancia encendida</string>

@@ -236,12 +236,15 @@ class Microfono(private val ctx: Context) {
             var modoAnterior = 0
             var saturado = false
             var tAviso = 0L
+            /* Muestras de la vuelta anterior que no llegaban a un SALTO. */
+            var resto = 0
             while (abierto) {
                 /* Se relee en cada vuelta: una alarma puede engancharse al
                    micrófono en mitad de la noche y a partir de ahí hay prisa. */
                 val pedir = tamanoLectura()
                 if (pedir != modoAnterior) {
                     modoAnterior = pedir
+                    resto = 0
                     Log.i(TAG, if (pedir > SALTO)
                         "microfono: solo la malla, leo $pedir muestras por siesta de $MS_SIESTA ms"
                         else "microfono: hay prisa (usuarios=$usuarios), leo de $SALTO en $SALTO")
@@ -269,14 +272,19 @@ class Microfono(private val ctx: Context) {
                         try { Thread.sleep(MS_SIESTA) } catch (_: InterruptedException) { break }
                         if (!abierto) break
                     }
-                    val n = try { r.read(bloque, 0, pedir, AudioRecord.READ_NON_BLOCKING) }
+                    val antes = resto
+                    val n = try { r.read(bloque, antes, pedir - antes, AudioRecord.READ_NON_BLOCKING) }
                             catch (e: Exception) { -1 }
                     if (n < 0) return@thread
-                    /* Múltiplo de SALTO: el resto se queda en el búfer del
-                       sistema y entra en la siguiente vuelta, que es justo lo
-                       que conserva la continuidad de la ventana deslizante. */
-                    leidas = (n / SALTO) * SALTO
-                    saturado = n >= pedir
+                    /* Múltiplo de SALTO, y el resto se guarda aquí delante del
+                       bloque para la vuelta siguiente. Una lectura no bloqueante
+                       ya lo ha sacado del búfer del sistema: dejarlo sin más era
+                       perder un trozo en cada vuelta y romper la ventana
+                       deslizante. */
+                    val hay = antes + n
+                    leidas = (hay / SALTO) * SALTO
+                    resto = hay - leidas
+                    saturado = n >= pedir - antes
                     if (saturado && System.currentTimeMillis() - tAviso > 10_000L) {
                         tAviso = System.currentTimeMillis()
                         Log.i(TAG, "microfono: no doy abasto, puede faltar audio")
@@ -301,12 +309,13 @@ class Microfono(private val ctx: Context) {
                     System.arraycopy(bloque, off, marco, N - SALTO, SALTO)
                     empujarAnillo(bloque, off, SALTO)
                     off += SALTO
-                    val tMarco = tFin - ((leidas - off).toLong() * 1000L) / sr
+                    val tMarco = tFin - ((leidas - off + resto).toLong() * 1000L) / sr
                     for (o in oyentes) {
                         // un oyente que falle no puede dejar sordos a los demás
                         try { o.onMarco(marco, tMarco) } catch (e: Exception) { Log.e(TAG, "oyente de microfono", e) }
                     }
                 }
+                if (resto > 0) System.arraycopy(bloque, leidas, bloque, 0, resto)
             }
         }
     }

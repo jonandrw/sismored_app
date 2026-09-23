@@ -145,7 +145,7 @@ class ServicioSos : Service() {
         fun enVigilia(op: Opciones): Boolean {
             if (!op.vigiliaNocturna) return false
             val h = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
-            return h >= Opciones.VIGILIA_DESDE_H && h < Opciones.VIGILIA_HASTA_H
+            return Opciones.enFranjaVigilia(h)
         }
         /**
          * Cuánto suelo moviéndose hace falta esta noche: tres segundos, u
@@ -581,8 +581,14 @@ class ServicioSos : Service() {
     private var linterna: Linterna? = null
     /** Baliza de radio: la que permite encontrarte desde arriba. */
     private var radio: Baliza? = null
-    /** Saltos que lleva recorridos la alerta que estamos propagando. 0 = nace aquí. */
+    /** Saltos que traía la alerta de la que nace NUESTRA alarma. 0 = nace aquí.
+     *  Se fija al entrar en alarma y no antes: puesto al oír la baliza, en quien
+     *  solo ayudaba se quedaba horas y todo lo que midiera después salía
+     *  «corroborado». */
     private var saltoEntrante = 0
+    /** Con qué salto emite este móvil su propia baliza. Nunca más de MAX_HOP:
+     *  el código siguiente ya es LLAMADA. */
+    private fun miSalto(): Int = (saltoEntrante + 1).coerceIn(1, MallaAcustica.MAX_HOP)
     private val reloj = Handler(Looper.getMainLooper())
 
     private var receptorOnline: ReceptorSismicoOnline? = null
@@ -591,6 +597,9 @@ class ServicioSos : Service() {
      *  ese dato. Ver [Cascada.Pruebas.socorroVecino]. */
     @Volatile private var socorroVecino = 0
     @Volatile private var socorroVecinoHasta = 0L
+    /** El salto del vecino que pide ayuda, o 0 si ya no hay ninguno en pie. */
+    private fun saltoDelVecino(): Int =
+        if (System.currentTimeMillis() < socorroVecinoHasta) socorroVecino else 0
 
     /* ---------- la cascada ----------
        El estado del suceso en curso. Todo esto es de un solo suceso: se pone en
@@ -787,7 +796,6 @@ class ServicioSos : Service() {
         mallaNivelesVivos = { malla?.niveles ?: mallaNiveles }
         malla = MallaAcustica(mic!!,
             onConfirmada = { hop ->
-                saltoEntrante = hop
                 /* Quien está buscando NO grita. Oír la baliza de la víctima a la
                    que te estás acercando dispararía la alarma completa del
                    rescatista —sirena, linterna, vibración— y entonces no oye los
@@ -1360,14 +1368,16 @@ class ServicioSos : Service() {
      *  - el timbre o una llamada en curso ([enLlamada]),
      *  - la sirena y la vibración de la alarma o del rescate,
      *  - **una baliza de la malla o un reenvío**, que son cuatro segundos de
-     *    tono a todo volumen por el mismo chasis donde está el sensor.
+     *    tono a todo volumen por el mismo chasis donde está el sensor,
+     *  - cualquier vibración que pida la app fuera de la alarma ([vibrar]).
      *
      * Al micrófono ya lo protegía la puerta anti-eco; al sismógrafo no lo
      * protegía nadie.
      */
     private fun altavozPropio(): Boolean =
         enLlamada() || sonandoAlarmaAjena() || enAlarma || enRescate ||
-        malla?.emitiendoAhora == true
+        malla?.emitiendoAhora == true ||
+        System.currentTimeMillis() < vibrandoHasta
 
     /**
      * Está sonando una alarma o un timbre que NO es nuestro: el despertador,
@@ -1389,16 +1399,18 @@ class ServicioSos : Service() {
      * Le pasa a cualquiera que ponga despertador, todas las mañanas, y dispara
      * la alarma entera en vez de preguntar.
      *
-     * No hace falta saber de quién es el sonido: basta saber que no es
-     * nuestro, y eso se sabe porque cuando lo es estamos en [enAlarma] o
-     * [enRescate], que ya se miran aparte.
+     * El sistema no dice de quién es cada reproductor (el uid llega
+     * anonimizado), así que se cuentan y se descuentan los nuestros. El que
+     * importa es el emisor de la malla: se queda abierto entre tramas y, sin
+     * descontarlo, cualquier reenvío dejaba el sismógrafo ciego hasta la
+     * siguiente alarma. Medido en el Redmi el 22 de septiembre de 2026.
      */
     private fun sonandoAlarmaAjena(): Boolean {
         if (enAlarma || enRescate) return false          // el que suena somos nosotros
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false
         return try {
             val am = getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return false
-            am.activePlaybackConfigurations.any {
+            val sonando = am.activePlaybackConfigurations.count {
                 when (it.audioAttributes.usage) {
                     android.media.AudioAttributes.USAGE_ALARM,
                     android.media.AudioAttributes.USAGE_NOTIFICATION_RINGTONE,
@@ -1406,6 +1418,7 @@ class ServicioSos : Service() {
                     else -> false
                 }
             }
+            sonando > (if (malla?.txAbierto == true) 1 else 0)
         } catch (_: Exception) { false }
     }
 
@@ -1733,7 +1746,7 @@ class ServicioSos : Service() {
             val gAhora = sismo.sacudida / 9.81
             if (gAhora > ultimaSacudidaG) ultimaSacudidaG = gAhora
             if (estruendoAhora) sucesoEstruendo = true
-            if (saltoEntrante > 0) sucesoCorroborada = true
+            if (saltoDelVecino() > 0) sucesoCorroborada = true
         }
         return Cascada.Pruebas(
             regimen = if (sucesoDesde > 0L) sucesoRegimen
@@ -1745,7 +1758,7 @@ class ServicioSos : Service() {
             ratioStaLta = sismo.ratioStaLta,
             ondaP = sismo.hayOndaP,
             estruendo = sucesoEstruendo || estruendoAhora,
-            corroborada = sucesoCorroborada || saltoEntrante > 0,
+            corroborada = sucesoCorroborada || saltoDelVecino() > 0,
             /* La alerta de fuera. Se suma a lo que mide el móvil, no lo
                sustituye: sola no abre nada, pero mientras esté en pie una
                sacudida ya no necesita que además se oiga el derrumbe. */
@@ -1763,12 +1776,10 @@ class ServicioSos : Service() {
                 sismo.sostenidoMs >= exigidoNocturno(sismo.sostenidoMs) &&
                 sismo.quietoAntesDeLaRacha >= Opciones.VIGILIA_REPOSO_MIN_MS &&
                 !sismo.hayMano &&
-                /* Aquí había un `!enLlamada()`. Sobra desde que
-                   [Sismografo.vibracionPropia] rompe la racha en origen con
-                   cualquier altavoz propio sonando: si el móvil se está
-                   sacudiendo a sí mismo, `sostenidoMs` ya vale cero y esta
-                   condición no puede cumplirse. Dos guardias para lo mismo
-                   solo sirven para que un día discrepen. Ver [altavozPropio]. */
+                /* La misma pregunta que rompe la racha, hecha en el instante de
+                   decidir: la racha se entera con hasta medio segundo de
+                   retraso. Ver [altavozPropio]. */
+                !altavozPropio() &&
                 (p == null || p.interaccionHace() > 30_000L),
             caidaImpacto = huboCaida,
             preguntado = preguntaVencida,
@@ -1962,6 +1973,10 @@ class ServicioSos : Service() {
      * existe una sirena que se enciende sola.
      */
     private fun preguntar(conRuido: Boolean, motivo: String) {
+        /* A la víctima no se le pregunta si está bien: ya lo ha dicho la
+           alarma. En el Huawei, el 22 de septiembre de 2026, salió «¿ESTÁS
+           BIEN?» encima de su propio pánico. */
+        if (enAlarma || enRescate) return
         cancelarWatchdogSuceso()
         val ahoraP = System.currentTimeMillis()
         if (preguntaHasta > ahoraP) return                          // ya está preguntada
@@ -2028,6 +2043,7 @@ class ServicioSos : Service() {
      * ninguno depende del otro.
      */
     private fun preguntarDiscreta(motivo: String) {
+        if (enAlarma || enRescate) return                  // ver [preguntar]
         cancelarWatchdogSuceso()
         val ahoraP = System.currentTimeMillis()
         if (preguntaHasta > ahoraP) return
@@ -2398,20 +2414,26 @@ class ServicioSos : Service() {
      *  sin tener que mirar, y no se confunde con la alarma propia. */
     private fun vibrarVecino() {
         if (!opciones.vibracion) return
-        try {
-            val patron = longArrayOf(0, 120, 120, 120, 120, 120, 300, 700)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrador?.vibrate(VibrationEffect.createWaveform(patron, -1))
-            } else {
-                @Suppress("DEPRECATION") vibrador?.vibrate(patron, -1)
-            }
-        } catch (_: Exception) {}
+        vibrar(longArrayOf(0, 120, 120, 120, 120, 120, 300, 700))
     }
 
     private fun vibrarLargo() {
         if (!opciones.vibracion) return
+        vibrar(longArrayOf(0, 800, 300, 800, 300, 800))
+    }
+
+    @Volatile private var vibrandoHasta = 0L
+
+    /**
+     * Una vibración sin repetición, avisando antes al sismógrafo: el motor
+     * está en el mismo chasis que el acelerómetro. Sin esto, quien recibía el
+     * aviso de un vecino medía su propia vibración como sacudida y pasaba a
+     * víctima. Ver [altavozPropio].
+     */
+    private fun vibrar(patron: LongArray) {
+        vibrandoHasta = System.currentTimeMillis() + patron.sum() + 300L
+        sismo.vibracionPropia = true
         try {
-            val patron = longArrayOf(0, 800, 300, 800, 300, 800)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 vibrador?.vibrate(VibrationEffect.createWaveform(patron, -1))
             } else {
@@ -2423,9 +2445,10 @@ class ServicioSos : Service() {
     private fun balizaSilenciosa(d: Cascada.Decision) {
         anotar("${Cascada.rotulo(d.quien)} · ${d.motivo}")
         if (enAlarma || enRescate) return
+        saltoEntrante = saltoDelVecino()
         try { emitirRadio(Baliza.ALARMA) } catch (_: Exception) {}
         try { fichaLan?.emitir(true); fichaLan?.escuchaFuerte(true) } catch (_: Exception) {}
-        try { malla?.emitirEnBucle(saltoEntrante + 1) } catch (_: Exception) {}
+        try { malla?.emitirEnBucle(miSalto()) } catch (_: Exception) {}
         /* Y se pasa a rescate directamente, sin la sirena de por medio: quien no
            contesta no va a apagarla, y diez minutos de sirena son una mordida
            seria a la batería que aquí no compra nada. */
@@ -2468,13 +2491,7 @@ class ServicioSos : Service() {
         /* Tres pulsos, no el SOS: esto es «viene un terremoto», no «hay alguien
            enterrado». Confundir los dos avisos en la mano es confundirlos en la
            cabeza. */
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                vibrador?.vibrate(VibrationEffect.createWaveform(
-                    longArrayOf(0, 400, 200, 400, 200, 400), -1))
-            else @Suppress("DEPRECATION")
-                vibrador?.vibrate(longArrayOf(0, 400, 200, 400, 200, 400), -1)
-        } catch (_: Exception) {}
+        vibrar(longArrayOf(0, 400, 200, 400, 200, 400))
         /* La vigilancia al mínimo mientras dure la ventana: si el terremoto llega
            de verdad, que no se pierda el primer segundo discutiendo el umbral. */
         try {
@@ -2579,6 +2596,7 @@ class ServicioSos : Service() {
            batería: se sigue retransmitiendo, pero no se enciende la sirena. */
         if (enRescate) { anotar("alerta recibida en modo rescate: se retransmite sin sirena"); return }
         enAlarma = true
+        saltoEntrante = saltoDelVecino()
         /* Se acabó lo de repetir para otros: ahora el que necesita la red es
            este móvil. */
         repetidor = false
@@ -2599,7 +2617,7 @@ class ServicioSos : Service() {
         /* Propagar es la mitad del sentido de la app: quien recibe la alerta la
            reemite con un salto más, y así la alerta llega más lejos que el grito
            de nadie. Se emite en bucle mientras dure la alarma. */
-        if (todo || opciones.baliza) try { malla?.emitirEnBucle(saltoEntrante + 1) } catch (_: Exception) {}
+        if (todo || opciones.baliza) try { malla?.emitirEnBucle(miSalto()) } catch (_: Exception) {}
         if (automatico) anotar("nadie ha reaccionado: se enciende todo sin esperar")
         try { emitirRadio(Baliza.ALARMA) } catch (_: Exception) {}
         try { fichaLan?.emitir(true); fichaLan?.escuchaFuerte(true) } catch (_: Exception) {}
@@ -2699,18 +2717,12 @@ class ServicioSos : Service() {
      */
     private fun respuestaReforzada() {
         anotar("TE ESTÁN BUSCANDO · alguien ha llamado desde arriba")
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrador?.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 300, 150, 300, 150, 300), -1))
-            } else {
-                @Suppress("DEPRECATION") vibrador?.vibrate(longArrayOf(0, 300, 150, 300, 150, 300), -1)
-            }
-        } catch (_: Exception) {}
+        vibrar(longArrayOf(0, 300, 150, 300, 150, 300))
         try { destello("uno") } catch (_: Exception) {}
         try { linterna?.destello(400) } catch (_: Exception) {}
         try {
             malla?.relayMs = RESPUESTA_MS
-            malla?.emitirEnBucle(maxOf(1, saltoEntrante + 1))
+            malla?.emitirEnBucle(miSalto())
             reloj.postDelayed({
                 try { malla?.relayMs = MallaAcustica.RELAY_MS } catch (_: Exception) {}
             }, RESPUESTA_DURA_MS)
@@ -2762,7 +2774,7 @@ class ServicioSos : Service() {
            puedan contestar «te he oído». */
         try {
             malla?.relayMs = RESCATE_MS * 2
-            malla?.emitirEnBucle(maxOf(1, saltoEntrante))
+            malla?.emitirEnBucle(miSalto())
         } catch (_: Exception) {}
         try { emitirRadio(Baliza.RESCATE) } catch (_: Exception) {}
         try { fichaLan?.emitir(true) } catch (_: Exception) {}
@@ -2804,18 +2816,10 @@ class ServicioSos : Service() {
                 Log.e("SismoRed", "pulso de rescate", e)
             }
         }
-        if (opciones.vibracion) try {
-            val corto = longArrayOf(0, 120, 80, 120, 80, 120)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrador?.vibrate(VibrationEffect.createWaveform(corto, -1))
-            } else {
-                @Suppress("DEPRECATION")
-                vibrador?.vibrate(corto, -1)
-            }
-        } catch (_: Exception) {}
+        if (opciones.vibracion) vibrar(longArrayOf(0, 120, 80, 120, 80, 120))
         if (opciones.linterna) try { linterna?.destello() } catch (_: Exception) {}
         if (opciones.pantalla) try { destello("uno") } catch (_: Exception) {}
-        if (opciones.baliza) try { malla?.emitirUna(saltoEntrante + 1) } catch (_: Exception) {}
+        if (opciones.baliza) try { malla?.emitirUna(miSalto()) } catch (_: Exception) {}
     }
 
     /**
@@ -3096,6 +3100,8 @@ class ServicioSos : Service() {
      * micrófono y el acelerómetro viven en el servicio: la pantalla solo lee lo
      * último publicado y no toca ningún recurso.
      */
+    private var notifPintada = ""
+
     private fun publicar() {
         reloj.post(object : Runnable {
             override fun run() {
@@ -3108,6 +3114,12 @@ class ServicioSos : Service() {
                     oyeCuando = it.cuandoPorTipo()
                     oyeEscuchando = it.escuchando
                 }
+                /* Que el sismógrafo sepa que la sacudida la pone el propio
+                   teléfono, y aquí, a medio segundo: estuvo en el latido de
+                   10 s y un despertador que arranca justo después de un
+                   latido completaba los 3 s de racha antes del siguiente.
+                   Ver [Sismografo.vibracionPropia]. */
+                sismo.vibracionPropia = altavozPropio()
                 sacudida = sismo.sacudida
                 armado = sismo.armado
                 temblando = sismo.ultimoTemblor > 0 &&
@@ -3117,10 +3129,7 @@ class ServicioSos : Service() {
                         mallaActividadHasta = System.currentTimeMillis() + MALLA_AVISO_MS
                     mallaRx = it.rx; mallaTx = it.tx; mallaSalto = it.ultimoSalto
                     mallaConfirmadas = it.confirmadas
-                    if (it.oido > mallaOido) {
-                        mallaOido = it.oido
-                        try { actualizarNotificacion() } catch (_: Exception) {}
-                    }
+                    if (it.oido > mallaOido) mallaOido = it.oido
                     mallaPorSalto = it.porSalto.copyOf()
                     mallaNiveles = it.niveles.copyOf(); mallaSuelo = it.sueloDb
                     mallaEscuchando = it.escuchando
@@ -3145,6 +3154,15 @@ class ServicioSos : Service() {
                    aquí, Diagnóstico se quedaba enseñando ese texto para siempre
                    con la baliza emitiendo. */
                 radio?.let { radioEmitiendo = it.emitiendo; radioMotivo = it.motivo }
+                /* Lo que anuncia la notificación caduca solo, y nadie la
+                   repintaba al caducar: «TE HAN OÍDO» podía quedarse horas. */
+                val ahoraN = System.currentTimeMillis()
+                val pintar = "${ahoraN < mallaActividadHasta}" +
+                    "${ahoraN - mallaOido < OIDO_VALE_MS}$micCedido"
+                if (pintar != notifPintada) {
+                    notifPintada = pintar
+                    try { actualizarNotificacion() } catch (_: Exception) {}
+                }
                 ajustarEscucha()
                 reloj.postDelayed(this, 500)
             }
@@ -3283,11 +3301,6 @@ class ServicioSos : Service() {
                     }
                     enReposoAhora = enReposo
                     sismo.vigiliaArmada = enVigilia(opciones)
-                    /* Que el sismógrafo sepa que la sacudida la está poniendo
-                       el propio teléfono. Aquí y no solo en la cascada: tiene
-                       que romper la racha mientras dura, no solo callarla.
-                       Ver [Sismografo.vibracionPropia]. */
-                    sismo.vibracionPropia = altavozPropio()
                     /* El reloj que sobrevive al disturbio, no el
                        instantáneo: cuando llega la alerta del vecino
                        este móvil está encima de la misma mesa que se

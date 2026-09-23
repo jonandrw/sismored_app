@@ -969,11 +969,16 @@ class MallaAcustica(
         corrob.clear(); olvidarCadencia()
 
         val silenciado = System.currentTimeMillis() < silenciadoHasta
-        if (!ServicioSos.enAlarma && !silenciado) {
-            // quien dispara la alarma ya reemite con salto+1 en bucle
-            h.post { onConfirmada(hop) }
-        } else {
-            reenviar(hop)
+        when {
+            /* Una víctima no reenvía ni evalúa lo que oye: no puede distinguir
+               la baliza de otro de su propio eco devuelto un salto más arriba.
+               Medido el 22 de septiembre de 2026: el Huawei en pánico oyó su
+               alerta reenviada por el Redmi como salto 2 y la reenvió como
+               salto 3. Su propia baliza en bucle ya dice a todos que hay
+               alarma aquí. */
+            ServicioSos.enAlarma || ServicioSos.enRescate -> {}
+            silenciado -> reenviar(hop)
+            else -> h.post { onConfirmada(hop) }
         }
     }
 
@@ -1009,6 +1014,9 @@ class MallaAcustica(
        abierto cuesta un AudioTrack en silencio y quita el problema entero. */
     private var txTrack: AudioTrack? = null
     private var txSr = 0
+    /** El flujo de salida está abierto: para el sistema es un reproductor de
+     *  alarma en marcha aunque entre tramas no suene nada. */
+    val txAbierto: Boolean get() = txTrack != null
 
     /** Emite ya y sigue emitiendo cada RELAY_MS mientras dure la alarma. */
     /** Cada cuánto se repite la baliza. Se acorta al contestar una llamada. */

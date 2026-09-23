@@ -448,9 +448,14 @@ class Sismografo(
      *
      * Dos caminos con condiciones paralelas garantizan que algún día se separen.
      * Ahora los dos preguntan aquí, y endurecer esto los endurece a los dos.
+     *
+     * 4.ª vez: [vibracionPropia] se puso en el disparo y en la racha, no aquí.
+     * Medido el 22 de septiembre de 2026: la sirena del Huawei encendió la
+     * bandera y su cascada dio por buena una baliza que era su propio eco.
      */
     private val sueloDeFiar: Boolean
-        get() = !hayMano && (umbral > umbralFinoMax || (quietoAntes >= QUIETO_ANTES_MS && ratioStaLta >= 1.8))
+        get() = !hayMano && !vibracionPropia &&
+            (umbral > umbralFinoMax || (quietoAntes >= QUIETO_ANTES_MS && ratioStaLta >= 1.8))
 
     /**
      * El umbral que se aplica de verdad: el elegido, o el suelo de ruido de esta
@@ -1078,16 +1083,16 @@ class Sismografo(
                reloj de hace tres segundos porque la propia sacudida lo pone a
                cero. Con el umbral conservador no se aplica: ahí ya se asume que
                lo llevas encima. */
-            if (!sueloDeFiar && !hayMano && !vigiliaArmada) {
-                an = 0; ai = 0
-                Log.i("SismoRed", "sismografo: %.2f m/s2 pero no estaba quieto (%d s), no disparo"
-                    .format(sta, quietoAntes / 1000))
-                return
-            }
             if (vibracionPropia) {
                 an = 0; ai = 0
                 Log.i("SismoRed", "sismografo: %.2f m/s2 pero es el propio movil vibrando, no disparo"
                     .format(sta))
+                return
+            }
+            if (!sueloDeFiar && !hayMano && !vigiliaArmada) {
+                an = 0; ai = 0
+                Log.i("SismoRed", "sismografo: %.2f m/s2 pero no estaba quieto (%d s), no disparo"
+                    .format(sta, quietoAntes / 1000))
                 return
             }
             if (hayMano) {

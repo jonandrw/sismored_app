@@ -80,12 +80,12 @@ class ServicioTeclas : AccessibilityService() {
             (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP ||
              event.keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)
         ) {
-            registrarPulsacion()
+            registrarPulsacion(subir = event.keyCode == KeyEvent.KEYCODE_VOLUME_UP)
         }
         return false          // false = no lo consumimos, el volumen sigue igual
     }
 
-    private fun registrarPulsacion() {
+    private fun registrarPulsacion(subir: Boolean) {
         val ahora = System.currentTimeMillis()
         pulsaciones.add(ahora)
         pulsaciones = pulsaciones.filter { ahora - it < VENTANA_MS }.toMutableList()
@@ -106,6 +106,12 @@ class ServicioTeclas : AccessibilityService() {
             )
             return
         }
+
+        /* Disparar, solo con SUBIR, que es lo que dicen las instrucciones.
+           Bajar con la pantalla apagada lo reclaman los fabricantes para la
+           cámara: en el Huawei, el 22 de septiembre de 2026, tres pulsaciones
+           hicieron una foto y la alarma no se encendió; con subir, sí. */
+        if (!subir) { pulsaciones.clear(); return }
 
         /* Aquí, y no antes: callar la alarma vale siempre, disparar no. */
         if (!pantallaDisponible()) {
