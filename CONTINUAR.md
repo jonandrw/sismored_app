@@ -17,6 +17,42 @@ JAVA_HOME="/c/Program Files/Android/Android Studio/jbr" ./gradlew assembleDebug
 
 ---
 
+## Revisión del 22 de septiembre (tarde): cerrado y pendiente
+
+Commit `0cd0ecc`. Dos revisores (fallos y calidad) sobre `43e7462..HEAD` y
+pruebas por adb en Huawei + Redmi. **Cerrado y verificado en el aparato:**
+
+- **Sismógrafo ciego tras emitir por la malla** (regresión de `c6be550`): el
+  emisor abierto entre tramas contaba como alarma ajena. Con el emisor abierto,
+  el Redmi dispara la vigilia a 3,1 s.
+- **Eco de la víctima**: el Huawei en pánico ya no confirma ni reenvía su propia
+  baliza devuelta, y el Redmi que ayuda marca `sac=false` (antes: «terremoto
+  confirmado» ×3 por la sirena a través de la mesa).
+- **Atajo de volumen**: dispara con tres de SUBIR; BAJAR con la pantalla apagada
+  lo roba la cámara de EMUI. Verificado en el Huawei.
+
+Cerrado sin prueba de campo: veto de vibración a 500 ms y en `sueloDeFiar`,
+`saltoEntrante` fijado al entrar en alarma y con tope, no preguntar a la
+víctima, franja que cruza medianoche, repintado de la notificación, resto del
+micrófono.
+
+**Trampa nueva:** EMUI oculta los `Log.i` de las apps; en el Huawei el único
+registro fiable es la base de datos de eventos.
+
+**Pendiente, por prioridad:**
+1. `relayMs` de 24 s sobrevive al rescate; `cicloMalla` es global (puede no
+   reenviar un salto 1) y manda OIDO también a los relevos.
+2. `otroGrabando` cede el micrófono para siempre si otra app graba sin parar.
+3. La regla del umbral está duplicada entre el latido y `aplicarOpciones`.
+4. Una pulsación de subir en `ServicioTeclas` calla la alarma que acaba de
+   pedir `PreguntaActivity` con la misma tecla.
+5. `avisarVecino` se repite cada 60 s toda la noche sin poder darlo por visto.
+6. Estructura (revisor de calidad), por partes: `Vigilia.kt`, estado de la
+   notificación, rol ante una baliza, una sola puerta `movimientoAjeno`.
+7. Decisiones abiertas 1 y 2 de la sección siguiente, sin tocar.
+
+---
+
 ## El camino hasta que esto sea fiable, en orden
 
 No es una lista de deseos: es el orden en que hay que hacerlo, y cada punto desbloquea
