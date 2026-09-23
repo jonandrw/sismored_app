@@ -28,8 +28,8 @@ android {
            solo el tramite: 35 obliga a declarar el tipo de servicio en primer
            plano y aplica el dibujo de borde a borde, que esta app ya hace. */
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2-fase1"
+        versionCode = 3
+        versionName = "0.3"
     }
 
     flavorDimensions += "distribucion"

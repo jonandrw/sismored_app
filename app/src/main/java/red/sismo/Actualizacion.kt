@@ -60,6 +60,7 @@ object Actualizacion {
      * se quita con un dedo y no vuelve hasta el día siguiente.
      */
     fun pendiente(ctx: Context): Version? {
+        if (BuildConfig.DEBUG || BuildConfig.FLAVOR == "play") return null
         val p = ctx.getSharedPreferences("sismored", Context.MODE_PRIVATE)
         val v = Version(
             p.getString("nueva_nombre", "") ?: "", p.getInt("nueva_codigo", 0),
@@ -97,6 +98,9 @@ object Actualizacion {
            actualice por otra vía: mandar a descargar un APK desde aquí es
            motivo de retirada. */
         if (BuildConfig.FLAVOR == "play") return
+        /* Ni en depuración: esos móviles se actualizan por adb, y el APK que
+           se ofrece va firmado con otra clave y no se instala encima. */
+        if (BuildConfig.DEBUG) return
         val p = ctx.getSharedPreferences("sismored", Context.MODE_PRIVATE)
         val ahora = System.currentTimeMillis()
         if (ahora - p.getLong("ultimaComprobacionUpdate", 0L) < CADA_MS) return
