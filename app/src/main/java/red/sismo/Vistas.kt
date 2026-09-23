@@ -2080,3 +2080,95 @@ class VistaOnda @JvmOverloads constructor(
         if (isShown) postInvalidateOnAnimation()
     }
 }
+
+/**
+ * La barra de horas del diario, al estilo del índice A–Z de los contactos.
+ *
+ * Cada fila de la lista ocupa su parte de la altura: los días llevan su
+ * rótulo, lo que importa una marca de su color, y un recuadro dice qué trozo
+ * se está viendo. Arrastrar el dedo salta a esa altura y la [burbuja] dice de
+ * qué hora es, así que «¿qué pasó anoche?» se contesta sin bajar a ciegas.
+ */
+class RielTiempo @JvmOverloads constructor(ctx: Context, attrs: AttributeSet? = null) :
+    View(ctx, attrs) {
+
+    var alSaltar: ((Int) -> Unit)? = null
+    var etiqueta: ((Int) -> String)? = null
+    var burbuja: android.widget.TextView? = null
+
+    private var total = 0
+    private var marcas: List<Pair<Int, Int>> = emptyList()
+    private var dias: List<Pair<Int, String>> = emptyList()
+    private var desde = 0
+    private var hasta = 0
+    private val d = resources.displayMetrics.density
+    private val pinta = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val letra = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textSize = 8f * resources.displayMetrics.scaledDensity
+        color = 0xFF7C858D.toInt()
+        textAlign = Paint.Align.CENTER
+        typeface = try { androidx.core.content.res.ResourcesCompat.getFont(ctx, R.font.mono) }
+                   catch (_: Exception) { null }
+    }
+
+    /** [marcas]: posición y color; [dias]: posición y rótulo corto. */
+    fun datos(total: Int, marcas: List<Pair<Int, Int>>, dias: List<Pair<Int, String>>) {
+        this.total = total; this.marcas = marcas; this.dias = dias
+        invalidate()
+    }
+
+    fun ventana(primera: Int, ultima: Int) {
+        if (primera == desde && ultima == hasta) return
+        desde = primera; hasta = ultima
+        invalidate()
+    }
+
+    private val margen get() = 10 * d
+
+    private fun y(pos: Int): Float =
+        margen + if (total <= 1) 0f else pos.toFloat() / (total - 1) * (height - 2 * margen)
+
+    override fun onDraw(c: Canvas) {
+        if (total == 0) return
+        /* La franja de marcas va pegada al borde y los rótulos de día a su
+           izquierda: encima de las marcas no se leían. */
+        val x0 = width - 7 * d
+        val x1 = width - 2 * d
+        pinta.color = 0xFF1F262B.toInt()
+        c.drawRect(x0, y(0), x1, y(total - 1), pinta)
+        for ((pos, color) in marcas) {
+            pinta.color = color
+            c.drawRect(x0, y(pos) - 1.5f * d, x1, y(pos) + 1.5f * d, pinta)
+        }
+        pinta.color = 0x55BCC3C9
+        c.drawRoundRect(x0 - 2 * d, y(desde) - 2 * d, x1 + 1 * d, y(hasta) + 2 * d, 2 * d, 2 * d, pinta)
+        for ((pos, texto) in dias) {
+            pinta.color = 0xFF4E565D.toInt()
+            c.drawRect(2 * d, y(pos) - 0.5f * d, x0 - 2 * d, y(pos) + 0.5f * d, pinta)
+            c.drawText(texto, (x0 - 2 * d) / 2f, y(pos) + 10 * d, letra)
+        }
+    }
+
+    @android.annotation.SuppressLint("ClickableViewAccessibility")
+    override fun onTouchEvent(ev: android.view.MotionEvent): Boolean {
+        if (total == 0) return false
+        when (ev.actionMasked) {
+            android.view.MotionEvent.ACTION_DOWN, android.view.MotionEvent.ACTION_MOVE -> {
+                parent?.requestDisallowInterceptTouchEvent(true)
+                val f = ((ev.y - margen) / (height - 2 * margen)).coerceIn(0f, 1f)
+                val pos = (f * (total - 1)).toInt()
+                alSaltar?.invoke(pos)
+                burbuja?.let { b ->
+                    b.text = etiqueta?.invoke(pos) ?: ""
+                    b.visibility = VISIBLE
+                    b.translationY = (ev.y - b.height / 2f).coerceIn(0f, (height - b.height).toFloat())
+                }
+            }
+            android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
+                parent?.requestDisallowInterceptTouchEvent(false)
+                burbuja?.visibility = GONE
+            }
+        }
+        return true
+    }
+}

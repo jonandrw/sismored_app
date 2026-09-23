@@ -2772,22 +2772,95 @@
                         android:textColor="#7C858D"
                         android:textSize="10sp" />
 
-                    <!-- Cuadro de Eventos con estilo terminal táctico -->
-                    <TextView
-                        android:id="@+id/registro"
+                    <!-- El diario: lo importante de siete días, o todo. Lo pinta
+                         Diario; el registro crudo sigue en Ajustes > Consola. -->
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:id="@+id/diario_importante"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="7dp"
+                            android:background="@drawable/chip_activo"
+                            android:fontFamily="@font/mono"
+                            android:letterSpacing="0.08"
+                            android:paddingStart="12dp"
+                            android:paddingEnd="12dp"
+                            android:paddingTop="6dp"
+                            android:paddingBottom="6dp"
+                            android:text="@string/diario_importante"
+                            android:textAllCaps="true"
+                            android:textSize="10sp" />
+
+                        <TextView
+                            android:id="@+id/diario_todo"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/chip"
+                            android:fontFamily="@font/mono"
+                            android:letterSpacing="0.08"
+                            android:paddingStart="12dp"
+                            android:paddingEnd="12dp"
+                            android:paddingTop="6dp"
+                            android:paddingBottom="6dp"
+                            android:text="@string/diario_todo"
+                            android:textAllCaps="true"
+                            android:textSize="10sp" />
+                    </LinearLayout>
+
+                    <FrameLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="460dp"
                         android:background="@drawable/campo_fondo"
-                        android:backgroundTint="#0A0D0F"
-                        android:fontFamily="@font/mono"
-                        app:fontFamily="@font/mono"
-                        android:lineSpacingMultiplier="1.4"
-                        android:paddingStart="16dp"
-                        android:paddingEnd="16dp"
-                        android:paddingTop="14dp"
-                        android:paddingBottom="14dp"
-                        android:textColor="#BCC3C9"
-                        android:textSize="11.5sp" />
+                        android:backgroundTint="#0A0D0F">
+
+                        <androidx.recyclerview.widget.RecyclerView
+                            android:id="@+id/rv_diario"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:clipToPadding="false"
+                            android:paddingEnd="38dp"
+                            android:paddingBottom="8dp"
+                            android:scrollbars="none" />
+
+                        <red.sismo.RielTiempo
+                            android:id="@+id/riel_diario"
+                            android:layout_width="36dp"
+                            android:layout_height="match_parent"
+                            android:layout_gravity="end" />
+
+                        <TextView
+                            android:id="@+id/burbuja_diario"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="top|end"
+                            android:layout_marginEnd="42dp"
+                            android:background="@drawable/chip_activo"
+                            android:fontFamily="@font/mono"
+                            android:paddingStart="12dp"
+                            android:paddingEnd="12dp"
+                            android:paddingTop="6dp"
+                            android:paddingBottom="6dp"
+                            android:textColor="@color/bg"
+                            android:textSize="13sp"
+                            android:textStyle="bold"
+                            android:visibility="gone" />
+
+                        <TextView
+                            android:id="@+id/diario_vacio"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center"
+                            android:fontFamily="@font/mono"
+                            android:text="@string/diario_vacio"
+                            android:textColor="@color/dim"
+                            android:textSize="11.5sp"
+                            android:visibility="gone" />
+                    </FrameLayout>
 
                     <TextView
                         android:id="@+id/btn_repetir_autotest"
@@ -2804,10 +2877,8 @@
                         android:textSize="19sp"
                         android:textStyle="bold" />
 
-                    <!-- El registro de arriba son las ultimas 50 lineas de esta
-                         sesion y se pierde al cerrar. Esto es lo que queda
-                         guardado en el movil. Los dos existian ya, pero en sitios
-                         distintos y sin que nada dijera en que se diferencian. -->
+                    <!-- El diario de arriba es lo que ha pasado en el móvil; esto
+                         son los sismos que confirman los servicios sismológicos. -->
                     <LinearLayout
                         android:id="@+id/btn_historial"
                         android:layout_width="match_parent"

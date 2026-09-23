@@ -55,6 +55,8 @@ import android.widget.Toast
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import androidx.appcompat.app.AlertDialog
@@ -158,6 +160,7 @@ class MainActivity : AppCompatActivity() {
         op = Opciones(this)
         Actualizacion.comprobar(this) { runOnUiThread { mirarVersion() } }
         montarAvisoVersion()
+        montarDiario()
         if (Altavoz.audio == null) {
             Altavoz.audio = getSystemService(android.content.Context.AUDIO_SERVICE) as? android.media.AudioManager
         }
@@ -1346,7 +1349,16 @@ class MainActivity : AppCompatActivity() {
     private fun montarRegistro() {
         findViewById<View>(R.id.btn_copiar_registro)?.setOnClickListener {
             val clip = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-            val texto = findViewById<TextView>(R.id.registro)?.text?.toString() ?: ""
+            val hora = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+            val texto = diario.filas.joinToString("\n") { f ->
+                when (f) {
+                    is Diario.Fila.Dia -> "\n" + f.texto
+                    is Diario.Fila.Suceso -> f.grupo.first().let { e ->
+                        hora.format(Date(e.fechaMs)) + "  " + e.mensaje +
+                            if (f.grupo.size > 1) "  ×${f.grupo.size}" else ""
+                    }
+                }
+            }.trim()
             clip.setPrimaryClip(android.content.ClipData.newPlainText("SismoRed Registro", texto))
             android.widget.Toast.makeText(this, "Registro copiado", android.widget.Toast.LENGTH_SHORT).show()
         }
@@ -1395,6 +1407,133 @@ class MainActivity : AppCompatActivity() {
             }
         }
         pintarVigilia()
+    }
+
+    /* ---------- el diario de la pestaña Registro ---------- */
+
+    private val diario = Diario.Adaptador()
+    private var diarioEventos: List<red.sismo.data.EventoBD> = emptyList()
+    private var diarioTodo = false
+    private var diarioCargando = false
+    private var diarioCargadoEn = 0L
+
+    private fun montarDiario() {
+        val rv = findViewById<RecyclerView>(R.id.rv_diario) ?: return
+        val lm = LinearLayoutManager(this)
+        rv.layoutManager = lm
+        rv.adapter = diario
+        /* La lista vive dentro del scroll de la página: sin esto, arrastrar
+           dentro de ella movía la página entera. */
+        rv.addOnItemTouchListener(object : RecyclerView.SimpleOnItemTouchListener() {
+            override fun onInterceptTouchEvent(rv: RecyclerView, e: android.view.MotionEvent): Boolean {
+                if (e.actionMasked == android.view.MotionEvent.ACTION_DOWN)
+                    rv.parent?.requestDisallowInterceptTouchEvent(true)
+                return false
+            }
+        })
+        val riel = findViewById<RielTiempo>(R.id.riel_diario)
+        riel?.burbuja = findViewById(R.id.burbuja_diario)
+        riel?.alSaltar = { pos -> lm.scrollToPositionWithOffset(pos, 0) }
+        riel?.etiqueta = { pos -> etiquetaDiario(pos) }
+        rv.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
+                riel?.ventana(lm.findFirstVisibleItemPosition(), lm.findLastVisibleItemPosition())
+            }
+        })
+        findViewById<View>(R.id.diario_importante)?.setOnClickListener {
+            diarioTodo = false; pintarDiario(); rv.scrollToPosition(0)
+        }
+        findViewById<View>(R.id.diario_todo)?.setOnClickListener {
+            diarioTodo = true; pintarDiario(); rv.scrollToPosition(0)
+        }
+    }
+
+    /**
+     * Lee siete días de la base de datos. Se llama con el tic de la pestaña,
+     * así que se frena a una lectura cada 15 s, y solo si se está mirando lo
+     * más reciente: recargar con el dedo más abajo movería la lista debajo
+     * de lo que se está leyendo.
+     */
+    private fun cargarDiario() {
+        if (diarioCargando || System.currentTimeMillis() - diarioCargadoEn < 15_000L) return
+        val lm = findViewById<RecyclerView>(R.id.rv_diario)?.layoutManager as? LinearLayoutManager
+        if (diarioCargadoEn > 0L && (lm?.findFirstVisibleItemPosition() ?: 0) > 0) return
+        diarioCargando = true
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val ev = try {
+                red.sismo.data.SismoDatabase.getDatabase(this@MainActivity).eventoDao()
+                    .obtenerDesde(System.currentTimeMillis() - 7 * 86_400_000L)
+            } catch (e: Exception) { Log.w("SismoRed", "no se pudo leer el diario", e); null }
+            withContext(kotlinx.coroutines.Dispatchers.Main) {
+                diarioCargando = false
+                diarioCargadoEn = System.currentTimeMillis()
+                if (ev != null && ev.firstOrNull()?.id != diarioEventos.firstOrNull()?.id) {
+                    diarioEventos = ev
+                    pintarDiario()
+                }
+            }
+        }
+    }
+
+    private val diaCorto = SimpleDateFormat("EEE", Locale("es"))
+    private val diaLargo = SimpleDateFormat("EEEE d 'de' MMMM", Locale("es"))
+
+    /** «HOY · MARTES 22 DE SEPTIEMBRE» para la cabecera, «HOY» o «LUN 21» para el riel. */
+    private fun nombreDia(ms: Long): Pair<String, String> {
+        val hoy0 = java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.HOUR_OF_DAY, 0); set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0); set(java.util.Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val fecha = diaLargo.format(Date(ms))
+        return when {
+            ms >= hoy0 -> "${getString(R.string.dia_hoy)} · $fecha" to getString(R.string.dia_hoy)
+            ms >= hoy0 - 86_400_000L -> "${getString(R.string.dia_ayer)} · $fecha" to getString(R.string.dia_ayer)
+            else -> fecha to diaCorto.format(Date(ms)).replace(".", "")
+        }.let { (l, c) -> l.uppercase() to c.uppercase() }
+    }
+
+    private fun pintarDiario() {
+        val filas = Diario.filas(diarioEventos, diarioTodo, ::nombreDia)
+        diario.poner(filas)
+
+        val importantes = diarioEventos.count { Diario.tipo(it.mensaje) != Diario.Tipo.RUIDO }
+        findViewById<TextView>(R.id.diario_importante)?.apply {
+            text = getString(R.string.diario_importante, importantes)
+            setBackgroundResource(if (diarioTodo) R.drawable.chip else R.drawable.chip_activo)
+            setTextColor(getColor(if (diarioTodo) R.color.lectura else R.color.bg))
+        }
+        findViewById<TextView>(R.id.diario_todo)?.apply {
+            text = getString(R.string.diario_todo, diarioEventos.size)
+            setBackgroundResource(if (diarioTodo) R.drawable.chip_activo else R.drawable.chip)
+            setTextColor(getColor(if (diarioTodo) R.color.bg else R.color.lectura))
+        }
+        findViewById<View>(R.id.diario_vacio)?.visibility =
+            if (filas.isEmpty()) View.VISIBLE else View.GONE
+
+        val marcas = ArrayList<Pair<Int, Int>>()
+        val dias = ArrayList<Pair<Int, String>>()
+        filas.forEachIndexed { i, f ->
+            when (f) {
+                is Diario.Fila.Dia -> dias.add(i to f.corto)
+                is Diario.Fila.Suceso -> if (f.tipo != Diario.Tipo.RUIDO) marcas.add(i to f.tipo.color)
+            }
+        }
+        findViewById<RielTiempo>(R.id.riel_diario)?.apply {
+            datos(filas.size, marcas, dias)
+            ventana(0, 0)
+        }
+    }
+
+    /** Lo que dice la burbuja del riel: el día y la hora de esa fila. */
+    private fun etiquetaDiario(pos: Int): String {
+        val filas = diario.filas
+        val f = filas.getOrNull(pos) ?: return ""
+        val ms = when (f) {
+            is Diario.Fila.Suceso -> f.grupo.first().fechaMs
+            is Diario.Fila.Dia -> (filas.getOrNull(pos + 1) as? Diario.Fila.Suceso)?.grupo?.first()?.fechaMs
+                ?: return f.corto
+        }
+        return nombreDia(ms).second + " " + SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(ms))
     }
 
     /* ---------- versión nueva ---------- */
@@ -2370,8 +2509,8 @@ class MainActivity : AppCompatActivity() {
             R.id.v_ficha -> pintarFicha()
             R.id.v_acerca -> pintarAcerca()
             R.id.v_registro -> {
-                cargarHistorico()
                 pintarRegistro()
+                cargarDiario()
             }
         }
     }
@@ -3000,77 +3139,6 @@ class MainActivity : AppCompatActivity() {
             setTextColor(if (respiraOk) 0xFF90CA50.toInt() else 0xFFF0A02A.toInt())
         }
 
-        // Renderizado de eventos tácticos
-        val tvRegistro = findViewById<TextView>(R.id.registro) ?: return
-        if (lineas.isEmpty()) {
-            tvRegistro.text = "> esperando eventos"
-            return
-        }
-
-        val ssb = SpannableStringBuilder()
-        val density = tvRegistro.resources.displayMetrics.scaledDensity
-        val indentNormal = (72 * density).toInt()
-        val indentSub = (84 * density).toInt()
-
-        for ((idx, l) in lineas.withIndex()) {
-            val partes = l.split("  ", limit = 2)
-            val horaRaw = partes.getOrNull(0) ?: ""
-            val cuerpoRaw = partes.getOrNull(1) ?: l
-
-            val isCascada = cuerpoRaw.startsWith("cascada(", ignoreCase = true) ||
-                            cuerpoRaw.contains("cascada(", ignoreCase = true) ||
-                            cuerpoRaw.startsWith("decision ·", ignoreCase = true)
-            val isPruebas = cuerpoRaw.startsWith("pruebas ·", ignoreCase = true) ||
-                            cuerpoRaw.contains("pruebas ·", ignoreCase = true)
-
-            val isError = cuerpoRaw.contains("err", ignoreCase = true) || cuerpoRaw.contains("falló", ignoreCase = true) || cuerpoRaw.contains("PÁNICO", ignoreCase = true) || cuerpoRaw.contains("denegado", ignoreCase = true)
-            val isWarn = cuerpoRaw.contains("warn", ignoreCase = true) || cuerpoRaw.contains("aviso", ignoreCase = true) || cuerpoRaw.contains("sin confirmar", ignoreCase = true) || cuerpoRaw.contains("descartado", ignoreCase = true) || cuerpoRaw.contains("posible", ignoreCase = true)
-
-            val prevCuerpo = lineas.elementAtOrNull(idx - 1)?.split("  ", limit = 2)?.getOrNull(1) ?: ""
-            val nextCuerpo = lineas.elementAtOrNull(idx + 1)?.split("  ", limit = 2)?.getOrNull(1) ?: ""
-            val agrupaConCascada = (isCascada && (nextCuerpo.contains("pruebas ·") || prevCuerpo.contains("pruebas ·"))) ||
-                                   (isPruebas && (nextCuerpo.contains("cascada(") || nextCuerpo.contains("decision ·") ||
-                                                  prevCuerpo.contains("cascada(") || prevCuerpo.contains("decision ·")))
-
-            val textColor = when {
-                isCascada -> 0xFFFFA000.toInt()
-                isPruebas -> 0xFF64D2FF.toInt()
-                isError -> 0xFFFF8A8D.toInt()
-                isWarn -> 0xFFE3CFA8.toInt()
-                else -> 0xFFBCC3C9.toInt()
-            }
-
-            val startHora = ssb.length
-            ssb.append(horaRaw)
-            ssb.setSpan(ForegroundColorSpan(0xFF4E565D.toInt()), startHora, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-            ssb.append("  ")
-
-            val startCuerpo = ssb.length
-            val prefijo = when {
-                isCascada -> "▸ "
-                isPruebas && agrupaConCascada -> "  └─ "
-                isPruebas -> "  "
-                else -> ""
-            }
-            ssb.append(prefijo).append(cuerpoRaw)
-            ssb.setSpan(ForegroundColorSpan(textColor), startCuerpo, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-
-            if (isCascada) {
-                ssb.setSpan(android.text.style.StyleSpan(android.graphics.Typeface.BOLD), startCuerpo, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                ssb.setSpan(android.text.style.BackgroundColorSpan(0x28F0A02A), startHora, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-            } else if (isPruebas) {
-                val bg = if (agrupaConCascada) 0x20F0A02A else 0x1864D2FF
-                ssb.setSpan(android.text.style.BackgroundColorSpan(bg), startHora, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-            } else if (isError) {
-                ssb.setSpan(android.text.style.BackgroundColorSpan(0x11E53035), startHora, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-            }
-
-            val indent = if (isPruebas) indentSub else indentNormal
-            ssb.setSpan(android.text.style.LeadingMarginSpan.Standard(0, indent), startHora, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-
-            if (idx < lineas.size - 1) ssb.append("\n")
-        }
-        tvRegistro.text = ssb
     }
 
     /**

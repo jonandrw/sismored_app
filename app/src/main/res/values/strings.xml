@@ -349,6 +349,9 @@ Deténla con el botón DETENER o pulsando una vez el volumen. Y comunícalo en e
     <string name="vecino_visto">YA LO HE VISTO</string>
     <string name="version_nueva">Versión nueva · %1$s</string>
     <string name="version_descargar">DESCARGAR</string>
+    <string name="diario_importante">Lo importante · %1$d</string>
+    <string name="diario_todo">Todo · %1$d</string>
+    <string name="diario_vacio">&gt; nada en siete días</string>
     <string name="vecino_largo">Otro móvil con SismoRed ha detectado movimiento peligroso cerca de ti y está pidiendo ayuda. Este móvil no ha notado nada: el aviso viene de fuera.\n\nAbre la app y usa BUSCAR para acercarte a la señal. Si aquí también hay daños, usa el botón de pánico.</string>
 
     <string name="lbl_autor">Autor</string>

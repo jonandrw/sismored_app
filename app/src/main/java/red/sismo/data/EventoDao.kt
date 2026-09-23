@@ -23,6 +23,10 @@ interface EventoDao {
     @Query("SELECT * FROM eventos WHERE mensaje LIKE 'alerta externa (%' ORDER BY fechaMs DESC LIMIT 200")
     suspend fun obtenerSismos(): List<EventoBD>
 
+    /** Todo desde un instante, para el diario de la pestaña Registro. */
+    @Query("SELECT * FROM eventos WHERE fechaMs >= :desde ORDER BY fechaMs DESC")
+    suspend fun obtenerDesde(desde: Long): List<EventoBD>
+
     @Query("SELECT COUNT(*) FROM eventos")
     suspend fun cuantos(): Int
 
