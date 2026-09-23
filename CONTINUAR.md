@@ -66,7 +66,13 @@ solo se ha comprobado la consola):
    contesta solo 3 minutos.
 3. Estructura (revisor de calidad), por partes: `Vigilia.kt`, estado de la
    notificación, rol ante una baliza, una sola puerta `movimientoAjeno`.
-4. Decisiones abiertas 1 y 2 de la sección siguiente, sin tocar.
+4. **Decisión abierta 1 cerrada (`aca8640`):** `Cascada.sismoConfirmado` —fuente
+   de fuera, o fuerte + 3 s seguidos en reposo— decide si se pregunta y si el
+   silencio escala; sin ello se cierra en silencio. Falta verla en campo: un
+   golpe en la mesa de día no debe preguntar.
+5. Siguiente: aviso del «Inicio automático» de HyperOS (`appops` 10008), publicar
+   la 0.3 (`versionCode`, `api/version.json`, APK) y que la web avise de la
+   versión nueva.
 
 ---
 
