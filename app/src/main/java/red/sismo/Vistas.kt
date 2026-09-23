@@ -907,7 +907,15 @@ class VistaConsola @JvmOverloads constructor(ctx: Context, attrs: AttributeSet? 
     /** El texto que la consola tiene que acabar mostrando. */
     fun escribir(t: CharSequence) {
         if (t.toString() == completo.toString()) return
-        visibles = if (completo.isNotEmpty() && t.toString().startsWith(completo.toString())) visibles else 0
+        /* Se teclea al abrir y cuando el texto crece por el final. Cualquier
+           otro cambio se pinta de golpe: la consola pone lo nuevo ARRIBA, así
+           que el texto nunca empezaba igual que el anterior y cada evento
+           volvía a escribir las cincuenta líneas desde la primera letra. */
+        visibles = when {
+            completo.isEmpty() -> 0
+            t.toString().startsWith(completo.toString()) -> visibles
+            else -> t.length
+        }
         completo = t
         reloj.removeCallbacks(tic)
         reloj.post(tic)

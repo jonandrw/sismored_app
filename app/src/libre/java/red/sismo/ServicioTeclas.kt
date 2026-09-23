@@ -34,13 +34,14 @@ class ServicioTeclas : AccessibilityService() {
     companion object {
         const val NECESARIAS = 3
         const val VENTANA_MS = 3000L
-        /** Colchón tras disparar antes de aceptar el silenciado. Sin él, la
-         *  tercera pulsación que enciende la alarma valdría también como la
-         *  primera que la apaga, y no sonaría nunca. */
-        const val GRACIA_MS = 1500L
+        /** Colchón desde que empieza la alarma antes de aceptar el silenciado.
+         *  Sin él, la tercera pulsación que la enciende valdría también como la
+         *  primera que la apaga. Se cuenta desde [ServicioSos.alarmaDesde] y no
+         *  desde el disparo propio: con la alarma pedida desde la pregunta
+         *  (subir = ayuda), una segunda pulsación nerviosa la callaba al
+         *  instante. Cuatro segundos cubren esa segunda pulsación. */
+        const val GRACIA_MS = 4000L
     }
-
-    private var desdeAlarma = 0L
 
     /**
      * El atajo **solo cuenta con la pantalla apagada o bloqueada**.
@@ -97,7 +98,7 @@ class ServicioTeclas : AccessibilityService() {
            agarrar el botón de volumen. Es la misma tecla que ya ha aprendido, y
            funciona con la pantalla bloqueada, que es cuando pasa. */
         if ((ServicioSos.enAlarma || ServicioSos.enRescate) &&
-            ahora - desdeAlarma > GRACIA_MS) {
+            ahora - ServicioSos.alarmaDesde > GRACIA_MS) {
             pulsaciones.clear()
             Log.i("SismoRed", "SILENCIO por tecla de volumen")
             ContextCompat.startForegroundService(
@@ -126,7 +127,6 @@ class ServicioTeclas : AccessibilityService() {
             pulsaciones.clear()
             Log.i("SismoRed", "DISPARO por teclas de volumen")
             if (!ServicioSos.enAlarma) {
-                desdeAlarma = ahora
                 ContextCompat.startForegroundService(
                     this,
                     Intent(this, ServicioSos::class.java).setAction(ServicioSos.ACCION_PANICO)

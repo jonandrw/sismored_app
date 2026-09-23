@@ -127,6 +127,7 @@ class MainActivity : AppCompatActivity() {
     /** Últimas líneas de la malla. Es lo único que hace visible la prueba entre
      *  dos móviles: sin esto no se distingue «no llegó» de «llegó y se descartó». */
     private val lineas = ArrayDeque<String>()
+    private val LINEAS_MAX = 200
 
     private val receptor = object : BroadcastReceiver() {
         override fun onReceive(c: Context?, i: Intent?) {
@@ -1542,7 +1543,9 @@ class MainActivity : AppCompatActivity() {
             val horaRaw = partes.getOrNull(0) ?: ""
             val cuerpoRaw = partes.getOrNull(1) ?: l
 
-            val horaMinSegMil = if (horaRaw.length > 5) horaRaw.substring(3) + ".000" else "00:00.000"
+            /* La hora va tal cual. Se le quitaba la hora y se le pegaban unos
+               milisegundos «.000» que nadie ha medido, y el histórico de la
+               hora anterior parecía posterior al de ésta. */
 
             val isCascada = cuerpoRaw.contains("cascada", ignoreCase = true) || cuerpoRaw.contains("decision", ignoreCase = true)
             val isPruebas = cuerpoRaw.contains("pruebas", ignoreCase = true)
@@ -1585,7 +1588,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             val startHora = ssb.length
-            ssb.append(horaMinSegMil)
+            ssb.append(horaRaw)
             ssb.setSpan(ForegroundColorSpan(0xFF3E464C.toInt()), startHora, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
             ssb.append(" ")
 
@@ -2857,7 +2860,7 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val previos = try {
                 red.sismo.data.SismoDatabase.getDatabase(this@MainActivity)
-                    .eventoDao().obtenerRecientes().take(200)
+                    .eventoDao().obtenerRecientes().take(LINEAS_MAX)
             } catch (e: Exception) {
                 Log.w("SismoRed", "no se pudo leer el historico", e); return@launch
             }
@@ -2865,7 +2868,7 @@ class MainActivity : AppCompatActivity() {
                 /* Se pegan DEBAJO de lo de esta sesion, que va primero: `lineas`
                    se lee de la mas reciente a la mas vieja. */
                 for (e in previos) {
-                    if (lineas.size >= 200) break
+                    if (lineas.size >= LINEAS_MAX) break
                     lineas.addLast("${hora.format(Date(e.fechaMs))}  ${e.mensaje}")
                 }
                 pintar()
@@ -2877,9 +2880,8 @@ class MainActivity : AppCompatActivity() {
         val sdf = SimpleDateFormat("HH:mm:ss", Locale.US)
         val hora = sdf.format(Date())
         lineas.addFirst("$hora  $texto")
-        while (lineas.size > 50) {
-            lineas.removeLast()
-        }
+        // el mismo tope que el histórico: con 50, el primer evento borraba 150 líneas cargadas
+        while (lineas.size > LINEAS_MAX) lineas.removeLast()
         
         if (saveToDb) {
             lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {

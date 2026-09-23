@@ -39,17 +39,30 @@ micrófono.
 **Trampa nueva:** EMUI oculta los `Log.i` de las apps; en el Huawei el único
 registro fiable es la base de datos de eventos.
 
-**Pendiente, por prioridad:**
-1. `relayMs` de 24 s sobrevive al rescate; `cicloMalla` es global (puede no
-   reenviar un salto 1) y manda OIDO también a los relevos.
-2. `otroGrabando` cede el micrófono para siempre si otra app graba sin parar.
-3. La regla del umbral está duplicada entre el latido y `aplicarOpciones`.
-4. Una pulsación de subir en `ServicioTeclas` calla la alarma que acaba de
-   pedir `PreguntaActivity` con la misma tecla.
-5. `avisarVecino` se repite cada 60 s toda la noche sin poder darlo por visto.
-6. Estructura (revisor de calidad), por partes: `Vigilia.kt`, estado de la
+**Segunda tanda, cerrada el mismo día** (compila y pasa los tests; en el móvil
+solo se ha comprobado la consola):
+- El periodo de la baliza va con cada bucle (`emitirEnBucle(hop, periodoMs)`),
+  no en `relayMs`; tras la respuesta a una llamada vuelve al ritmo del modo.
+- Reenvío/acuse alternan solo con el salto 1; los relevos siempre se reenvían
+  y no reciben OIDO.
+- Una sola regla de umbral (`umbralQueToca`).
+- El margen del atajo cuenta desde `ServicioSos.alarmaDesde` (4 s), no desde
+  el disparo propio: una segunda pulsación ya no calla la ayuda recién pedida.
+- Aviso de vecino con «YA LO HE VISTO» (y quitarlo cuenta igual); se rearma
+  tras 5 min sin balizas.
+- Consola: ya no se reescribe entera con cada evento, no recorta el
+  histórico de 200 a 50 y enseña la hora real (antes mm:ss con «.000» inventado).
+
+**Pendiente:**
+1. **Decisión del autor:** el micrófono se cede sin límite a cualquier app que
+   grabe (salvo en emergencia). Una transcripción en directo deja la malla
+   sorda toda la noche; la alternativa es recuperarlo dentro de la franja de
+   vigilia a costa de estorbar a esa app.
+2. **Decisión del autor:** un móvil que oye la LLAMADA de quien busca empieza a
+   emitir baliza aunque no sea víctima, y no para hasta DETENER.
+3. Estructura (revisor de calidad), por partes: `Vigilia.kt`, estado de la
    notificación, rol ante una baliza, una sola puerta `movimientoAjeno`.
-7. Decisiones abiertas 1 y 2 de la sección siguiente, sin tocar.
+4. Decisiones abiertas 1 y 2 de la sección siguiente, sin tocar.
 
 ---
 

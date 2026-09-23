@@ -1018,11 +1018,11 @@ class MallaAcustica(
      *  alarma en marcha aunque entre tramas no suene nada. */
     val txAbierto: Boolean get() = txTrack != null
 
-    /** Emite ya y sigue emitiendo cada RELAY_MS mientras dure la alarma. */
-    /** Cada cuánto se repite la baliza. Se acorta al contestar una llamada. */
-    @Volatile var relayMs = RELAY_MS
-
-    fun emitirEnBucle(hop: Int) {
+    /** Emite ya y sigue emitiendo cada [periodoMs] hasta [pararEmision].
+     *  El periodo va con cada bucle y no en una variable compartida: el
+     *  rescate y la respuesta a una llamada se la pisaban, y los 24 s del
+     *  rescate sobrevivían al rescate. */
+    fun emitirEnBucle(hop: Int, periodoMs: Long = RELAY_MS) {
         // solo se cancela el temporizador: el flujo de salida se reaprovecha
         relay?.let { h.removeCallbacks(it) }
         val h0 = hop.coerceIn(1, TONOS.size)
@@ -1034,7 +1034,7 @@ class MallaAcustica(
                este fichero salen con jitter. */
             override fun run() {
                 emitirUna(h0)
-                h.postDelayed(this, relayMs + (Math.random() * 1500).toLong())
+                h.postDelayed(this, periodoMs + (Math.random() * 1500).toLong())
             }
         }
         relay = tarea

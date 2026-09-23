@@ -93,6 +93,8 @@ class ServicioSos : Service() {
          *  demás — y por eso también está en la notificación, para poder
          *  contestar sin desbloquear. */
         const val ACCION_ESTOY_BIEN = "red.sismo.ESTOY_BIEN"
+        /** Quien recibe el aviso de un vecino lo ha visto. Ver [vecinoVisto]. */
+        const val ACCION_VECINO_VISTO = "red.sismo.VECINO_VISTO"
 
         /** Instante en que vence la pregunta «¿estás bien?». 0 = no hay pregunta
          *  en curso. La pantalla pinta la cuenta atrás a partir de esto. */
@@ -310,6 +312,10 @@ class ServicioSos : Service() {
         @Volatile var armado = true; private set
 
         @Volatile var enAlarma = false
+            private set
+        /** Cuándo empezó la alarma en curso, la encendiera quien la encendiera.
+         *  Ver `ServicioTeclas.GRACIA_MS`. */
+        @Volatile var alarmaDesde = 0L
             private set
         /** Modo rescate: no es alarma, pero tampoco es reposo. */
         @Volatile var enRescate = false
@@ -530,6 +536,8 @@ class ServicioSos : Service() {
          *  baliza se repite cada 8 s mientras dure su alarma, así que un
          *  minuto sin oírla es que ha parado o se ha ido. */
         const val SOCORRO_VALE_MS = 60_000L
+        /** Silencio de balizas que separa un aviso de vecino del siguiente. */
+        const val EPISODIO_VECINO_MS = 5 * 60_000L
 
         /** Hasta cuándo vale una alerta externa. Volátil y estático porque lo
          *  mira la cascada desde el hilo del sensor. */
@@ -575,7 +583,6 @@ class ServicioSos : Service() {
     private var fichaLan: FichaLan? = null
     private var barridoOn = false
     private var wakeLock: PowerManager.WakeLock? = null
-    private var alarmaDesde = 0L
     private var vibrador: Vibrator? = null
     private lateinit var opciones: Opciones
     private var linterna: Linterna? = null
@@ -821,12 +828,16 @@ class ServicioSos : Service() {
                    No es un retardo mal elegido: es que no caben las dos. Así
                    que una baliza se reenvía y la siguiente se contesta. El
                    reenvío cada 24 s sigue propagando —la víctima emite
-                   mientras dure su alarma— y el acuse coge la ventana entera. */
-                cicloMalla++
-                if (cicloMalla % 2 == 0) {
-                    if (malla?.reenviar(hop) != true)
-                        anotar("no la reenvío: ya ha dado los $hop saltos o he emitido demasiado")
-                }
+                   mientras dure su alarma— y el acuse coge la ventana entera.
+
+                   Solo se alterna con el salto 1, que es la víctima misma. Un
+                   relevo no necesita acuse —el «te he oído» es para quien está
+                   debajo— y con un contador común a todo lo que se oía, una
+                   baliza de salto 1 podía caer siempre en el turno del acuse
+                   y no reenviarse nunca. */
+                val toca = if (hop == 1) ++cicloMalla % 2 == 0 else true
+                if (toca && malla?.reenviar(hop) != true)
+                    anotar("no la reenvío: ya ha dado los $hop saltos o he emitido demasiado")
 
                 /* Y SIEMPRE se contesta «te he oído», salvo si este móvil es
                    también una víctima. Ver [MallaAcustica.OIDO]: es el único
@@ -837,7 +848,7 @@ class ServicioSos : Service() {
                    nada, y encima llenaría la banda.
                    Con retardo aleatorio: si contestan cuatro móviles a la vez,
                    chocan y no llega ninguno. */
-                if (!enAlarma && !enRescate && cicloMalla % 2 == 1) contestarOido()
+                if (!enAlarma && !enRescate && hop == 1 && !toca) contestarOido()
 
                 if (buscando || repetidor) {
                     val quien = if (buscando) "estás buscando" else "has dicho que estás bien"
@@ -856,6 +867,9 @@ class ServicioSos : Service() {
                        [Cascada.Pruebas.socorroVecino]. */
                     socorroVecino = hop
                     socorroVecinoHasta = System.currentTimeMillis() + SOCORRO_VALE_MS
+                    if (System.currentTimeMillis() - ultimaBalizaVecino > EPISODIO_VECINO_MS)
+                        vecinoVisto = false
+                    ultimaBalizaVecino = System.currentTimeMillis()
                     anotar("un vecino pide ayuda a $hop " +
                            (if (hop > 1) "móviles de distancia" else "móvil, justo al lado"))
                     evaluar("baliza de un vecino (salto $hop)")
@@ -1066,6 +1080,11 @@ class ServicioSos : Service() {
                sin tapar el sonido de los escombros. */
             ACCION_PULSO -> try { linterna?.destello(90) } catch (_: Exception) {}
             ACCION_ESTOY_BIEN -> estoyBien()
+            ACCION_VECINO_VISTO -> {
+                vecinoVisto = true
+                try { getSystemService(NotificationManager::class.java).cancel(ID_VECINO) } catch (_: Exception) {}
+                anotar("aviso del vecino visto: no se repite mientras siga el mismo aviso")
+            }
             ACCION_FALSA_ALARMA -> falsaAlarma()
             ACCION_SILENCIO_ZONA -> silencioZona()
             ACCION_APAGAR -> { apagarDelTodo(); return START_NOT_STICKY }
@@ -1538,7 +1557,7 @@ class ServicioSos : Service() {
         } catch (_: Exception) { 45_000L }
     }
 
-    /** Cuenta de balizas confirmadas, para alternar reenvío y acuse. */
+    /** Cuenta de balizas de salto 1 confirmadas, para alternar reenvío y acuse. */
     private var cicloMalla = 0
     private var oidoProgramado = 0L
 
@@ -2308,7 +2327,7 @@ class ServicioSos : Service() {
      * quien despiertas en alguien que puede ayudar.
      */
     private fun avisarVecino(d: Cascada.Decision) {
-        if (enAlarma || enRescate) return
+        if (enAlarma || enRescate || vecinoVisto) return
         val ahora = System.currentTimeMillis()
         if (ahora - ultimoAvisoVecino < SOCORRO_VALE_MS) return
         ultimoAvisoVecino = ahora
@@ -2327,6 +2346,15 @@ class ServicioSos : Service() {
     }
 
     private var ultimoAvisoVecino = 0L
+
+    /**
+     * Quien recibe el aviso ya lo ha visto: lo ha quitado de la barra o ha
+     * pulsado «Ya lo he visto». La víctima emite toda la noche, y sin esto el
+     * aviso volvía cada minuto sin forma de pararlo. Se rearma cuando empieza
+     * un aviso nuevo, es decir, tras [EPISODIO_VECINO_MS] sin oír ninguna baliza.
+     */
+    @Volatile private var vecinoVisto = false
+    private var ultimaBalizaVecino = 0L
 
     /** La notificación del aviso, a pantalla completa si el sistema deja: el
      *  caso que importa es el móvil bloqueado en la mesilla. */
@@ -2371,6 +2399,11 @@ class ServicioSos : Service() {
             .setAutoCancel(true)
             .setContentIntent(abrir)
             .setFullScreenIntent(abrir, true)
+            // quitarla de la barra también cuenta como visto
+            .setDeleteIntent(pi(ACCION_VECINO_VISTO))
+            .addAction(Notification.Action.Builder(
+                null as android.graphics.drawable.Icon?,
+                getString(R.string.vecino_visto), pi(ACCION_VECINO_VISTO)).build())
         try {
             (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
                 .notify(ID_VECINO, b.build())
@@ -2563,7 +2596,7 @@ class ServicioSos : Service() {
     private fun rescateHecho() {
         anotar("RESCATADO · dejo de llamar hacia abajo.")
         try { sirena.stop() } catch (_: Exception) {}
-        try { malla?.relayMs = MallaAcustica.RELAY_MS } catch (_: Exception) {}
+        finRespuesta?.let { reloj.removeCallbacks(it) }
         try { malla?.pararEmision() } catch (_: Exception) {}
         try { if (!enAlarma && !enRescate) radio?.parar() } catch (_: Exception) {}
         try { actualizarNotificacion() } catch (_: Exception) {}
@@ -2631,6 +2664,7 @@ class ServicioSos : Service() {
         enRescate = false
         rescateTarea?.let { reloj.removeCallbacks(it) }
         rescateTarea = null
+        finRespuesta?.let { reloj.removeCallbacks(it) }
         /* DETENER también cancela la pregunta y el suceso en curso: quien pulsa
            DETENER está delante del móvil, y eso ya es la respuesta. Y sale del
            modo repetidor: si alguien para la app entera, la para entera. */
@@ -2709,11 +2743,11 @@ class ServicioSos : Service() {
     /**
      * Alguien ha llamado desde arriba. Se contesta con todo.
      *
-     * La baliza pasa de una cada 4 s a una cada segundo y medio durante tres
-     * minutos: es el momento en que más falta hace que se oiga, porque hay
-     * alguien buscando justo encima. Y se vibra y se destella aunque la alarma
-     * esté silenciada — si quien está debajo está consciente, tiene que saber
-     * que le han oído.
+     * La baliza pasa a una cada segundo y medio durante tres minutos: es el
+     * momento en que más falta hace que se oiga, porque hay alguien buscando
+     * justo encima. Luego vuelve al ritmo del modo en que esté. Y se vibra y
+     * se destella aunque la alarma esté silenciada — si quien está debajo está
+     * consciente, tiene que saber que le han oído.
      */
     private fun respuestaReforzada() {
         anotar("TE ESTÁN BUSCANDO · alguien ha llamado desde arriba")
@@ -2721,14 +2755,21 @@ class ServicioSos : Service() {
         try { destello("uno") } catch (_: Exception) {}
         try { linterna?.destello(400) } catch (_: Exception) {}
         try {
-            malla?.relayMs = RESPUESTA_MS
-            malla?.emitirEnBucle(miSalto())
-            reloj.postDelayed({
-                try { malla?.relayMs = MallaAcustica.RELAY_MS } catch (_: Exception) {}
-            }, RESPUESTA_DURA_MS)
+            malla?.emitirEnBucle(miSalto(), RESPUESTA_MS)
+            finRespuesta?.let { reloj.removeCallbacks(it) }
+            val fin = Runnable {
+                try { malla?.emitirEnBucle(miSalto(), periodoBaliza()) } catch (_: Exception) {}
+            }
+            finRespuesta = fin
+            reloj.postDelayed(fin, RESPUESTA_DURA_MS)
         } catch (_: Exception) {}
         actualizarNotificacion()
     }
+
+    private var finRespuesta: Runnable? = null
+
+    private fun periodoBaliza(): Long =
+        if (enRescate) RESCATE_MS * 2 else MallaAcustica.RELAY_MS
 
     /* ================= modo rescate ================= */
 
@@ -2773,8 +2814,7 @@ class ServicioSos : Service() {
            sirena, que es lo que necesita [MallaAcustica.OIDO] para que le
            puedan contestar «te he oído». */
         try {
-            malla?.relayMs = RESCATE_MS * 2
-            malla?.emitirEnBucle(miSalto())
+            malla?.emitirEnBucle(miSalto(), periodoBaliza())
         } catch (_: Exception) {}
         try { emitirRadio(Baliza.RESCATE) } catch (_: Exception) {}
         try { fichaLan?.emitir(true) } catch (_: Exception) {}
@@ -3019,6 +3059,15 @@ class ServicioSos : Service() {
      * sirena con la alarma sonando no la callaría hasta la siguiente alarma, que
      * es justo cuando nadie quiere descubrir que el interruptor no servía.
      */
+    /** El listón según dónde está el móvil. Una sola regla: estuvo copiada
+     *  en [aplicarOpciones] sin la vigilia, y tocar un ajuste de madrugada bajaba el umbral
+     *  de vigilia al de reposo hasta el siguiente latido. */
+    private fun umbralQueToca(enReposo: Boolean) = when {
+        enReposo && enVigilia(opciones) -> Opciones.UMBRAL_VIGILIA
+        enReposo -> opciones.umbralReposo
+        else -> opciones.umbral
+    }
+
     private fun aplicarOpciones() {
         /* El volumen y la frecuencia de la senal, en caliente. El PCM del tono se
            genera al arrancar cada herramienta, asi que un cambio con algo ya sonando
@@ -3027,7 +3076,7 @@ class ServicioSos : Service() {
             sonda?.volTono = opciones.volSenal / 10.0
             sonda?.fDoppler = opciones.dopplerKhz * 1000
         } catch (_: Exception) {}
-        val nuevo = if (enReposoAhora) opciones.umbralReposo else opciones.umbral
+        val nuevo = umbralQueToca(enReposoAhora)
         sismo.umbral = nuevo
         umbralActivo = nuevo
         sismo.ajustarPerfil(opciones.perfilEntorno)
@@ -3269,11 +3318,7 @@ class ServicioSos : Service() {
                        baja al MMI IV. Solo en reposo: si lo lleva encima, la
                        vigilia no aplica porque lo que la hace fiable es que el
                        movil no se esté moviendo por su cuenta. */
-                    val nuevo = when {
-                        enReposo && enVigilia(opciones) -> Opciones.UMBRAL_VIGILIA
-                        enReposo -> opciones.umbralReposo
-                        else -> opciones.umbral
-                    }
+                    val nuevo = umbralQueToca(enReposo)
                     /* DENTRO DEL `if` SOLO VA EL UMBRAL. Todo lo demás vivía
                        aquí dentro y se congelaba.
 
