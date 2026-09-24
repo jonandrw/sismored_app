@@ -74,8 +74,14 @@ solo se ha comprobado la consola):
    con el APK —lo que leen las 0.1— y sismored.app (`api/version.json` + aviso en
    la portada) —lo que leen las 0.2 desde el vigilante—. Misma firma que la 0.2.
    Las compilaciones de depuración ya no enseñan el aviso de versión.
-6. Pendiente de campo: arrastrar el riel del Registro, el golpe en la mesa de día
-   que no debe preguntar, el despertador de las 6:20 y la llamada de 3 minutos.
+6. **24 sep (`dad8560`):** un despertador hizo que la malla decodificara SILENCIO
+   y lo reenviara; ahora la malla está sorda mientras suena el altavoz por otra
+   app (`MallaAcustica.sordaHasta`). Verificado: alarma de 27 s, cero candidatos.
+   Además el catálogo ya no confirma sacudidas posteriores y la regla de día pide
+   la quietud previa de la vigilia (dos preguntas de ese día, 07:50 y 11:40).
+7. Pendiente de campo: arrastrar el riel del Registro, el golpe en la mesa de día
+   que no debe preguntar y la llamada de 3 minutos. El despertador de madrugada
+   no se probó: las alarmas del Redmi estaban desactivadas.
 
 ---
 
