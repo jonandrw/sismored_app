@@ -777,7 +777,13 @@ class ServicioSos : Service() {
                 }
                 prefs.edit().putLong("visto_" + huella.hashCode(),
                     System.currentTimeMillis()).apply()
-                alertaExternaHasta = System.currentTimeMillis() + 180_000L
+                /* NO enciende `alertaExternaHasta`, que es la alerta temprana:
+                   la que llega antes de que tiemble y por eso confirma la
+                   sacudida que viene detrás. Un catálogo cuenta lo que ya
+                   pasó, y la sacudida de detrás es quien coge el móvil para
+                   leer el aviso. Medido en el Redmi el 24 de septiembre de 2026
+                   a las 11:40: M3.1 a 76 km, el móvil levantado 14 s después y
+                   dos PREGUNTAR con «alerta=true». */
                 /* Marcado aparte de la alerta temprana: un catálogo publica lo
                    que YA pasó, así que aquí no hay nada que anticipar y sí algo
                    que contar. Es lo que enciende el aviso discreto.
@@ -1366,10 +1372,14 @@ class ServicioSos : Service() {
      * Al micrófono ya lo protegía la puerta anti-eco; al sismógrafo no lo
      * protegía nadie.
      */
-    private fun altavozPropio(): Boolean =
-        enLlamada() || sonandoAlarmaAjena() || enAlarma || enRescate ||
+    private fun altavozPropio(ajeno: Boolean = sonandoAjeno()): Boolean =
+        ajeno || enAlarma || enRescate ||
         malla?.emitiendoAhora == true ||
         System.currentTimeMillis() < vibrandoHasta
+
+    /** Suena el altavoz de este móvil por otra app: una llamada, una alarma,
+     *  una notificación con tono. */
+    private fun sonandoAjeno(): Boolean = enLlamada() || sonandoAlarmaAjena()
 
     /**
      * Está sonando una alarma o un timbre que NO es nuestro: el despertador,
@@ -1706,6 +1716,11 @@ class ServicioSos : Service() {
         evaluar(motivo)
     }
 
+    /** Ver [Cascada.Pruebas.sacudidaSostenida]. */
+    private fun sostenidaEnCalma(): Boolean =
+        sismo.sostenidoMs >= Opciones.VIGILIA_SOSTENIDO_MS &&
+        sismo.quietoAntesDeLaRacha >= Opciones.VIGILIA_REPOSO_MIN_MS
+
     /** Las pruebas de este instante, tal como las ve el servicio. */
     private fun pruebas(): Cascada.Pruebas {
         val p = postura
@@ -1718,7 +1733,7 @@ class ServicioSos : Service() {
         if (sucesoDesde > 0L) {
             if (temblando) sucesoSacudida = true
             if (System.currentTimeMillis() - sismo.ultimaFuerte < 60_000L) sucesoFuerte = true
-            if (sismo.sostenidoMs >= Opciones.VIGILIA_SOSTENIDO_MS) sucesoSostenida = true
+            if (sostenidaEnCalma()) sucesoSostenida = true
             /* En g, que es como lo dice la maqueta y como se entiende: el motor
                mide en m/s2. Se queda el pico del suceso, no el de ahora. */
             val gAhora = sismo.sacudida / 9.81
@@ -1733,8 +1748,7 @@ class ServicioSos : Service() {
             /* Y si fue lo bastante grande como para no confundirse con una mano.
                Se acumula igual que el resto de la evidencia del suceso. */
             sacudidaFuerte = fuerteAhora(),
-            sacudidaSostenida = sucesoSostenida ||
-                sismo.sostenidoMs >= Opciones.VIGILIA_SOSTENIDO_MS,
+            sacudidaSostenida = sucesoSostenida || sostenidaEnCalma(),
             ratioStaLta = sismo.ratioStaLta,
             ondaP = sismo.hayOndaP,
             estruendo = sucesoEstruendo || estruendoAhora,
@@ -3143,7 +3157,13 @@ class ServicioSos : Service() {
                    10 s y un despertador que arranca justo después de un
                    latido completaba los 3 s de racha antes del siguiente.
                    Ver [Sismografo.vibracionPropia]. */
-                sismo.vibracionPropia = altavozPropio()
+                val ajeno = sonandoAjeno()
+                sismo.vibracionPropia = altavozPropio(ajeno)
+                /* Y la malla sorda mientras tanto: la melodía de un despertador
+                   llegó a pasar por la orden de SILENCIO. Ver
+                   [MallaAcustica.sordaHasta]. Un segundo y medio de margen
+                   cubre el tic siguiente y el final de la melodía. */
+                if (ajeno) malla?.sordaHasta = System.currentTimeMillis() + 1500L
                 sacudida = sismo.sacudida
                 armado = sismo.armado
                 temblando = sismo.ultimoTemblor > 0 &&

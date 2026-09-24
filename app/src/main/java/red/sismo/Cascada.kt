@@ -154,8 +154,11 @@ object Cascada {
          */
         val sacudidaFuerte: Boolean = false,
         /** El suelo se movió sin parar al menos `Opciones.VIGILIA_SOSTENIDO_MS`,
-         *  a cualquier hora. Lo único de este móvil que separa un terremoto de
-         *  un golpe en la mesa: un golpe no dura tres segundos. */
+         *  a cualquier hora, **con el móvil quieto el reposo de la vigilia antes
+         *  de empezar**. Un golpe no dura tres segundos; y un móvil tocado hace
+         *  un momento tiene a alguien al lado que siente el terremoto por sí
+         *  mismo — medido el 24 de septiembre de 2026 a las 07:50: 3,1 s de
+         *  sacudida con 23 s de calma previa, y «estoy bien» a los 6 s. */
         val sacudidaSostenida: Boolean = false,
         /** Frente de onda P primaria vertical detectado previamente (AUD-05). */
         val ondaP: Boolean = false,
@@ -286,8 +289,12 @@ object Cascada {
 
     /**
      * ¿Hubo un sismo de verdad? Una fuente de fuera —otro móvil, la alerta
-     * de Google, un catálogo oficial— o este móvil quieto en una superficie
-     * con el suelo moviéndose fuerte y tres segundos seguidos.
+     * de Google— o este móvil, quieto en una superficie desde antes, con el
+     * suelo moviéndose fuerte y tres segundos seguidos.
+     *
+     * El catálogo no entra: publica minutos después lo que ya pasó, así que
+     * no puede confirmar una sacudida posterior, que suele ser alguien cogiendo
+     * el móvil para leer el aviso. Tiene su propia salida, el aviso discreto.
      *
      * **Es lo único que abre la pregunta y lo único que deja escalar el
      * silencio.** Del 11 al 22 de septiembre de 2026 el Redmi preguntó 35
@@ -302,7 +309,7 @@ object Cascada {
      * pregunta.
      */
     private fun sismoConfirmado(p: Pruebas): Boolean =
-        p.corroborada || p.alertaExterna || p.alertaCatalogo || p.sostenidaNocturna ||
+        p.corroborada || p.alertaExterna || p.sostenidaNocturna ||
         p.socorroVecino > 0 ||
         (p.sacudidaFuerte && p.sacudidaSostenida && p.regimen == Regimen.EN_REPOSO)
 
@@ -473,7 +480,7 @@ object Cascada {
             return Decision(Accion.AVISAR, Quien.PERSONA_PROBABLE,
                 "otro móvil confirma un terremoto y aquí es de madrugada")
         }
-        if (p.alertaCatalogo && !p.sacudidaFuerte && !p.preguntado && !p.contestado) {
+        if (p.alertaCatalogo && !sismoConfirmado(p) && !p.preguntado && !p.contestado) {
             return Decision(Accion.PREGUNTAR_DISCRETA, Quien.NADIE,
                 "un catálogo sísmico confirma un terremoto cerca: aviso discreto")
         }
@@ -769,7 +776,12 @@ object Cascada {
                     contestado = true)),
             /* Lo que sí distingue un terremoto de un camión. */
             Triple("un catálogo oficial confirma un sismo cerca y aquí apenas se notó", Accion.PREGUNTAR_DISCRETA,
-                Pruebas(regimen = Regimen.EN_REPOSO, alertaExterna = true, alertaCatalogo = true)),
+                Pruebas(regimen = Regimen.EN_REPOSO, alertaCatalogo = true)),
+            /* El 24-09 a las 11:40: el aviso discreto sale y quien lo lee
+               coge el móvil. Esa sacudida no es el sismo del catálogo. */
+            Triple("tras el aviso del catálogo cogen el móvil para leerlo", Accion.PREGUNTAR_DISCRETA,
+                Pruebas(regimen = Regimen.EN_REPOSO, alertaCatalogo = true, sacudida = true,
+                    sacudidaFuerte = true)),
             Triple("sismo con alerta externa de red (WebSocket / Google)", Accion.AVISAR,
                 Pruebas(regimen = Regimen.EN_REPOSO, sacudida = true, alertaExterna = true, msDesdeInteraccion = 6 * 3600_000L)),
 

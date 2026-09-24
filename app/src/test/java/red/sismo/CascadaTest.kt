@@ -44,10 +44,10 @@ class CascadaTest {
     fun testCatalogoOficialSiEnciendeElAvisoDiscreto() {
         // Lo que sí acertó el 16 de septiembre: el catálogo tenía el M5.0 a las
         // 14:32 mientras el acelerómetro no sentía nada. La app no tenía que
-        // sentirlo, tenía que preguntarlo.
+        // sentirlo, tenía que preguntarlo. Sin `alertaExterna`: el catálogo
+        // cuenta lo que ya pasó y no enciende la alerta temprana.
         val pruebas = Cascada.Pruebas(
             regimen = Postura.Regimen.EN_REPOSO,
-            alertaExterna = true,
             alertaCatalogo = true
         )
         val decision = Cascada.decidir(pruebas)

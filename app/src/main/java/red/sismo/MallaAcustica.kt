@@ -429,6 +429,17 @@ class MallaAcustica(
     val porSalto = IntArray(MAX_HOP)
     /** Mientras esto sea > 0, el micrófono está silenciado por nuestra propia emisión. */
     @Volatile private var puertaHasta = 0L
+    /**
+     * La misma puerta, pero para lo que suena por el altavoz de este móvil
+     * desde otra app: una alarma, un tono de llamada, una notificación. Lo pone
+     * el servicio mientras dure.
+     *
+     * Medido en el Redmi el 24 de septiembre de 2026 a las 13:38: sonó el
+     * despertador, a los 25 s la malla dio su melodía por la orden de
+     * SILENCIO y la reenvió a la zona. Suena a centímetros del micrófono y a
+     * todo volumen; lo que haya fuera no se puede oír por encima de eso.
+     */
+    @Volatile var sordaHasta = 0L
 
     /**
      * El altavoz de este móvil está sacando algo AHORA: una baliza, un reenvío
@@ -888,7 +899,7 @@ class MallaAcustica(
      *  CPU llegó a mirarlo. Ver [Microfono.Oyente]. */
     private fun procesar(marco: ShortArray, tMs: Long) {
         // no oírse a sí mismo. La racha en curso queda partida: no se juzga.
-        if (tMs < puertaHasta) { olvidoPuerta++; perderSincronismo(); return }
+        if (tMs < puertaHasta || tMs < sordaHasta) { olvidoPuerta++; perderSincronismo(); return }
         /* Enmudecidos por el sistema: los marcos vienen a cero. Juzgarlos sería
            dar por buena una racha partida por un hueco que no oímos. */
         if (mic.silenciado) { perderSincronismo(); return }

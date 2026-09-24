@@ -17,9 +17,8 @@ import kotlin.math.*
  *
  * Si el teléfono tiene conexión a internet (WiFi o datos móviles), consulta periódicamente
  * o recibe transmisiones de los centros sismológicos internacionales (EMSC / USGS).
- * Si se reporta un sismo de magnitud >= 3.8 a menos de 450 km del usuario en los últimos
- * 3 minutos, activa `alertaExterna = true`, proporcionando la corroboración que hoy
- * faltó al fallar la notificación de Google Play Services.
+ * Lo que publica ya ha pasado, así que enciende el aviso discreto y no la alerta
+ * temprana: ver `ServicioSos`, donde se recibe.
  */
 class ReceptorSismicoOnline(
     private val getUbicacion: () -> Pair<Double, Double>? = { null },
