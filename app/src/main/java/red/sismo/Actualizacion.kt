@@ -46,7 +46,8 @@ object Actualizacion {
         "https://api.github.com/repos/jonandrw/sismored_app/releases/latest"
 
     private const val CANAL = "sismored_actualizacion"
-    private const val ID_NOTIF = 16
+    /** 16 era también el del aviso de vecino, y uno tapaba al otro. */
+    private const val ID_NOTIF = 18
     private const val CADA_MS = 24 * 60 * 60 * 1000L
     private const val TAG = "SismoRed"
 

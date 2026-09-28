@@ -282,6 +282,7 @@ class MainActivity : AppCompatActivity() {
         if (BuildConfig.DEBUG) when (intent?.getStringExtra("probar")) {
             "pregunta" -> arrancarServicio(ServicioSos.ACCION_PROBAR_PREGUNTA)
             "simulacro" -> arrancarServicio(ServicioSos.ACCION_SIMULACRO_TOTAL)
+            "panico" -> arrancarServicio(ServicioSos.ACCION_PANICO)
             "vigilia-express" -> conmutarVigiliaExpress(true)
             "vigilia-normal" -> conmutarVigiliaExpress(false)
         }

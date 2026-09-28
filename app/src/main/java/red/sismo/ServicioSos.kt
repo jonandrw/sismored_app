@@ -563,6 +563,9 @@ class ServicioSos : Service() {
          *  a propósito: no es la misma cosa y no puede pisarla. */
         const val ID_VECINO = 16
         const val CANAL_VECINO = "sismored_vecino"
+        /** Ver [avisarAlReloj]. */
+        const val ID_RELOJ = 17
+        const val CANAL_RELOJ = "sismored_reloj"
         const val CANAL_SISMO_CERCANO = "sismored_sismo_cercano"
         const val ACCION_FALSA_ALARMA = "red.sismo.FALSA_ALARMA"
 
@@ -1108,6 +1111,8 @@ class ServicioSos : Service() {
             }
             ACCION_PROBAR_PREGUNTA -> {
                 anotar("Simulacro: esta es la pantalla que sale sola tras un terremoto.")
+                // quien lo prueba dos veces seguidas tiene que verla las dos
+                ultimaPregunta = 0L; preguntaHasta = 0L
                 preguntar(false, "simulacro")
             }
             ACCION_SIMULACRO_TOTAL -> simulacroCompleto()
@@ -2112,6 +2117,10 @@ class ServicioSos : Service() {
                 .setCategory(Notification.CATEGORY_EVENT)
                 .setAutoCancel(true)
                 .setOnlyAlertOnce(true)
+                /* Solo en el móvil, no en el reloj: un enjambre como el de
+                   Chaparral son más de diez al día, también de madrugada, y en
+                   la muñeca cada uno es una vibración. */
+                .setLocalOnly(true)
                 .setContentIntent(abrir)
                 .build()
             (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
@@ -2150,6 +2159,8 @@ class ServicioSos : Service() {
                             else "Pulsa si estás bien o si fue falsa alarma.")
             .setCategory(Notification.CATEGORY_STATUS)
             .setAutoCancel(true)
+            // la del catálogo, solo en el móvil (ver avisarSismoCercano); la del vecino, también al reloj
+            .setLocalOnly(!porVecino)
             .setContentIntent(abrir)
             .addAction(Notification.Action.Builder(null, "ESTOY BIEN", pi(ACCION_ESTOY_BIEN)).build())
             .addAction(Notification.Action.Builder(null, "FALSA ALARMA", pi(ACCION_FALSA_ALARMA)).build())
@@ -2194,14 +2205,64 @@ class ServicioSos : Service() {
             (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
                 .notify(ID_PREGUNTA, b.build())
         } catch (_: Exception) {}
+        /* Y en la muñeca. Descartarlo allí es contestar: quien lo descarta
+           está consciente. */
+        avisarAlReloj("¿ESTÁS BIEN?", "Descártalo si estás bien", ACCION_ESTOY_BIEN)
         try { startActivity(Intent(this, PreguntaActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)) }
         catch (_: Exception) {}
     }
 
+    /**
+     * Un aviso normal y urgente, el único que llega a un reloj.
+     *
+     * Las notificaciones de SismoRed eran todas fijas y del canal del servicio,
+     * de importancia baja, y Mi Fitness no reenvía ninguna de las dos cosas:
+     * probado el 28 de septiembre de 2026 con un Redmi Watch 5 Active, la
+     * pregunta «¿estás bien?» no llegó a la muñeca. Y la muñeca es lo que
+     * despierta a quien duerme con el móvil en otra habitación.
+     *
+     * Sin sonido: lo que suena en el móvil lo pone la app. [alQuitar], si lo
+     * hay, se lanza cuando alguien lo descarta, en el móvil o en el reloj.
+     */
+    private fun avisarAlReloj(titulo: String, texto: String, alQuitar: String? = null) {
+        try {
+            val nm = getSystemService(NotificationManager::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                nm.getNotificationChannel(CANAL_RELOJ) == null) {
+                nm.createNotificationChannel(NotificationChannel(
+                    CANAL_RELOJ, "Avisos urgentes", NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "Alarmas y preguntas que tienen que llegar también al reloj"
+                    setSound(null, null)
+                    enableVibration(false)
+                })
+            }
+            val abrir = PendingIntent.getActivity(
+                this, 17, Intent(this, MainActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            val b = Notification.Builder(this, CANAL_RELOJ)
+                .setSmallIcon(R.drawable.ic_stat_sismored)
+                .setContentTitle(titulo)
+                .setContentText(texto)
+                .setCategory(Notification.CATEGORY_ALARM)
+                .setAutoCancel(true)
+                .setContentIntent(abrir)
+            if (alQuitar != null) b.setDeleteIntent(pi(alQuitar))
+            nm.notify(ID_RELOJ, b.build())
+        } catch (_: Exception) {}
+    }
+
+    private fun quitarAvisoReloj() {
+        try { getSystemService(NotificationManager::class.java).cancel(ID_RELOJ) } catch (_: Exception) {}
+    }
+
     private fun quitarPregunta() {
         try { (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).cancel(ID_PREGUNTA) }
         catch (_: Exception) {}
+        quitarAvisoReloj()
         quitarPreguntaDiscreta()
     }
 
@@ -2497,6 +2558,8 @@ class ServicioSos : Service() {
            propia malla ya se encarga de reemitirla una vez. */
         if (!porLaMalla) try { malla?.emitirUna(MallaAcustica.CODIGO_ALERTA) } catch (_: Exception) {}
         try { destello("alerta sísmica") } catch (_: Exception) {}
+        // los segundos de ventaja, también en la muñeca
+        avisarAlReloj("ALERTA SÍSMICA", "Viene un terremoto. Protégete.")
         /* Tres pulsos, no el SOS: esto es «viene un terremoto», no «hay alguien
            enterrado». Confundir los dos avisos en la mano es confundirlos en la
            cabeza. */
@@ -2540,6 +2603,11 @@ class ServicioSos : Service() {
            maqueta. */
         sucesoRegimen = Postura.Regimen.EN_REPOSO
         sucesoSacudida = true
+        /* Y que fue fuerte y sostenida en calma, que es lo que hace falta para
+           darlo por sismo (ver [Cascada.sismoConfirmado]). Con solo la
+           sacudida, el simulacro se quedaba en NADA. */
+        sucesoFuerte = true
+        sucesoSostenida = true
         evaluar("simulacro completo")
     }
 
@@ -2633,10 +2701,43 @@ class ServicioSos : Service() {
         try { fichaLan?.emitir(true); fichaLan?.escuchaFuerte(true) } catch (_: Exception) {}
         try { actualizarNotificacion() } catch (_: Exception) {}
         anotar("ALARMA: $motivo")
+        alarmaEnElReloj(motivo)
+    }
+
+    private var relojAlarma: Runnable? = null
+
+    /**
+     * La alarma en la muñeca, y repetida: cada aviso es una sola vibración en
+     * el reloj, y una sola no despierta a quien duerme con el móvil en otra
+     * habitación. Cada 10 s mientras suene, y con el tiempo que lleva en el
+     * texto para que ningún aviso sea idéntico al anterior.
+     *
+     * Una vibración continua, como la del despertador del reloj, no está al
+     * alcance: probado el 28 de septiembre de 2026 con un Redmi Watch 5 Active,
+     * Mi Fitness no trata como llamada ni una notificación de categoría llamada
+     * ni el formato `CallStyle`, y las fijas las descarta.
+     */
+    private fun alarmaEnElReloj(motivo: String) {
+        relojAlarma?.let { reloj.removeCallbacks(it) }
+        val desde = System.currentTimeMillis()
+        val tarea = object : Runnable {
+            override fun run() {
+                if (!enAlarma) return
+                val s = (System.currentTimeMillis() - desde) / 1000L
+                avisarAlReloj("ALARMA · SISMORED",
+                    if (s < 5) motivo else "Sigue sonando · %d:%02d · %s".format(s / 60, s % 60, motivo))
+                reloj.postDelayed(this, 10_000L)
+            }
+        }
+        relojAlarma = tarea
+        reloj.post(tarea)
     }
 
     private fun parar() {
         val estaba = enAlarma || enRescate
+        relojAlarma?.let { reloj.removeCallbacks(it) }
+        relojAlarma = null
+        quitarAvisoReloj()
         enAlarma = false
         enRescate = false
         rescateTarea?.let { reloj.removeCallbacks(it) }
