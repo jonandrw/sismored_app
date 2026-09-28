@@ -79,7 +79,12 @@ solo se ha comprobado la consola):
    app (`MallaAcustica.sordaHasta`). Verificado: alarma de 27 s, cero candidatos.
    Además el catálogo ya no confirma sacudidas posteriores y la regla de día pide
    la quietud previa de la vigilia (dos preguntas de ese día, 07:50 y 11:40).
-7. Pendiente de campo: arrastrar el riel del Registro, el golpe en la mesa de día
+7. **28 sep (`324b425`), reloj:** la pregunta, la alerta sísmica y la alarma
+   (cada 10 s) llegan a un Redmi Watch 5 Active por Mi Fitness; descartar la
+   pregunta en el reloj = «estoy bien». Lo medido sobre Mi Fitness está en la
+   memoria `sismored-reloj-mi-fitness`. Sin comprobar: que los avisos del
+   catálogo (`setLocalOnly`) de verdad no lleguen al reloj.
+8. Pendiente de campo: arrastrar el riel del Registro, el golpe en la mesa de día
    que no debe preguntar y la llamada de 3 minutos. El despertador de madrugada
    no se probó: las alarmas del Redmi estaban desactivadas.
 
